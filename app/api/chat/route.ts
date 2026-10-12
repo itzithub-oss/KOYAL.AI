@@ -32,7 +32,7 @@ type ChatBody = {
 const OLLAMA_URL = "http://127.0.0.1:11434/api/chat";
 const OLLAMA_MODEL = "qwen2.5:3b";
 
-// LOCKED MODEL — do not change automatically
+// LOCKED GEMINI MODEL
 const GEMINI_MODEL = "gemini-3.1-flash-lite" as const;
 
 function getPlan(body: ChatBody) {
@@ -46,7 +46,7 @@ function isSupremePlan(plan: string) {
 function buildSystemPrompt(body: ChatBody) {
   const mode = body.mode || "Normal";
   const thinkingLevel = body.thinkingLevel || "Just";
-  const language = body.language || "auto";
+  const language = body.language || "English by default";
 
   let prompt = `
 You are KOYAL AI.
@@ -56,9 +56,21 @@ Current mode: ${mode}
 Thinking level: ${thinkingLevel}
 Language preference: ${language}
 
-Rules:
-- If the user speaks Hindi, reply naturally in Hindi using Devanagari script.
-- If the user speaks another language, reply in that language.
+LANGUAGE RULES:
+- Reply in English by default.
+- Use Hindi only if the user clearly asks for Hindi, such as:
+  "Hindi me bolo"
+  "answer in Hindi"
+  "reply in Hindi"
+  "speak in Hindi"
+  "हिंदी में बताओ"
+  "हिंदी में बोलो"
+- Do not automatically switch to Hindi just because the user typed a Hindi word.
+- Do not automatically switch to Hindi because the user uses an Indian name, place, or Hinglish word.
+- If the user asks normally, answer in English.
+- Use another language only if the user clearly asks for that language.
+
+GENERAL RULES:
 - Keep voice-mode answers short and natural.
 - Do not repeatedly say "as an AI".
 `.trim();
@@ -73,12 +85,11 @@ Rules:
 
   if (body.teacherMode) {
     prompt += `
-    
+
 Teacher Mode is enabled.
 Student class: ${body.teacherClass || "unknown"}.
 Subject: ${body.teacherSubject || "unknown"}.
-Explain at the correct student level.
-`.trim();
+Explain at the correct student level.`;
   }
 
   if (body.philosophicalMode) {
@@ -217,13 +228,14 @@ export async function POST(request: NextRequest) {
 
     if (process.env.VERCEL === "1") {
       // Online Vercel cannot use local Ollama.
-      // So online version always uses the locked Gemini model.
+      // So online version always uses locked Gemini model.
       reply = await askGemini(message, body);
       providerUsed = supreme ? "Gemini Supreme" : "Gemini Online";
       modelUsed = GEMINI_MODEL;
     } else {
-      // Local laptop version:
-      // Supreme uses Gemini, other plans use local Ollama.
+      // Local laptop:
+      // Supreme uses Gemini.
+      // Other plans use local Ollama.
       if (supreme) {
         reply = await askGemini(message, body);
         providerUsed = "Gemini Supreme";

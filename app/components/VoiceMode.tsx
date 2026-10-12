@@ -23,7 +23,7 @@ type SpeechRecognitionLike = {
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
-type DetectedLanguage = {
+type OutputLanguage = {
   code: string;
   name: string;
   aiName: string;
@@ -36,23 +36,23 @@ declare global {
   }
 }
 
-const supportedLanguages: DetectedLanguage[] = [
-  { code: "hi-IN", name: "Hindi", aiName: "Hindi" },
-  { code: "en-IN", name: "Indian English", aiName: "Indian English" },
-  { code: "gu-IN", name: "Gujarati", aiName: "Gujarati" },
-  { code: "bn-IN", name: "Bengali", aiName: "Bengali" },
-  { code: "mr-IN", name: "Marathi", aiName: "Marathi" },
-  { code: "ta-IN", name: "Tamil", aiName: "Tamil" },
-  { code: "te-IN", name: "Telugu", aiName: "Telugu" },
-  { code: "kn-IN", name: "Kannada", aiName: "Kannada" },
-  { code: "ml-IN", name: "Malayalam", aiName: "Malayalam" },
-  { code: "pa-IN", name: "Punjabi", aiName: "Punjabi" },
-  { code: "ur-IN", name: "Urdu", aiName: "Urdu" },
-];
+const ENGLISH_LANGUAGE: OutputLanguage = {
+  code: "en-IN",
+  name: "English",
+  aiName: "English",
+};
 
-const defaultRecognitionLanguage = "hi-IN";
+const HINDI_LANGUAGE: OutputLanguage = {
+  code: "hi-IN",
+  name: "Hindi",
+  aiName: "Hindi",
+};
 
-export default function VoiceMode() {
+export default function VoiceMode({
+  subscriptionPlan = "Just",
+}: {
+  subscriptionPlan?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [listening, setListening] = useState(false);
   const [thinking, setThinking] = useState(false);
@@ -60,9 +60,8 @@ export default function VoiceMode() {
   const [status, setStatus] = useState("Tap the bird to talk");
   const [heardText, setHeardText] = useState("");
   const [aiText, setAiText] = useState("");
-  const [detectedLanguage, setDetectedLanguage] = useState<DetectedLanguage>(
-    supportedLanguages[0]
-  );
+  const [outputLanguage, setOutputLanguage] =
+    useState<OutputLanguage>(ENGLISH_LANGUAGE);
 
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState("");
@@ -104,9 +103,6 @@ export default function VoiceMode() {
     if (!selectedVoiceURI && availableVoices.length > 0) {
       const bestVoice =
         availableVoices.find((voice) =>
-          voice.lang.toLowerCase().startsWith("hi")
-        ) ||
-        availableVoices.find((voice) =>
           voice.lang.toLowerCase().startsWith("en-in")
         ) ||
         availableVoices.find((voice) =>
@@ -126,51 +122,41 @@ export default function VoiceMode() {
       throw new Error("Microphone permission API is not available.");
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
 
     stream.getTracks().forEach((track) => track.stop());
   }
 
-  function detectLanguage(text: string): DetectedLanguage {
-    const clean = text.trim();
+  function userAskedForHindi(text: string) {
+    const clean = text.toLowerCase();
 
-    if (/[\u0900-\u097F]/.test(clean)) {
-      return { code: "hi-IN", name: "Hindi", aiName: "Hindi" };
+    return (
+      clean.includes("hindi me") ||
+      clean.includes("hindi mein") ||
+      clean.includes("hindi m") ||
+      clean.includes("reply in hindi") ||
+      clean.includes("answer in hindi") ||
+      clean.includes("speak in hindi") ||
+      clean.includes("say in hindi") ||
+      clean.includes("tell in hindi") ||
+      clean.includes("translate to hindi") ||
+      clean.includes("हिंदी में") ||
+      clean.includes("हिन्दी में") ||
+      clean.includes("हिंदी मे") ||
+      clean.includes("हिन्दी मे") ||
+      clean.includes("हिंदी में बोलो") ||
+      clean.includes("हिंदी में बताओ")
+    );
+  }
+
+  function detectRequestedOutputLanguage(text: string): OutputLanguage {
+    if (userAskedForHindi(text)) {
+      return HINDI_LANGUAGE;
     }
 
-    if (/[\u0A80-\u0AFF]/.test(clean)) {
-      return { code: "gu-IN", name: "Gujarati", aiName: "Gujarati" };
-    }
-
-    if (/[\u0980-\u09FF]/.test(clean)) {
-      return { code: "bn-IN", name: "Bengali", aiName: "Bengali" };
-    }
-
-    if (/[\u0B80-\u0BFF]/.test(clean)) {
-      return { code: "ta-IN", name: "Tamil", aiName: "Tamil" };
-    }
-
-    if (/[\u0C00-\u0C7F]/.test(clean)) {
-      return { code: "te-IN", name: "Telugu", aiName: "Telugu" };
-    }
-
-    if (/[\u0C80-\u0CFF]/.test(clean)) {
-      return { code: "kn-IN", name: "Kannada", aiName: "Kannada" };
-    }
-
-    if (/[\u0D00-\u0D7F]/.test(clean)) {
-      return { code: "ml-IN", name: "Malayalam", aiName: "Malayalam" };
-    }
-
-    if (/[\u0A00-\u0A7F]/.test(clean)) {
-      return { code: "pa-IN", name: "Punjabi", aiName: "Punjabi" };
-    }
-
-    if (/[\u0600-\u06FF]/.test(clean)) {
-      return { code: "ur-IN", name: "Urdu", aiName: "Urdu" };
-    }
-
-    return { code: "en-IN", name: "Indian English", aiName: "Indian English" };
+    return ENGLISH_LANGUAGE;
   }
 
   function clearSilenceTimer() {
@@ -190,8 +176,11 @@ export default function VoiceMode() {
   function getSelectedVoice(languageCode: string) {
     const availableVoices = window.speechSynthesis.getVoices();
 
-    return (
-      availableVoices.find((voice) => voice.voiceURI === selectedVoiceURI) ||
+    const selected = availableVoices.find(
+      (voice) => voice.voiceURI === selectedVoiceURI
+    );
+
+    const matchingLanguage =
       availableVoices.find((voice) =>
         voice.lang.toLowerCase().startsWith(languageCode.toLowerCase())
       ) ||
@@ -199,7 +188,12 @@ export default function VoiceMode() {
         voice.lang
           .toLowerCase()
           .startsWith(languageCode.split("-")[0].toLowerCase())
-      ) ||
+      );
+
+    if (matchingLanguage) return matchingLanguage;
+    if (selected) return selected;
+
+    return (
       availableVoices.find((voice) =>
         voice.name.toLowerCase().includes("microsoft")
       ) ||
@@ -287,7 +281,7 @@ export default function VoiceMode() {
     }, 800);
   }
 
-  function speakText(text: string, language: DetectedLanguage) {
+  function speakText(text: string, language: OutputLanguage) {
     if (!("speechSynthesis" in window)) {
       alert("Speech output is not supported in this browser.");
       return;
@@ -400,26 +394,39 @@ export default function VoiceMode() {
       return;
     }
 
-    const language = detectLanguage(cleanText);
+    const requestedLanguage = detectRequestedOutputLanguage(cleanText);
 
-    setDetectedLanguage(language);
+    setOutputLanguage(requestedLanguage);
     setHeardText(cleanText);
     lastSentRef.current = cleanText;
 
     try {
       sendingRef.current = true;
       setThinking(true);
-      setStatus(`Bird thinking in ${language.name}...`);
+      setStatus(`Bird thinking in ${requestedLanguage.name}...`);
 
       const voicePrompt = `
 You are KOYAL AI represented as a friendly speaking bird.
-The user may speak in any language.
-Detected language: ${language.aiName}.
-Reply ONLY in ${language.aiName}.
-If detected language is Hindi, reply naturally in Hindi using Devanagari script.
-Keep the answer short, clear and natural for voice communication.
-Do not say "as an AI".
-User said: ${cleanText}
+
+LANGUAGE RULES:
+- Reply in English by default.
+- Use Hindi only if the user clearly asks for Hindi, such as:
+  "Hindi me bolo"
+  "answer in Hindi"
+  "reply in Hindi"
+  "speak in Hindi"
+  "हिंदी में बताओ"
+  "हिंदी में बोलो"
+- Do not automatically reply in Hindi just because the user used one Hindi word.
+- Use another language only if the user clearly asks for that language.
+
+VOICE RULES:
+- Keep the answer short, clear, and natural for voice communication.
+- Do not say "as an AI".
+- Sound friendly like a helpful bird assistant.
+
+User said:
+${cleanText}
 `.trim();
 
       const response = await fetch("/api/chat", {
@@ -432,7 +439,8 @@ User said: ${cleanText}
           mode: "Voice",
           thinkingLevel: "Just",
           voiceMode: true,
-          language: language.aiName,
+          language: requestedLanguage.aiName,
+          subscriptionPlan,
         }),
       });
 
@@ -453,9 +461,9 @@ User said: ${cleanText}
       const reply = data.reply || "I could not answer.";
 
       setAiText(reply);
-      setStatus(`Bird replied in ${language.name}.`);
+      setStatus(`Bird replied in ${requestedLanguage.name}.`);
 
-      speakText(reply, language);
+      speakText(reply, requestedLanguage);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Voice message failed.";
@@ -505,7 +513,9 @@ User said: ${cleanText}
 
     const recognition = new SpeechRecognition();
 
-    recognition.lang = defaultRecognitionLanguage;
+    // English by default.
+    // Hindi reply happens only when user asks for Hindi.
+    recognition.lang = "en-IN";
     recognition.interimResults = true;
     recognition.continuous = true;
     recognition.maxAlternatives = 1;
@@ -537,7 +547,9 @@ User said: ${cleanText}
       }
 
       if (finalText.trim()) {
-        pendingTranscriptRef.current = `${pendingTranscriptRef.current} ${finalText}`.trim();
+        pendingTranscriptRef.current =
+          `${pendingTranscriptRef.current} ${finalText}`.trim();
+
         scheduleSendAfterSilence();
       }
     };
@@ -653,14 +665,10 @@ User said: ${cleanText}
   }
 
   function testBirdVoice() {
-    const language = detectedLanguage || supportedLanguages[0];
-
-    if (language.code === "hi-IN") {
-      speakText("नमस्ते, मैं कोयल पक्षी हूँ। मैं आपकी भाषा अपने आप पहचानने की कोशिश करूँगी।", language);
-      return;
-    }
-
-    speakText("Hello, I am the KOYAL bird. I will try to detect your language automatically.", language);
+    speakText(
+      "Hello, I am the KOYAL bird. I will reply in Hindi only when you ask for Hindi.",
+      ENGLISH_LANGUAGE
+    );
   }
 
   return (
@@ -713,7 +721,7 @@ User said: ${cleanText}
             <div>
               <strong>🐦 KOYAL Bird</strong>
               <div style={{ fontSize: 11, opacity: 0.55 }}>
-                Auto language communication
+                English default • Hindi only when asked
               </div>
             </div>
 
@@ -785,7 +793,7 @@ User said: ${cleanText}
             <strong>Status:</strong> {status}
 
             <div style={{ marginTop: 6 }}>
-              <strong>Language:</strong> {detectedLanguage.name}
+              <strong>Reply language:</strong> {outputLanguage.name}
             </div>
 
             {heardText && (
@@ -900,7 +908,8 @@ User said: ${cleanText}
                 padding: "10px 12px",
                 background: "rgba(255,255,255,0.08)",
                 color: "#ffffff",
-                cursor: !heardText.trim() || thinking ? "not-allowed" : "pointer",
+                cursor:
+                  !heardText.trim() || thinking ? "not-allowed" : "pointer",
                 fontWeight: 700,
               }}
             >
