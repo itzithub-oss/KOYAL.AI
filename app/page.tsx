@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ChangeEvent,
   CSSProperties,
   FormEvent,
   useEffect,
@@ -15,16 +14,9 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   fileName?: string;
-  imageUrl?: string;
 };
 
-type Profile = {
-  name: string;
-  dob: string;
-  gender: string;
-  phone: string;
-  photo?: string;
-};
+type PlanName = "Just" | "Let It" | "Care" | "Elite" | "Supreme";
 
 type CharacterMode =
   | "normal"
@@ -34,6 +26,15 @@ type CharacterMode =
   | "school-female-friend"
   | "business-partner"
   | "enemy";
+
+type ThinkingEffort =
+  | "just"
+  | "let-it"
+  | "care"
+  | "high"
+  | "ultra-high"
+  | "elite"
+  | "supreme";
 
 type TeacherClass =
   | "1"
@@ -50,35 +51,31 @@ type TeacherClass =
   | "12";
 
 type TeacherSubject =
-  | "mathematics"
-  | "english"
   | "general-science"
-  | "social-science"
+  | "mathematics"
   | "physics"
   | "chemistry"
   | "biology"
   | "history"
   | "geography"
   | "civics"
-  | "computer-science"
   | "economics"
-  | "general-knowledge";
+  | "computer-science"
+  | "english"
+  | "social-science";
 
-type ThinkingEffort =
-  | "just"
-  | "let-it"
-  | "care"
-  | "high"
-  | "ultra-high"
-  | "elite"
-  | "supreme";
+type ChatApiResponse = {
+  reply?: string;
+  error?: string;
+  modelUsed?: string;
+  providerUsed?: string;
+  planUsed?: string;
+};
 
-type PlanName = "Just" | "Let It" | "Care" | "Elite" | "Supreme";
-
-type Plan = {
-  name: PlanName;
-  price: number;
-  benefits: string[];
+type CharacterOption = {
+  id: CharacterMode;
+  icon: string;
+  name: string;
 };
 
 type TeacherSubjectOption = {
@@ -87,102 +84,53 @@ type TeacherSubjectOption = {
   name: string;
 };
 
-type ChatApiResponse = {
-  reply?: string;
-  error?: string;
-};
-
-type ImageApiResponse = {
-  reply?: string;
-  image?: string;
-  mimeType?: string;
-  error?: string;
-};
-
-const STARTING_FEATHER_BALANCE = 100;
-
-const characterOptions: {
-  id: CharacterMode;
-  icon: string;
+type ThinkingOption = {
+  id: ThinkingEffort;
   name: string;
-  description: string;
-}[] = [
-  {
-    id: "normal",
-    icon: "💠",
-    name: "Normal KOYAL AI",
-    description: "Standard AI assistant",
-  },
-  {
-    id: "mother",
-    icon: "🌷",
-    name: "Mother",
-    description: "Caring & supportive",
-  },
-  {
-    id: "father",
-    icon: "🛡️",
-    name: "Father",
-    description: "Calm & guiding",
-  },
-  {
-    id: "school-friend",
-    icon: "🎒",
-    name: "School Friend",
-    description: "Casual & friendly",
-  },
-  {
-    id: "school-female-friend",
-    icon: "🌸",
-    name: "Good School Female Friend",
-    description: "Friendly & supportive",
-  },
-  {
-    id: "business-partner",
-    icon: "💼",
-    name: "Business Partner",
-    description: "Strategic & professional",
-  },
-  {
-    id: "enemy",
-    icon: "⚔️",
-    name: "Enemy",
-    description: "Competitive fictional rival",
-  },
+  feathers: number | "locked";
+};
+
+type Plan = {
+  name: PlanName;
+  price: number;
+  tagline: string;
+  benefits: string[];
+};
+
+const SERVER_ERROR_REPLY =
+  "sorry,there is a problem in my server please try me later";
+
+const starter: Message = {
+  role: "assistant",
+  content: "Hi! I’m Koyal. Ask me anything.",
+};
+
+const characterOptions: CharacterOption[] = [
+  { id: "normal", icon: "💠", name: "Koyal" },
+  { id: "mother", icon: "🌷", name: "Mother" },
+  { id: "father", icon: "🛡️", name: "Father" },
+  { id: "school-friend", icon: "🎒", name: "School Friend" },
+  { id: "school-female-friend", icon: "💜", name: "Good School Female Friend" },
+  { id: "business-partner", icon: "💼", name: "Business Partner" },
+  { id: "enemy", icon: "😈", name: "Enemy" },
 ];
 
-const juniorTeacherSubjects: TeacherSubjectOption[] = [
-  { id: "mathematics", icon: "➗", name: "Mathematics" },
-  { id: "english", icon: "📖", name: "English" },
+const teacherSubjects: TeacherSubjectOption[] = [
   { id: "general-science", icon: "🔬", name: "General Science" },
-  { id: "social-science", icon: "🌐", name: "Social Science" },
-  { id: "computer-science", icon: "💻", name: "Computer Science" },
-  { id: "general-knowledge", icon: "🧠", name: "General Knowledge" },
-];
-
-const seniorTeacherSubjects: TeacherSubjectOption[] = [
   { id: "mathematics", icon: "➗", name: "Mathematics" },
-  { id: "english", icon: "📖", name: "English" },
-  { id: "general-science", icon: "🔬", name: "General Science" },
-  { id: "social-science", icon: "🌐", name: "Social Science" },
   { id: "physics", icon: "⚛️", name: "Physics" },
   { id: "chemistry", icon: "🧪", name: "Chemistry" },
   { id: "biology", icon: "🧬", name: "Biology" },
   { id: "history", icon: "🏛️", name: "History" },
-  { id: "geography", icon: "🗺️", name: "Geography" },
+  { id: "geography", icon: "🌍", name: "Geography" },
   { id: "civics", icon: "⚖️", name: "Civics" },
-  { id: "computer-science", icon: "💻", name: "Computer Science" },
   { id: "economics", icon: "📈", name: "Economics" },
-  { id: "general-knowledge", icon: "🧠", name: "General Knowledge" },
+  { id: "computer-science", icon: "💻", name: "Computer Science" },
+  { id: "english", icon: "📖", name: "English" },
+  { id: "social-science", icon: "🌐", name: "Social Science" },
 ];
 
-const allTeacherSubjects: TeacherSubjectOption[] = [...seniorTeacherSubjects];
-
-const thinkingEffortOptions: {
-  id: ThinkingEffort;
-  name: string;
-  feathers: number | "locked";
-}[] = [
+const thinkingOptions: ThinkingOption[] = [
   { id: "just", name: "Just", feathers: 0 },
   { id: "let-it", name: "Let It", feathers: 1 },
   { id: "care", name: "Care", feathers: 2 },
@@ -192,574 +140,207 @@ const thinkingEffortOptions: {
   { id: "supreme", name: "Supreme", feathers: "locked" },
 ];
 
-const subscriptionPlans: Plan[] = [
+const plans: Plan[] = [
   {
     name: "Just",
     price: 0,
-    benefits: [
-      "Unlimited Files",
-      "Unlimited Voice/Audio",
-      "Image Generation - Coming Soon",
-    ],
+    tagline: "Starter mode",
+    benefits: ["Chat", "Voice", "Files"],
   },
   {
     name: "Let It",
     price: 70,
-    benefits: [
-      "Precise Mode unlock",
-      "Let It thinking support",
-      "Let It costs 50% less",
-    ],
+    tagline: "Better precision",
+    benefits: ["Precise mode", "Lower feather cost"],
   },
   {
     name: "Care",
     price: 120,
-    benefits: [
-      "Precise Mode",
-      "Let It 50% less",
-      "Care 50% less",
-    ],
+    tagline: "Balanced thinking",
+    benefits: ["Care thinking", "More detailed answers"],
   },
   {
     name: "Elite",
     price: 220,
-    benefits: [
-      "Code Mode unlock later",
-      "Let It / Care / High / Ultra High 50% less",
-      "Elite thinking support",
-    ],
+    tagline: "Advanced mode",
+    benefits: ["Elite thinking", "Code mode later"],
   },
   {
     name: "Supreme",
     price: 400,
-    benefits: [
-      "Supreme thinking unlock",
-      "Personal mode later",
-      "Infinite 🪶 later",
-    ],
+    tagline: "Premium power",
+    benefits: ["Supreme thinking", "Advanced answers", "Premium response quality"],
   },
 ];
 
-const starter: Message = {
-  role: "assistant",
-  content: "Hi! I’m KOYAL AI V2.0. How can I help you today?",
-};
+const quickPrompts = [
+  {
+    icon: "💡",
+    title: "Explain a concept",
+    text: "Explain a concept like I’m 15",
+  },
+  {
+    icon: "🪶",
+    title: "Plan my goals",
+    text: "Help me plan my goals step by step",
+  },
+  {
+    icon: "📚",
+    title: "Teach me",
+    text: "Teach me today’s topic clearly",
+  },
+  {
+    icon: "💭",
+    title: "Think deeper",
+    text: "Let’s have a deep philosophical discussion",
+  },
+];
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([starter]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [preciseMode, setPreciseMode] = useState(true);
-  const [imageMode, setImageMode] = useState(false);
-  const [philosophicalMode, setPhilosophicalMode] = useState(false);
-
-  const [thinkingEffort, setThinkingEffort] =
-    useState<ThinkingEffort>("high");
-  const [thinkingBarOpen, setThinkingBarOpen] = useState(false);
-
-  const [featherBalance, setFeatherBalance] = useState(
-    STARTING_FEATHER_BALANCE
-  );
-  const [rechargeOpen, setRechargeOpen] = useState(false);
-  const [rechargeAmount, setRechargeAmount] = useState("");
-
-  const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
-
-  const [characterMode, setCharacterMode] =
-    useState<CharacterMode>("normal");
-  const [characterMenuOpen, setCharacterMenuOpen] = useState(false);
-
-  const [teacherMode, setTeacherMode] = useState(false);
-  const [teacherClass, setTeacherClass] = useState<TeacherClass>("5");
-  const [teacherSubject, setTeacherSubject] =
-    useState<TeacherSubject>("general-science");
-
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
-  const [uploadType, setUploadType] = useState<"file" | "photo" | "video">(
-    "file"
-  );
 
+  const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
+  const [featherBalance, setFeatherBalance] = useState(2480);
+  const [thinkingEffort, setThinkingEffort] = useState<ThinkingEffort>("high");
+  const [preciseMode, setPreciseMode] = useState(true);
+  const [philosophicalMode, setPhilosophicalMode] = useState(false);
+  const [teacherMode, setTeacherMode] = useState(false);
+  const [teacherClass, setTeacherClass] = useState<TeacherClass>("8");
+  const [teacherSubject, setTeacherSubject] =
+    useState<TeacherSubject>("general-science");
+  const [characterMode, setCharacterMode] =
+    useState<CharacterMode>("normal");
+  const [characterMenuOpen, setCharacterMenuOpen] = useState(true);
+  const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profile, setProfile] = useState<Profile>({
-    name: "",
-    dob: "",
-    gender: "",
-    phone: "",
-    photo: "",
-  });
-
+  const [profileName, setProfileName] = useState("Divyansh");
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const profilePhotoRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const currentCharacter =
-    characterOptions.find((character) => character.id === characterMode) ||
+    characterOptions.find((item) => item.id === characterMode) ||
     characterOptions[0];
 
-  const availableTeacherSubjects =
-    Number(teacherClass) <= 5 ? juniorTeacherSubjects : seniorTeacherSubjects;
-
   const currentTeacherSubject =
-    availableTeacherSubjects.find((subject) => subject.id === teacherSubject) ||
-    availableTeacherSubjects[0];
-
-  const rawThinkingIndex = thinkingEffortOptions.findIndex(
-    (item) => item.id === thinkingEffort
-  );
-
-  const currentThinkingIndex = rawThinkingIndex >= 0 ? rawThinkingIndex : 3;
+    teacherSubjects.find((item) => item.id === teacherSubject) ||
+    teacherSubjects[0];
 
   const currentThinking =
-    thinkingEffortOptions[currentThinkingIndex] || thinkingEffortOptions[3];
+    thinkingOptions.find((item) => item.id === thinkingEffort) ||
+    thinkingOptions[3];
 
-  const currentMessageFeatherCost =
-    currentThinking.feathers === "locked" ? 0 : currentThinking.feathers;
+  const currentFeatherCost =
+    selectedPlan === "Supreme"
+      ? 0
+      : currentThinking.feathers === "locked"
+      ? 0
+      : currentThinking.feathers;
 
-  const statusParts: string[] = [];
-
-  if (preciseMode) statusParts.push("🎯 Precise");
-
-  statusParts.push(`🧠 ${currentThinking.name}`);
-
-  if (selectedPlan !== "Just") {
-    statusParts.push(`💎 ${selectedPlan}`);
-  }
+  const statusParts = [
+    preciseMode ? "🎯 Precise" : "⚪ Normal",
+    `🐦 ${currentThinking.name}`,
+    selectedPlan !== "Just" ? `💎 ${selectedPlan}` : "💎 Just",
+  ];
 
   if (teacherMode) {
     statusParts.push(
-      `📚 Class ${teacherClass} • ${currentTeacherSubject.icon} ${currentTeacherSubject.name}`
+      `📚 Class ${teacherClass} ${currentTeacherSubject.name}`
     );
-  } else if (characterMode !== "normal") {
-    statusParts.push(`${currentCharacter.icon} ${currentCharacter.name}`);
   }
 
-  if (philosophicalMode) statusParts.push("💭 Philosophical");
+  if (characterMode !== "normal") {
+    statusParts.push(`🎭 ${currentCharacter.name}`);
+  }
 
-  if (!statusParts.length) statusParts.push("KOYAL AI");
-
-  useEffect(() => {
-    const saved =
-      localStorage.getItem("koyal-ai-chat") ||
-      localStorage.getItem("it-hub-ai-chat");
-
-    if (!saved) return;
-
-    try {
-      const parsed = JSON.parse(saved);
-
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setMessages(parsed);
-      }
-    } catch (error) {
-      console.error("Chat load error:", error);
-    }
-  }, []);
+  if (philosophicalMode) {
+    statusParts.push("💭 Philosophical");
+  }
 
   useEffect(() => {
-    const saved = localStorage.getItem("koyal-ai-profile");
-
-    if (!saved) return;
-
-    try {
-      const parsed = JSON.parse(saved);
-
-      setProfile({
-        name: parsed.name || "",
-        dob: parsed.dob || "",
-        gender: parsed.gender || "",
-        phone: parsed.phone || "",
-        photo: parsed.photo || "",
-      });
-    } catch (error) {
-      console.error("Profile load error:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("koyal-ai-character");
-
-    const valid: CharacterMode[] = [
-      "normal",
-      "mother",
-      "father",
-      "school-friend",
-      "school-female-friend",
-      "business-partner",
-      "enemy",
-    ];
-
-    if (saved && valid.includes(saved as CharacterMode)) {
-      setCharacterMode(saved as CharacterMode);
-    }
-  }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("koyal-ai-philosophical-mode");
-    setPhilosophicalMode(saved === "true");
-  }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("koyal-ai-subscription-plan");
-
-    const validPlans: PlanName[] = ["Just", "Let It", "Care", "Elite", "Supreme"];
-
-    if (saved && validPlans.includes(saved as PlanName)) {
-      setSelectedPlan(saved as PlanName);
-    }
-  }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("koyal-ai-thinking-effort");
     const savedPlan = localStorage.getItem("koyal-ai-subscription-plan");
+    const savedFeathers = localStorage.getItem("koyal-ai-feather-balance");
+    const savedMessages = localStorage.getItem("koyal-ai-chat");
 
-    const valid: ThinkingEffort[] = [
-      "just",
-      "let-it",
-      "care",
-      "high",
-      "ultra-high",
-      "elite",
-      "supreme",
-    ];
+    if (
+      savedPlan === "Just" ||
+      savedPlan === "Let It" ||
+      savedPlan === "Care" ||
+      savedPlan === "Elite" ||
+      savedPlan === "Supreme"
+    ) {
+      setSelectedPlan(savedPlan);
+    }
 
-    if (saved && valid.includes(saved as ThinkingEffort)) {
-      if (saved === "supreme" && savedPlan !== "Supreme") {
-        setThinkingEffort("high");
-        localStorage.setItem("koyal-ai-thinking-effort", "high");
-      } else {
-        setThinkingEffort(saved as ThinkingEffort);
+    if (savedFeathers && !Number.isNaN(Number(savedFeathers))) {
+      setFeatherBalance(Number(savedFeathers));
+    }
+
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages) as Message[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+        }
+      } catch {
+        setMessages([starter]);
       }
     }
   }, []);
 
   useEffect(() => {
-    if (selectedPlan !== "Supreme" && thinkingEffort === "supreme") {
-      setThinkingEffort("high");
-      localStorage.setItem("koyal-ai-thinking-effort", "high");
-    }
-  }, [selectedPlan, thinkingEffort]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("koyal-ai-feather-balance");
-
-    if (!saved) return;
-
-    const value = Number(saved);
-
-    if (!Number.isNaN(value) && value >= 0) {
-      setFeatherBalance(value);
-    }
-  }, []);
-
-  useEffect(() => {
-    const savedMode = localStorage.getItem("koyal-ai-teacher-mode");
-    const savedClass = localStorage.getItem("koyal-ai-teacher-class");
-    const savedSubject = localStorage.getItem("koyal-ai-teacher-subject");
-
-    const validClasses: TeacherClass[] = [
-      "1",
-      "2",
-      "3",
-      "4",
-      "5",
-      "6",
-      "7",
-      "8",
-      "9",
-      "10",
-      "11",
-      "12",
-    ];
-
-    let resolvedClass: TeacherClass = "5";
-
-    if (savedClass && validClasses.includes(savedClass as TeacherClass)) {
-      resolvedClass = savedClass as TeacherClass;
-    }
-
-    const allowed =
-      Number(resolvedClass) <= 5
-        ? juniorTeacherSubjects
-        : seniorTeacherSubjects;
-
-    const validSubject =
-      savedSubject &&
-      allTeacherSubjects.some((subject) => subject.id === savedSubject) &&
-      allowed.some((subject) => subject.id === savedSubject);
-
-    setTeacherMode(savedMode === "true");
-    setTeacherClass(resolvedClass);
-    setTeacherSubject(
-      validSubject ? (savedSubject as TeacherSubject) : "general-science"
-    );
-  }, []);
-
-  useEffect(() => {
-    try {
-      const safeMessages = messages.map((message) => ({
-        role: message.role,
-        content: message.content,
-        fileName: message.fileName,
-      }));
-
-      localStorage.setItem("koyal-ai-chat", JSON.stringify(safeMessages));
-    } catch (error) {
-      console.error("Chat save error:", error);
-    }
-
+    localStorage.setItem("koyal-ai-chat", JSON.stringify(messages));
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    return () => window.speechSynthesis?.cancel();
-  }, []);
-
-  function selectCharacter(mode: CharacterMode) {
-    setCharacterMode(mode);
-    localStorage.setItem("koyal-ai-character", mode);
-    setCharacterMenuOpen(false);
-  }
-
-  function togglePhilosophicalMode() {
-    setPhilosophicalMode((previous) => {
-      const next = !previous;
-      localStorage.setItem("koyal-ai-philosophical-mode", String(next));
-      return next;
-    });
-  }
-
-  function changeThinkingEffortByIndex(index: number) {
-    const option = thinkingEffortOptions[index];
-
-    if (!option) return;
-
-    if (option.id === "supreme" && selectedPlan !== "Supreme") {
-      alert("Supreme Thinking needs Supreme Subscription.");
-      return;
-    }
-
-    setThinkingEffort(option.id);
-    localStorage.setItem("koyal-ai-thinking-effort", option.id);
-  }
-
-  function buyFeathers() {
-    const amount = Number(rechargeAmount);
-
-    if (!Number.isInteger(amount) || amount <= 0) {
-      alert("Please enter a valid 🪶 amount.");
-      return;
-    }
-
-    if (amount > 100000) {
-      alert("Maximum recharge is 100000 🪶 at once.");
-      return;
-    }
-
-    const nextBalance = featherBalance + amount;
-
-    setFeatherBalance(nextBalance);
-    localStorage.setItem("koyal-ai-feather-balance", String(nextBalance));
-
-    setRechargeAmount("");
-    setRechargeOpen(false);
-
-    alert(`${amount} 🪶 added successfully.`);
+  function newChat() {
+    stopAudio();
+    setMessages([starter]);
+    setInput("");
+    setSelectedFile(null);
+    localStorage.setItem("koyal-ai-chat", JSON.stringify([starter]));
   }
 
   function buySubscription(plan: PlanName) {
     setSelectedPlan(plan);
     localStorage.setItem("koyal-ai-subscription-plan", plan);
+    setSubscriptionOpen(false);
 
-    if (plan !== "Supreme" && thinkingEffort === "supreme") {
+    if (plan === "Supreme") {
+      setThinkingEffort("supreme");
+    } else if (thinkingEffort === "supreme") {
       setThinkingEffort("high");
-      localStorage.setItem("koyal-ai-thinking-effort", "high");
     }
-
-    alert(`${plan} plan activated successfully.`);
   }
 
-  function toggleTeacherMode() {
-    setTeacherMode((previous) => {
-      const next = !previous;
-      localStorage.setItem("koyal-ai-teacher-mode", String(next));
-      return next;
-    });
-  }
-
-  function changeTeacherClass(newClass: TeacherClass) {
-    setTeacherClass(newClass);
-    localStorage.setItem("koyal-ai-teacher-class", newClass);
-
-    const subjects =
-      Number(newClass) <= 5 ? juniorTeacherSubjects : seniorTeacherSubjects;
-
-    const stillAvailable = subjects.some(
-      (subject) => subject.id === teacherSubject
+  function cycleThinkingEffort() {
+    const availableOptions = thinkingOptions.filter(
+      (option) => option.feathers !== "locked" || selectedPlan === "Supreme"
     );
 
-    if (!stillAvailable) {
-      setTeacherSubject("general-science");
-      localStorage.setItem("koyal-ai-teacher-subject", "general-science");
-    }
-  }
-
-  function changeTeacherSubject(subject: TeacherSubject) {
-    setTeacherSubject(subject);
-    localStorage.setItem("koyal-ai-teacher-subject", subject);
-  }
-
-  function newChat() {
-    stopAudio();
-
-    setMessages([starter]);
-    setInput("");
-    setSelectedFile(null);
-    setImageMode(false);
-    setUploadMenuOpen(false);
-    setCharacterMenuOpen(false);
-    setThinkingBarOpen(false);
-
-    localStorage.removeItem("koyal-ai-chat");
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }
-
-  function saveProfile() {
-    if (!profile.name.trim()) {
-      alert("Please enter your name.");
-      return;
-    }
-
-    if (!profile.dob) {
-      alert("Please enter your date of birth.");
-      return;
-    }
-
-    if (!profile.gender) {
-      alert("Please select your gender.");
-      return;
-    }
-
-    if (!profile.phone.trim()) {
-      alert("Please enter your phone number.");
-      return;
-    }
-
-    localStorage.setItem("koyal-ai-profile", JSON.stringify(profile));
-    setProfileOpen(false);
-  }
-
-  function signOutProfile() {
-    const confirmSignOut = confirm(
-      "Sign out from this profile? This will clear profile, chat, plan and 🪶 balance."
+    const currentIndex = availableOptions.findIndex(
+      (option) => option.id === thinkingEffort
     );
 
-    if (!confirmSignOut) return;
+    const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+    const nextOption = availableOptions[nextIndex % availableOptions.length];
 
-    stopAudio();
-
-    localStorage.removeItem("koyal-ai-profile");
-    localStorage.removeItem("koyal-ai-chat");
-    localStorage.removeItem("it-hub-ai-chat");
-    localStorage.removeItem("koyal-ai-feather-balance");
-    localStorage.removeItem("koyal-ai-subscription-plan");
-
-    setProfile({
-      name: "",
-      dob: "",
-      gender: "",
-      phone: "",
-      photo: "",
-    });
-
-    setMessages([starter]);
-    setFeatherBalance(STARTING_FEATHER_BALANCE);
-    setSelectedPlan("Just");
-
-    if (thinkingEffort === "supreme") {
-      setThinkingEffort("high");
-      localStorage.setItem("koyal-ai-thinking-effort", "high");
-    }
-
-    setProfileOpen(false);
+    setThinkingEffort(nextOption.id);
   }
 
-  function chooseProfilePhoto(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
-
-    if (!allowed.includes(file.type)) {
-      alert("Please use JPG, PNG or WEBP.");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Profile photo must be under 5 MB.");
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      setProfile((previous) => ({
-        ...previous,
-        photo: reader.result as string,
-      }));
-    };
-
-    reader.readAsDataURL(file);
-  }
-
-  function openUpload(type: "file" | "photo" | "video") {
-    setUploadType(type);
-    setUploadMenuOpen(false);
-    setImageMode(false);
-
-    setTimeout(() => {
-      fileInputRef.current?.click();
-    }, 0);
-  }
-
-  function getAcceptedFormats() {
-    if (uploadType === "photo") return ".jpg,.jpeg,.png,.webp";
-
-    if (uploadType === "video") return ".mp4,.webm,.mov";
-
-    return ".pdf,.docx,.txt,.csv,.json,.md,.js,.jsx,.ts,.tsx,.html,.css,.py";
-  }
-
-  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    const maxSize =
-      uploadType === "video" ? 100 * 1024 * 1024 : 20 * 1024 * 1024;
-
-    if (file.size > maxSize) {
-      alert(
-        uploadType === "video"
-          ? "Video must be under 100 MB."
-          : "File must be under 20 MB."
-      );
-
-      event.target.value = "";
-      return;
-    }
-
+  function chooseFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] || null;
     setSelectedFile(file);
+    setUploadMenuOpen(false);
   }
 
   function removeFile() {
     setSelectedFile(null);
-
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -767,111 +348,100 @@ export default function Home() {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
+
     setSpeakingIndex(null);
   }
 
   function speakMessage(text: string, index: number) {
+    if (!("speechSynthesis" in window)) {
+      alert("Speech is not supported in this browser.");
+      return;
+    }
+
     if (speakingIndex === index) {
       stopAudio();
       return;
     }
+
     stopAudio();
-    if (!("speechSynthesis" in window)) {
-      alert("Speech output is not supported in this browser.");
-      return;
-    }
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-IN";
-    utterance.rate = 1;
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
     utterance.volume = 1;
+
     const voices = window.speechSynthesis.getVoices();
-    utterance.voice = voices.find(v => v.lang.toLowerCase() === "en-in") || voices.find(v => v.lang.toLowerCase().startsWith("en")) || null;
+    const voice =
+      voices.find((item) => item.lang.toLowerCase().startsWith("en-in")) ||
+      voices.find((item) => item.name.toLowerCase().includes("microsoft")) ||
+      voices.find((item) => item.lang.toLowerCase().startsWith("en")) ||
+      voices[0];
+
+    if (voice) utterance.voice = voice;
+
+    utterance.onstart = () => setSpeakingIndex(index);
     utterance.onend = () => setSpeakingIndex(null);
     utterance.onerror = () => setSpeakingIndex(null);
-    setSpeakingIndex(index);
+
     window.speechSynthesis.speak(utterance);
   }
 
-  async function sendChatMessage(message: string, file: File | null) {
-    let mode = "Normal";
-
-    if (teacherMode) {
-      mode = "Teacher";
-    } else if (characterMode !== "normal") {
-      mode = "Character";
-    } else if (philosophicalMode) {
-      mode = "Philosophical";
-    } else if (preciseMode) {
-      mode = "Precise";
-    }
-
-    const thinkingNames: Record<ThinkingEffort, string> = {
-      just: "Just",
-      "let-it": "Let It",
-      care: "Care",
-      high: "High",
-      "ultra-high": "Ultra High",
-      elite: "Elite",
-      supreme: "Supreme",
-    };
-
+  function buildFinalMessage(message: string) {
     let finalMessage = message;
 
-    if (file) {
-      finalMessage += `
+    finalMessage += `\n\nImportant language rule: Reply in English by default. Use Hindi only if I clearly ask for Hindi.`;
 
-The user attached a file named: ${file.name}
-File type: ${file.type || "unknown"}
-File size: ${(file.size / 1024 / 1024).toFixed(2)} MB
-
-Note: If you cannot directly inspect the file contents, say so clearly.`;
+    if (selectedFile) {
+      finalMessage += `\n\nThe user attached a file named ${selectedFile.name}. If you cannot inspect it directly, say so clearly.`;
     }
 
     if (characterMode !== "normal") {
-      finalMessage += `
-
-Character mode: ${currentCharacter.name}.
-Respond according to this character mode.`;
+      finalMessage += `\n\nCharacter mode: ${currentCharacter.name}. Reply in that character style.`;
     }
 
     if (teacherMode) {
-      finalMessage += `
-
-Teacher Mode is enabled.
-Student class: ${teacherClass}.
-Subject: ${currentTeacherSubject.name}.
-Explain at an appropriate Class ${teacherClass} level.`;
+      finalMessage += `\n\nTeacher Mode is enabled. Student class: ${teacherClass}. Subject: ${currentTeacherSubject.name}. Explain at the correct student level.`;
     }
 
     if (philosophicalMode) {
-      finalMessage += `
-
-Philosophical Mode is enabled.
-Give a deeper and thoughtful answer when appropriate.`;
+      finalMessage += `\n\nPhilosophical Mode is enabled. Give deeper and thoughtful answers when useful.`;
     }
 
+    return finalMessage;
+  }
+
+  async function sendChatMessage(message: string) {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message: finalMessage,
-        thinkingLevel: thinkingNames[thinkingEffort],
-        mode,
-        name: profile.name,
-
+        message: buildFinalMessage(message),
+        mode: teacherMode
+          ? "Teacher"
+          : characterMode !== "normal"
+          ? "Character"
+          : philosophicalMode
+          ? "Philosophical"
+          : preciseMode
+          ? "Precise"
+          : "Normal",
+        thinkingLevel: currentThinking.name,
+        language: "English by default",
+        subscriptionPlan: selectedPlan,
+        selectedPlan,
+        plan: selectedPlan,
+        name: profileName,
         characterMode,
         philosophicalMode,
         preciseMode,
         teacherMode,
         teacherClass,
-        teacherSubject: currentTeacherSubject.id,
-
+        teacherSubject,
         profile: {
-          name: profile.name,
-          dob: profile.dob,
-          gender: profile.gender,
+          name: profileName,
         },
       }),
     });
@@ -883,49 +453,14 @@ Give a deeper and thoughtful answer when appropriate.`;
     try {
       data = JSON.parse(raw);
     } catch {
-      throw new Error(`Invalid server response (${response.status}).`);
+      throw new Error(SERVER_ERROR_REPLY);
     }
 
     if (!response.ok) {
-      throw new Error(data.error || "Chat request failed.");
+      throw new Error(data.error || SERVER_ERROR_REPLY);
     }
 
-    if (!data.reply) {
-      throw new Error("KOYAL AI returned no answer.");
-    }
-
-    return data.reply;
-  }
-
-  async function generateImage(prompt: string) {
-    const response = await fetch("/api/image", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ prompt }),
-    });
-
-    const raw = await response.text();
-
-    let data: ImageApiResponse;
-
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      throw new Error("Invalid image server response.");
-    }
-
-    if (!response.ok) throw new Error(data.error || "Image generation failed.");
-
-    if (!data.image) throw new Error("No image was returned.");
-
-    const mimeType = data.mimeType || "image/png";
-
-    return {
-      imageUrl: `data:${mimeType};base64,${data.image}`,
-      reply: data.reply || "Here is your generated image.",
-    };
+    return data.reply || SERVER_ERROR_REPLY;
   }
 
   async function sendMessage(event: FormEvent) {
@@ -935,66 +470,41 @@ Give a deeper and thoughtful answer when appropriate.`;
 
     if ((!text && !selectedFile) || loading) return;
 
-    if (imageMode && !text) return;
-
     if (currentThinking.feathers === "locked" && selectedPlan !== "Supreme") {
       alert("Supreme Thinking needs Supreme Subscription.");
       return;
     }
 
-    if (featherBalance < currentMessageFeatherCost) {
-      alert(
-        `Not enough 🪶. You need ${currentMessageFeatherCost} 🪶 for this message.`
-      );
+    if (currentFeatherCost > featherBalance) {
+      alert(`Not enough 🪶. You need ${currentFeatherCost} 🪶.`);
       return;
     }
 
-    const currentFile = selectedFile;
-
     const messageToSend =
-      text ||
-      (uploadType === "photo"
-        ? "Please analyze this photo."
-        : uploadType === "video"
-        ? "Please analyze this video."
-        : "Please analyze this file.");
+      text || `Please help me with the attached file: ${selectedFile?.name}`;
 
     setMessages((previous) => [
       ...previous,
       {
         role: "user",
-        content: imageMode ? `✨ ${messageToSend}` : messageToSend,
-        fileName: currentFile?.name,
+        content: messageToSend,
+        fileName: selectedFile?.name,
       },
     ]);
 
     setInput("");
     setLoading(true);
 
+    const previousFeathers = featherBalance;
+
+    if (currentFeatherCost > 0) {
+      const next = featherBalance - currentFeatherCost;
+      setFeatherBalance(next);
+      localStorage.setItem("koyal-ai-feather-balance", String(next));
+    }
+
     try {
-      if (currentMessageFeatherCost > 0) {
-        const nextBalance = featherBalance - currentMessageFeatherCost;
-
-        setFeatherBalance(nextBalance);
-        localStorage.setItem("koyal-ai-feather-balance", String(nextBalance));
-      }
-
-      if (imageMode) {
-        const result = await generateImage(messageToSend);
-
-        setMessages((previous) => [
-          ...previous,
-          {
-            role: "assistant",
-            content: result.reply,
-            imageUrl: result.imageUrl,
-          },
-        ]);
-
-        return;
-      }
-
-      const reply = await sendChatMessage(messageToSend, currentFile);
+      const reply = await sendChatMessage(messageToSend);
 
       setMessages((previous) => [
         ...previous,
@@ -1005,20 +515,18 @@ Give a deeper and thoughtful answer when appropriate.`;
       ]);
 
       removeFile();
-    } catch (error) {
-      if (currentMessageFeatherCost > 0) {
-        setFeatherBalance(featherBalance);
-        localStorage.setItem("koyal-ai-feather-balance", String(featherBalance));
-      }
+    } catch {
+      setFeatherBalance(previousFeathers);
+      localStorage.setItem(
+        "koyal-ai-feather-balance",
+        String(previousFeathers)
+      );
 
       setMessages((previous) => [
         ...previous,
         {
           role: "assistant",
-          content:
-            error instanceof Error
-              ? `Error: ${error.message}`
-              : "Something went wrong.",
+          content: SERVER_ERROR_REPLY,
         },
       ]);
     } finally {
@@ -1028,376 +536,253 @@ Give a deeper and thoughtful answer when appropriate.`;
 
   return (
     <main style={mainStyle}>
-      <header style={headerStyle}>
-        <div style={{ textAlign: "center" }}>
-          <h1 style={{ margin: 0, fontSize: "22px" }}>KOYAL AI</h1>
-          <div style={{ fontSize: "9px", opacity: 0.4 }}>V2.0</div>
-        </div>
-
-        <span
-          style={{
-            position: "absolute",
-            right: "24px",
-            fontSize: "12px",
-            opacity: 0.7,
-          }}
-        >
-          ● Online
-        </span>
-      </header>
-
-      <div style={layoutStyle}>
+      <div style={backgroundGlowOneStyle} />
+      <div style={backgroundGlowTwoStyle} />
+      <div style={appShellStyle}>
         <aside style={sidebarStyle}>
-          <div style={{ padding: "4px 10px 20px" }}>
-            <strong style={{ fontSize: "18px" }}>KOYAL AI</strong>
-
-            <div style={{ fontSize: "9px", opacity: 0.4 }}>V2.0</div>
-
-            <div
-              style={{
-                marginTop: "7px",
-                fontSize: "11px",
-                lineHeight: 1.45,
-                opacity: 0.55,
-              }}
-            >
-              Brought to you by
-              <br />
-              Divyansh Acharjee & Tejas Raj
+          <div style={brandBlockStyle}>
+            <img src="/koyal-logo.png" alt="Koyal logo" style={brandLogoStyle} />
+            <div>
+              <div style={brandTitleStyle}>KOYAL</div>
+              <div style={brandSubtitleStyle}>Brought to you by</div>
+              <div style={brandSmallStyle}>Divyansh Acharjee & Tejas Raj</div>
             </div>
           </div>
 
-          <button type="button" onClick={newChat} style={newChatStyle}>
-            ＋ New Chat
+          <button type="button" onClick={newChat} style={activeNavButtonStyle}>
+            <span>💬</span>
+            <strong>New Chat</strong>
           </button>
-
-          <div style={sectionTitleStyle}>DASHBOARD</div>
 
           <button
             type="button"
             onClick={() => setProfileOpen(true)}
-            style={dashboardButtonStyle}
+            style={navButtonStyle}
           >
-            <span style={dashboardIconStyle}>
-              {profile.photo ? (
-                <img
-                  src={profile.photo}
-                  alt="Profile"
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                  }}
-                />
-              ) : (
-                "👤"
-              )}
-            </span>
-
-            <span>
-              <strong>Profile</strong>
-
-              {profile.name && <small style={smallTextStyle}>{profile.name}</small>}
-            </span>
+            <span>👤</span>
+            <strong>Profile</strong>
           </button>
 
-          <div style={featherBalanceBoxStyle}>
-            <div>
-              <div style={featherBalanceTitleStyle}>🪶 BALANCE</div>
+          <button
+            type="button"
+            onClick={() => setPreciseMode((value) => !value)}
+            style={preciseMode ? activeNavButtonStyle : navButtonStyle}
+          >
+            <span>🧠</span>
+            <strong>Precise Mode</strong>
+            <small>{preciseMode ? "On" : "Off"}</small>
+          </button>
 
-              <div style={featherBalanceNumberStyle}>{featherBalance} 🪶</div>
-            </div>
-
+          <div style={sideGroupStyle}>
             <button
               type="button"
-              onClick={() => setRechargeOpen(true)}
-              style={rechargeButtonStyle}
+              onClick={() => setCharacterMenuOpen((value) => !value)}
+              style={sideGroupHeaderStyle}
             >
-              Recharge
+              <span>🎭</span>
+              <strong>Character Mode</strong>
+              <span>{characterMenuOpen ? "⌃" : "⌄"}</span>
             </button>
+
+            {characterMenuOpen && (
+              <div style={characterListStyle}>
+                {characterOptions.slice(1).map((character) => (
+                  <button
+                    key={character.id}
+                    type="button"
+                    onClick={() => setCharacterMode(character.id)}
+                    style={
+                      characterMode === character.id
+                        ? activeCharacterButtonStyle
+                        : characterButtonStyle
+                    }
+                  >
+                    <span>{character.icon}</span>
+                    {character.name}
+                  </button>
+                ))}
+
+                {characterMode !== "normal" && (
+                  <button
+                    type="button"
+                    onClick={() => setCharacterMode("normal")}
+                    style={clearModeButtonStyle}
+                  >
+                    Clear character
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <button
             type="button"
-            onClick={() => setPreciseMode((previous) => !previous)}
-            style={{
-              ...dashboardButtonStyle,
-              background: preciseMode ? activeBackground : "transparent",
-            }}
+            onClick={() => setTeacherMode((value) => !value)}
+            style={teacherMode ? activeNavButtonStyle : navButtonStyle}
           >
-            <span style={dashboardIconStyle}>🎯</span>
-
-            <span style={{ flex: 1 }}>
-              <strong>Precise Mode</strong>
-
-              <small style={smallTextStyle}>
-                {preciseMode ? "Enabled" : "Disabled"}
-              </small>
-            </span>
-
-            <span>{preciseMode ? "●" : "○"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setImageMode((previous) => !previous);
-              setSelectedFile(null);
-              setUploadMenuOpen(false);
-            }}
-            style={{
-              ...dashboardButtonStyle,
-              background: imageMode ? activeBackground : "transparent",
-            }}
-          >
-            <span style={dashboardIconStyle}>✨</span>
-
-            <span style={{ flex: 1 }}>
-              <strong>Image Creation</strong>
-
-              <small style={smallTextStyle}>
-                {imageMode ? "Active" : "Create images"}
-              </small>
-            </span>
-
-            <span>{imageMode ? "●" : "○"}</span>
-          </button>
-
-          <div style={sectionTitleStyle}>🎭 CHARACTER MODE</div>
-
-          <button
-            type="button"
-            onClick={() => setCharacterMenuOpen((previous) => !previous)}
-            style={{
-              ...dashboardButtonStyle,
-              background:
-                characterMode !== "normal" ? activeBackground : "transparent",
-            }}
-          >
-            <span style={dashboardIconStyle}>{currentCharacter.icon}</span>
-
-            <span style={{ flex: 1 }}>
-              <strong>{currentCharacter.name}</strong>
-
-              <small style={smallTextStyle}>Choose character</small>
-            </span>
-
-            <span>{characterMenuOpen ? "▲" : "▼"}</span>
-          </button>
-
-          {characterMenuOpen && (
-            <div style={menuBoxStyle}>
-              {characterOptions.map((character) => (
-                <button
-                  key={character.id}
-                  type="button"
-                  onClick={() => selectCharacter(character.id)}
-                  style={{
-                    ...menuButtonStyle,
-                    background:
-                      characterMode === character.id
-                        ? activeBackground
-                        : "transparent",
-                  }}
-                >
-                  <span style={{ width: 28, fontSize: 18 }}>
-                    {character.icon}
-                  </span>
-
-                  <span style={{ flex: 1 }}>
-                    <strong style={{ display: "block", fontSize: "12px" }}>
-                      {character.name}
-                    </strong>
-
-                    <small style={{ opacity: 0.45, fontSize: "10px" }}>
-                      {character.description}
-                    </small>
-                  </span>
-
-                  {characterMode === character.id && <span>✓</span>}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div style={sectionTitleStyle}>📚 TEACHER MODE</div>
-
-          <button
-            type="button"
-            onClick={toggleTeacherMode}
-            style={{
-              ...dashboardButtonStyle,
-              background: teacherMode ? activeBackground : "transparent",
-            }}
-          >
-            <span style={dashboardIconStyle}>📚</span>
-
-            <span style={{ flex: 1 }}>
-              <strong>Teacher Mode</strong>
-
-              <small style={smallTextStyle}>
-                {teacherMode ? "Teaching enabled" : "Class-based learning"}
-              </small>
-            </span>
-
-            <span>{teacherMode ? "●" : "○"}</span>
+            <span>📚</span>
+            <strong>Teacher Mode</strong>
           </button>
 
           {teacherMode && (
             <div style={teacherBoxStyle}>
-              <label style={teacherLabelStyle}>
-                🏫 Class
-
-                <select
-                  value={teacherClass}
-                  onChange={(event) =>
-                    changeTeacherClass(event.target.value as TeacherClass)
-                  }
-                  style={teacherSelectStyle}
-                >
-                  {Array.from({ length: 12 }, (_, index) => index + 1).map(
-                    (classNumber) => (
-                      <option key={classNumber} value={String(classNumber)}>
-                        Class {classNumber}
-                      </option>
-                    )
-                  )}
-                </select>
-              </label>
-
-              <label style={teacherLabelStyle}>
-                📚 Subject
-
-                <select
-                  value={currentTeacherSubject.id}
-                  onChange={(event) =>
-                    changeTeacherSubject(event.target.value as TeacherSubject)
-                  }
-                  style={teacherSelectStyle}
-                >
-                  {availableTeacherSubjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.icon} {subject.name}
+              <select
+                value={teacherClass}
+                onChange={(event) =>
+                  setTeacherClass(event.target.value as TeacherClass)
+                }
+                style={selectStyle}
+              >
+                {Array.from({ length: 12 }, (_, index) => String(index + 1)).map(
+                  (item) => (
+                    <option key={item} value={item}>
+                      Class {item}
                     </option>
-                  ))}
-                </select>
-              </label>
+                  )
+                )}
+              </select>
 
-              {Number(teacherClass) <= 5 && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    fontSize: 10,
-                    lineHeight: 1.4,
-                    opacity: 0.45,
-                  }}
-                >
-                  Specialized Physics, Chemistry, Biology, History, Geography,
-                  Civics and Economics unlock from Class 6.
-                </div>
-              )}
+              <select
+                value={teacherSubject}
+                onChange={(event) =>
+                  setTeacherSubject(event.target.value as TeacherSubject)
+                }
+                style={selectStyle}
+              >
+                {teacherSubjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.icon} {subject.name}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
-          <div
-            style={{
-              marginTop: "15px",
-              paddingTop: "12px",
-              borderTop: "1px solid rgba(255,255,255,0.06)",
-            }}
+          <button
+            type="button"
+            onClick={() => setPhilosophicalMode((value) => !value)}
+            style={philosophicalMode ? activeNavButtonStyle : navButtonStyle}
           >
-            <button
-              type="button"
-              onClick={togglePhilosophicalMode}
-              style={{
-                ...dashboardButtonStyle,
-                background: philosophicalMode ? activeBackground : "transparent",
-              }}
-            >
-              <span style={dashboardIconStyle}>💭</span>
+            <span>💭</span>
+            <strong>Philosophical Mode</strong>
+          </button>
 
-              <span style={{ flex: 1 }}>
-                <strong>Philosophical Mode</strong>
+          <button type="button" style={navButtonStyle}>
+            <span>🪶</span>
+            <strong>Feather Balance</strong>
+            <small>{featherBalance}</small>
+          </button>
 
-                <small style={smallTextStyle}>
-                  {philosophicalMode
-                    ? "Deep thinking enabled"
-                    : "Deep & thoughtful answers"}
-                </small>
-              </span>
+          <button
+            type="button"
+            onClick={() => setSubscriptionOpen(true)}
+            style={navButtonStyle}
+          >
+            <span>💎</span>
+            <strong>Subscription</strong>
+          </button>
 
-              <span>{philosophicalMode ? "●" : "○"}</span>
-            </button>
+          <div style={profileCardStyle}>
+            <div style={avatarStyle}>👤</div>
+            <div style={{ flex: 1 }}>
+              <strong>{profileName || "User"}</strong>
+              <div style={profileBadgeStyle}>{selectedPlan} Plan</div>
+            </div>
           </div>
 
-          <div
-            style={{
-              marginTop: "auto",
-              padding: 10,
-              fontSize: 10,
-              opacity: 0.35,
-            }}
-          >
-            KOYAL AI V2.0
+          <div style={miniStatsStyle}>
+            <div>
+              <strong>🪶 {featherBalance}</strong>
+              <small>Feathers</small>
+            </div>
+            <div>
+              <strong>💎 {selectedPlan}</strong>
+              <small>Active plan</small>
+            </div>
           </div>
         </aside>
 
-        <section style={chatSectionStyle}>
-          <div style={messagesStyle}>
+        <section style={mainPanelStyle}>
+          <div style={heroStyle}>
+            <div style={heroContentStyle}>
+              <div style={welcomeStyle}>WELCOME TO</div>
+              <h1 style={heroTitleStyle}>KOYAL</h1>
+              <div style={heroLineStyle} />
+              <div style={taglineStyle}>INTELLIGENCE WITH A SOFTER SOUL</div>
+
+              <div style={introCardStyle}>
+                <img
+                  src="/koyal-logo.png"
+                  alt="Koyal bird"
+                  style={introBirdStyle}
+                />
+                <div>
+                  <h2 style={introTitleStyle}>
+                    Hi! I’m <span>Koyal.</span>
+                  </h2>
+                  <p style={introTextStyle}>Ask me anything.</p>
+                  <p style={introSmallStyle}>
+                    Your thoughtful friend, creative partner, and intelligent
+                    assistant for learning, planning, problem solving, and deep
+                    conversations.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <img src="/koyal-logo.png" alt="Koyal" style={heroBirdStyle} />
+          </div>
+
+          <div style={promptGridStyle}>
+            {quickPrompts.map((prompt) => (
+              <button
+                key={prompt.title}
+                type="button"
+                onClick={() => setInput(prompt.text)}
+                style={promptCardStyle}
+              >
+                <span style={promptIconStyle}>{prompt.icon}</span>
+                <span>
+                  <strong>{prompt.title}</strong>
+                  <small>{prompt.text}</small>
+                </span>
+                <span style={{ marginLeft: "auto" }}>→</span>
+              </button>
+            ))}
+          </div>
+
+          <div style={chatAreaStyle}>
             {messages.map((message, index) => (
               <div
-                key={index}
+                key={`${message.role}-${index}`}
                 style={{
                   display: "flex",
                   justifyContent:
                     message.role === "user" ? "flex-end" : "flex-start",
-                  marginBottom: "22px",
+                  marginBottom: 18,
                 }}
               >
-                <div style={{ maxWidth: 760 }}>
-                  {message.fileName && (
-                    <div
-                      style={{
-                        marginBottom: 7,
-                        fontSize: 12,
-                        opacity: 0.65,
-                      }}
-                    >
-                      📎 {message.fileName}
-                    </div>
-                  )}
-
-                  <div
-                    style={{
-                      padding: "13px 16px",
-                      borderRadius:
-                        message.role === "user"
-                          ? "18px 18px 4px 18px"
-                          : "18px 18px 18px 4px",
-                      background:
-                        message.role === "user"
-                          ? "rgba(255,255,255,0.12)"
-                          : "rgba(255,255,255,0.06)",
-                      lineHeight: "1.6",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {message.content}
-                  </div>
-
-                  {message.imageUrl && (
+                <div
+                  style={
+                    message.role === "user"
+                      ? userMessageWrapStyle
+                      : assistantMessageWrapStyle
+                  }
+                >
+                  {message.role === "assistant" && (
                     <img
-                      src={message.imageUrl}
-                      alt="Generated by KOYAL AI"
-                      style={{
-                        width: "100%",
-                        maxWidth: 520,
-                        borderRadius: 16,
-                        marginTop: 10,
-                      }}
+                      src="/koyal-logo.png"
+                      alt="Koyal"
+                      style={messageAvatarStyle}
                     />
                   )}
+
+                  <div style={messageBubbleStyle(message.role)}>
+                    {message.fileName && (
+                      <div style={filePillStyle}>📎 {message.fileName}</div>
+                    )}
+                    {message.content}
+                  </div>
 
                   {message.role === "assistant" && (
                     <button
@@ -1413,79 +798,65 @@ Give a deeper and thoughtful answer when appropriate.`;
             ))}
 
             {loading && (
-              <div style={{ opacity: 0.6, marginBottom: 20 }}>
-                {teacherMode
-                  ? `${currentTeacherSubject.icon} Class ${teacherClass} ${currentTeacherSubject.name} teacher is thinking...`
-                  : philosophicalMode
-                  ? "💭 KOYAL AI is thinking deeply..."
-                  : characterMode !== "normal"
-                  ? `${currentCharacter.icon} ${currentCharacter.name} is thinking...`
-                  : "KOYAL AI is thinking..."}
+              <div style={thinkingStyle}>
+                🐦 Koyal is thinking...
               </div>
             )}
 
             <div ref={bottomRef} />
           </div>
 
-          <form onSubmit={sendMessage} style={composerAreaStyle}>
-            {!imageMode &&
-              (teacherMode || characterMode !== "normal" || philosophicalMode) && (
-                <div style={modeIndicatorStyle}>
-                  {teacherMode ? (
-                    <>
-                      📚 <strong>Teacher Mode</strong> • Class {teacherClass} •{" "}
-                      {currentTeacherSubject.icon} {currentTeacherSubject.name}
-                    </>
-                  ) : (
-                    characterMode !== "normal" && (
-                      <>
-                        🎭 Talking as:{" "}
-                        <strong>
-                          {currentCharacter.icon} {currentCharacter.name}
-                        </strong>
-                      </>
-                    )
-                  )}
-
-                  {philosophicalMode && (
-                    <>
-                      {(teacherMode || characterMode !== "normal") && " • "}
-                      <strong>💭 Philosophical</strong>
-                    </>
-                  )}
-                </div>
-              )}
-
-            {imageMode && (
-              <div style={attachmentPreviewStyle}>
-                <span>
-                  ✨ <strong>Image Creation</strong>
-
-                  <small style={{ display: "block", opacity: 0.55 }}>
-                    Describe the image you want.
-                  </small>
-                </span>
-
+          <form onSubmit={sendMessage} style={composerPanelStyle}>
+            <div style={thinkingPanelStyle}>
+              <div style={thinkingInfoStyle}>
                 <button
                   type="button"
-                  onClick={() => setImageMode(false)}
-                  style={closeButtonStyle}
+                  onClick={cycleThinkingEffort}
+                  style={thinkingBirdButtonStyle}
+                  title={`Click to change thinking. Current: ${currentThinking.name}`}
                 >
-                  ✕
+                  <img
+                    src="/koyal-logo.png"
+                    alt="Koyal thinking"
+                    style={thinkingBirdImageStyle}
+                  />
                 </button>
+                <span>
+                  <strong>Thinking Effort</strong>
+                  <small>Click the bird to change: {currentThinking.name}</small>
+                </span>
               </div>
-            )}
+
+              <div style={thinkingButtonsStyle}>
+                {thinkingOptions.map((option) => {
+                  const locked = option.feathers === "locked";
+                  const active = thinkingEffort === option.id;
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        if (locked && selectedPlan !== "Supreme") {
+                          alert("Supreme Thinking needs Supreme Subscription.");
+                          return;
+                        }
+
+                        setThinkingEffort(option.id);
+                      }}
+                      style={active ? activeThinkingButtonStyle : thinkingButtonStyle}
+                    >
+                      {option.id === "supreme" && "👑 "}
+                      {option.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {selectedFile && (
               <div style={attachmentPreviewStyle}>
-                <span>
-                  📎 <strong>{selectedFile.name}</strong>
-
-                  <small style={{ display: "block", opacity: 0.55 }}>
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </small>
-                </span>
-
+                <span>📎 {selectedFile.name}</span>
                 <button type="button" onClick={removeFile} style={closeButtonStyle}>
                   ✕
                 </button>
@@ -1496,103 +867,28 @@ Give a deeper and thoughtful answer when appropriate.`;
               ref={fileInputRef}
               hidden
               type="file"
-              accept={getAcceptedFormats()}
               onChange={chooseFile}
             />
 
-            {thinkingBarOpen && (
-              <div style={thinkingPopupWrapStyle}>
-                <div style={thinkingPopupStyle}>
-                  <div style={thinkingPopupTopStyle}>
-                    <span>
-                      <strong>
-                        {currentThinking.feathers === "locked"
-                          ? selectedPlan === "Supreme"
-                            ? "∞ 🪶"
-                            : "🔒"
-                          : `${currentThinking.feathers} 🪶`}
-                      </strong>{" "}
-                      <span
-                        style={{
-                          color: "#3b82f6",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {currentThinking.name}
-                      </span>{" "}
-                      <span style={{ opacity: 0.5 }}>›</span>
-                    </span>
-                  </div>
-
-                  <input
-                    type="range"
-                    min={0}
-                    max={thinkingEffortOptions.length - 1}
-                    step={1}
-                    value={currentThinkingIndex}
-                    onChange={(event) =>
-                      changeThinkingEffortByIndex(Number(event.target.value))
-                    }
-                    style={thinkingRangeStyle}
-                  />
-
-                  <div style={thinkingDotsStyle}>
-                    {thinkingEffortOptions.map((item, index) => (
-                      <span
-                        key={item.id}
-                        style={{
-                          width: 5,
-                          height: 5,
-                          borderRadius: "50%",
-                          background:
-                            index === currentThinkingIndex
-                              ? "#ffffff"
-                              : item.id === "supreme"
-                              ? "rgba(255,255,255,0.45)"
-                              : "rgba(255,255,255,0.25)",
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div style={composerStyle}>
+            <div style={inputRowStyle}>
               <div style={{ position: "relative" }}>
                 <button
                   type="button"
-                  onClick={() => setUploadMenuOpen((previous) => !previous)}
-                  disabled={loading || imageMode}
-                  style={composerButtonStyle}
+                  onClick={() => setUploadMenuOpen((value) => !value)}
+                  style={roundButtonStyle}
+                  disabled={loading}
                 >
                   ＋
                 </button>
 
                 {uploadMenuOpen && (
-                  <div style={uploadPopupStyle}>
+                  <div style={uploadMenuStyle}>
                     <button
                       type="button"
-                      onClick={() => openUpload("photo")}
+                      onClick={() => fileInputRef.current?.click()}
                       style={uploadMenuButtonStyle}
                     >
-                      📷 Photo
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => openUpload("video")}
-                      style={uploadMenuButtonStyle}
-                    >
-                      🎬 Video
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => openUpload("file")}
-                      style={uploadMenuButtonStyle}
-                    >
-                      📄 File
+                      📎 Upload file
                     </button>
                   </div>
                 )}
@@ -1602,17 +898,13 @@ Give a deeper and thoughtful answer when appropriate.`;
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder={
-                  imageMode
-                    ? "Describe an image..."
-                    : selectedFile
-                    ? `Ask about ${selectedFile.name}...`
-                    : teacherMode
+                  teacherMode
                     ? `Ask your Class ${teacherClass} ${currentTeacherSubject.name} teacher...`
-                    : philosophicalMode
-                    ? "Ask KOYAL AI something deeper..."
                     : characterMode !== "normal"
                     ? `Message ${currentCharacter.name}...`
-                    : "Message KOYAL AI..."
+                    : philosophicalMode
+                    ? "Ask Koyal something deeper..."
+                    : "Message Koyal..."
                 }
                 rows={1}
                 onKeyDown={(event) => {
@@ -1621,94 +913,74 @@ Give a deeper and thoughtful answer when appropriate.`;
                     event.currentTarget.form?.requestSubmit();
                   }
                 }}
-                style={textAreaStyle}
+                style={textareaStyle}
               />
+
+              <VoiceMode subscriptionPlan={selectedPlan} />
 
               <button
                 type="submit"
                 disabled={loading || (!input.trim() && !selectedFile)}
-                style={composerButtonStyle}
+                style={sendButtonStyle}
               >
-                {loading ? "..." : imageMode ? "✨" : "➤"}
+                {loading ? "..." : "➤"}
               </button>
-
-              <button
-                type="button"
-                onClick={() => setThinkingBarOpen((previous) => !previous)}
-                style={thinkingPillStyle}
-              >
-                Thinking effort
-                <span style={{ opacity: 0.65 }}>
-                  {thinkingBarOpen ? "▲" : "▼"}
-                </span>
-              </button>
-
-              <VoiceMode />
             </div>
 
-            <div style={statusStyle}>
-              {imageMode ? "✨ Image Creation" : statusParts.join(" • ")}
-            </div>
+            <div style={statusStyle}>{statusParts.join(" • ")}</div>
           </form>
         </section>
       </div>
 
-      {rechargeOpen && (
+      {subscriptionOpen && (
         <div style={modalOverlayStyle}>
           <div style={modalStyle}>
             <div style={modalHeaderStyle}>
-              <div>
-                <h2 style={{ margin: 0 }}>Recharge 🪶</h2>
-
-                <small style={{ opacity: 0.5 }}>
-                  Type how many 🪶 you want and click Buy
-                </small>
-              </div>
-
+              <h2>💎 Subscription</h2>
               <button
                 type="button"
-                onClick={() => {
-                  setRechargeOpen(false);
-                  setRechargeAmount("");
-                }}
+                onClick={() => setSubscriptionOpen(false)}
                 style={closeButtonStyle}
               >
                 ✕
               </button>
             </div>
 
-            <label style={profileLabelStyle}>
-              Type your wanted 🪶
-
-              <input
-                type="number"
-                min="1"
-                value={rechargeAmount}
-                onChange={(event) => setRechargeAmount(event.target.value)}
-                placeholder="Example: 100"
-                style={profileInputStyle}
-              />
-            </label>
-
-            <button type="button" onClick={buyFeathers} style={saveButtonStyle}>
-              Buy 🪶
-            </button>
+            <div style={planGridStyle}>
+              {plans.map((plan) => (
+                <div
+                  key={plan.name}
+                  style={
+                    selectedPlan === plan.name ? activePlanCardStyle : planCardStyle
+                  }
+                >
+                  <h3>{plan.name}</h3>
+                  <div style={priceStyle}>₹{plan.price}</div>
+                  <p>{plan.tagline}</p>
+                  <ul>
+                    {plan.benefits.map((benefit) => (
+                      <li key={benefit}>{benefit}</li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => buySubscription(plan.name)}
+                    style={planButtonStyle(selectedPlan === plan.name)}
+                  >
+                    {selectedPlan === plan.name ? "Current Plan" : "Buy Plan"}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {profileOpen && (
         <div style={modalOverlayStyle}>
-          <div style={modalStyle}>
+          <div style={smallModalStyle}>
             <div style={modalHeaderStyle}>
-              <div>
-                <h2 style={{ margin: 0 }}>👤 Profile</h2>
-
-                <small style={{ opacity: 0.5 }}>
-                  KOYAL AI V2.0 • Plan: {selectedPlan}
-                </small>
-              </div>
-
+              <h2>👤 Profile</h2>
               <button
                 type="button"
                 onClick={() => setProfileOpen(false)}
@@ -1718,198 +990,20 @@ Give a deeper and thoughtful answer when appropriate.`;
               </button>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginBottom: 22,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => profilePhotoRef.current?.click()}
-                style={profilePhotoStyle}
-              >
-                {profile.photo ? (
-                  <img
-                    src={profile.photo}
-                    alt="Profile"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  "👤"
-                )}
-              </button>
-
-              <input
-                ref={profilePhotoRef}
-                type="file"
-                hidden
-                accept=".jpg,.jpeg,.png,.webp"
-                onChange={chooseProfilePhoto}
-              />
-            </div>
-
-            <label style={profileLabelStyle}>
+            <label style={labelStyle}>
               Name
-
               <input
-                value={profile.name}
-                onChange={(event) =>
-                  setProfile((previous) => ({
-                    ...previous,
-                    name: event.target.value,
-                  }))
-                }
-                style={profileInputStyle}
+                value={profileName}
+                onChange={(event) => setProfileName(event.target.value)}
+                style={inputStyle}
               />
             </label>
 
-            <label style={profileLabelStyle}>
-              Date of Birth
-
-              <input
-                type="date"
-                value={profile.dob}
-                onChange={(event) =>
-                  setProfile((previous) => ({
-                    ...previous,
-                    dob: event.target.value,
-                  }))
-                }
-                style={profileInputStyle}
-              />
-            </label>
-
-            <label style={profileLabelStyle}>
-              Gender
-
-              <select
-                value={profile.gender}
-                onChange={(event) =>
-                  setProfile((previous) => ({
-                    ...previous,
-                    gender: event.target.value,
-                  }))
-                }
-                style={profileInputStyle}
-              >
-                <option value="">Select gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </label>
-
-            <label style={profileLabelStyle}>
-              Phone Number
-
-              <input
-                type="tel"
-                value={profile.phone}
-                onChange={(event) =>
-                  setProfile((previous) => ({
-                    ...previous,
-                    phone: event.target.value,
-                  }))
-                }
-                style={profileInputStyle}
-              />
-            </label>
-
-            <div style={subscriptionBoxStyle}>
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  opacity: 0.75,
-                  marginBottom: 10,
-                }}
-              >
-                💎 Subscription
-              </div>
-
-              <div style={{ display: "grid", gap: 10 }}>
-                {subscriptionPlans.map((plan) => (
-                  <div
-                    key={plan.name}
-                    style={{
-                      padding: 12,
-                      borderRadius: 14,
-                      background:
-                        selectedPlan === plan.name
-                          ? "rgba(59,130,246,0.18)"
-                          : "rgba(255,255,255,0.055)",
-                      border:
-                        selectedPlan === plan.name
-                          ? "1px solid rgba(59,130,246,0.45)"
-                          : "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 10,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <strong>{plan.name}</strong>
-                      <strong>₹{plan.price}</strong>
-                    </div>
-
-                    <div style={{ display: "grid", gap: 4, marginBottom: 10 }}>
-                      {plan.benefits.map((benefit) => (
-                        <div
-                          key={benefit}
-                          style={{ fontSize: 11, opacity: 0.65 }}
-                        >
-                          ✅ {benefit}
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => buySubscription(plan.name)}
-                      style={{
-                        width: "100%",
-                        padding: "9px 10px",
-                        border: 0,
-                        borderRadius: 10,
-                        cursor: "pointer",
-                        fontWeight: 700,
-                        background:
-                          selectedPlan === plan.name
-                            ? "rgba(255,255,255,0.18)"
-                            : "#ffffff",
-                        color:
-                          selectedPlan === plan.name ? "#ffffff" : "#111111",
-                      }}
-                    >
-                      {selectedPlan === plan.name ? "Current Plan" : "Buy Plan"}
-                    </button>
-                  </div>
-                ))}
-              </div>
+            <div style={profileSummaryStyle}>
+              <strong>Plan:</strong> {selectedPlan}
+              <br />
+              <strong>Feathers:</strong> {featherBalance}
             </div>
-
-            <button type="button" onClick={saveProfile} style={saveButtonStyle}>
-              Save Profile
-            </button>
-
-            <button
-              type="button"
-              onClick={signOutProfile}
-              style={signOutButtonStyle}
-            >
-              Sign Out
-            </button>
           </div>
         </div>
       )}
@@ -1917,454 +1011,686 @@ Give a deeper and thoughtful answer when appropriate.`;
   );
 }
 
-const activeBackground = "rgba(255,255,255,0.10)";
-
 const mainStyle: CSSProperties = {
-  height: "100vh",
-  width: "100%",
-  display: "flex",
-  flexDirection: "column",
+  minHeight: "100vh",
+  background:
+    "radial-gradient(circle at 75% 10%, rgba(255,45,85,0.22), transparent 34%), radial-gradient(circle at 12% 80%, rgba(168,85,247,0.18), transparent 35%), linear-gradient(135deg,#050507,#090812 45%,#17040a)",
+  color: "#ffffff",
+  fontFamily:
+    "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
   overflow: "hidden",
-  background: "#0d0f14",
-  color: "#fff",
-};
-
-const headerStyle: CSSProperties = {
-  height: 64,
-  minHeight: 64,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "#11141b",
-  borderBottom: "1px solid rgba(255,255,255,0.08)",
   position: "relative",
 };
 
-const layoutStyle: CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  display: "flex",
+const backgroundGlowOneStyle: CSSProperties = {
+  position: "absolute",
+  inset: "-25% auto auto -12%",
+  width: 520,
+  height: 520,
+  borderRadius: "50%",
+  background: "rgba(255,47,88,0.12)",
+  filter: "blur(70px)",
+};
+
+const backgroundGlowTwoStyle: CSSProperties = {
+  position: "absolute",
+  right: -180,
+  bottom: -160,
+  width: 620,
+  height: 620,
+  borderRadius: "50%",
+  background: "rgba(147,51,234,0.16)",
+  filter: "blur(90px)",
+};
+
+const appShellStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 1,
+  display: "grid",
+  gridTemplateColumns: "315px 1fr",
+  gap: 22,
+  height: "100vh",
+  padding: 20,
 };
 
 const sidebarStyle: CSSProperties = {
-  width: 270,
-  minWidth: 270,
-  display: "flex",
-  flexDirection: "column",
-  padding: "20px 14px",
-  background: "#11141b",
-  borderRight: "1px solid rgba(255,255,255,0.08)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 28,
+  padding: 18,
+  background: "rgba(8,8,15,0.78)",
+  backdropFilter: "blur(24px)",
+  boxShadow: "0 30px 80px rgba(0,0,0,0.38)",
   overflowY: "auto",
 };
 
-const newChatStyle: CSSProperties = {
-  width: "100%",
-  padding: "12px 14px",
-  borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.1)",
-  background: "rgba(255,255,255,0.06)",
-  color: "#fff",
-  textAlign: "left",
-  cursor: "pointer",
-  fontWeight: 600,
+const brandBlockStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "4px 4px 20px",
 };
 
-const sectionTitleStyle: CSSProperties = {
-  marginTop: 22,
-  marginBottom: 8,
-  paddingLeft: 10,
+const brandLogoStyle: CSSProperties = {
+  width: 74,
+  height: 74,
+  borderRadius: 24,
+  objectFit: "cover",
+  boxShadow: "0 0 35px rgba(255,60,94,0.35)",
+};
+
+const brandTitleStyle: CSSProperties = {
+  fontSize: 27,
+  letterSpacing: 2,
+  fontWeight: 900,
+};
+
+const brandSubtitleStyle: CSSProperties = {
   fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: 1.1,
-  opacity: 0.45,
+  opacity: 0.55,
+  marginTop: 4,
 };
 
-const dashboardButtonStyle: CSSProperties = {
+const brandSmallStyle: CSSProperties = {
+  fontSize: 11,
+  opacity: 0.75,
+};
+
+const navButtonBaseStyle: CSSProperties = {
   width: "100%",
-  minHeight: 56,
-  display: "flex",
-  alignItems: "center",
-  gap: 11,
-  padding: "10px 12px",
-  marginBottom: 5,
-  border: "none",
-  borderRadius: 12,
-  background: "transparent",
-  color: "#fff",
-  textAlign: "left",
-  cursor: "pointer",
-};
-
-const dashboardIconStyle: CSSProperties = {
-  width: 30,
-  minWidth: 30,
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  fontSize: 20,
-};
-
-const smallTextStyle: CSSProperties = {
-  display: "block",
-  opacity: 0.5,
-  marginTop: 2,
-};
-
-const featherBalanceBoxStyle: CSSProperties = {
-  margin: "6px 0 12px",
-  padding: "12px",
-  borderRadius: 14,
-  background: "rgba(255,255,255,0.055)",
   border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 16,
+  padding: "13px 14px",
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  color: "#fff",
+  cursor: "pointer",
+  textAlign: "left",
+  marginBottom: 8,
+};
+
+const navButtonStyle: CSSProperties = {
+  ...navButtonBaseStyle,
+  background: "rgba(255,255,255,0.035)",
+};
+
+const activeNavButtonStyle: CSSProperties = {
+  ...navButtonBaseStyle,
+  background:
+    "linear-gradient(135deg, rgba(255,47,88,0.22), rgba(147,51,234,0.14))",
+  border: "1px solid rgba(255,75,105,0.55)",
+  boxShadow: "0 0 28px rgba(255,47,88,0.16)",
+};
+
+const sideGroupStyle: CSSProperties = {
+  borderRadius: 18,
+  border: "1px solid rgba(255,75,105,0.35)",
+  background: "rgba(255,47,88,0.06)",
+  marginBottom: 10,
+  overflow: "hidden",
+};
+
+const sideGroupHeaderStyle: CSSProperties = {
+  width: "100%",
+  border: 0,
+  background: "rgba(255,47,88,0.15)",
+  padding: "13px 14px",
+  color: "#fff",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: 10,
-};
-
-const featherBalanceTitleStyle: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: 1,
-  opacity: 0.55,
-  marginBottom: 5,
-};
-
-const featherBalanceNumberStyle: CSSProperties = {
-  fontSize: 22,
-  fontWeight: 800,
-  lineHeight: 1,
-};
-
-const rechargeButtonStyle: CSSProperties = {
-  padding: "9px 12px",
-  border: 0,
-  borderRadius: 999,
-  background: "rgba(255,255,255,0.10)",
-  color: "white",
   cursor: "pointer",
-  fontSize: 12,
-  fontWeight: 700,
-  whiteSpace: "nowrap",
 };
 
-const subscriptionBoxStyle: CSSProperties = {
-  marginTop: 8,
-  marginBottom: 16,
-  padding: 14,
-  borderRadius: 16,
-  background: "rgba(255,255,255,0.035)",
-  border: "1px solid rgba(255,255,255,0.08)",
-};
-
-const menuBoxStyle: CSSProperties = {
-  padding: 6,
-  marginBottom: 10,
-  borderRadius: 12,
-  background: "rgba(255,255,255,0.035)",
-};
-
-const menuButtonStyle: CSSProperties = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
+const characterListStyle: CSSProperties = {
   padding: 10,
-  border: "none",
-  borderRadius: 10,
+  display: "grid",
+  gap: 7,
+};
+
+const characterButtonStyle: CSSProperties = {
+  border: 0,
+  borderRadius: 12,
+  padding: "9px 10px",
+  color: "#e8e0ff",
+  background: "transparent",
+  display: "flex",
+  gap: 8,
+  cursor: "pointer",
+};
+
+const activeCharacterButtonStyle: CSSProperties = {
+  ...characterButtonStyle,
+  background: "rgba(255,255,255,0.1)",
+  color: "#fff",
+};
+
+const clearModeButtonStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 12,
+  padding: "9px 10px",
+  background: "rgba(255,255,255,0.06)",
   color: "#fff",
   cursor: "pointer",
-  textAlign: "left",
 };
 
 const teacherBoxStyle: CSSProperties = {
-  padding: 12,
-  borderRadius: 12,
-  background: "rgba(255,255,255,0.035)",
-  marginBottom: 8,
-};
-
-const teacherLabelStyle: CSSProperties = {
-  display: "block",
-  fontSize: 11,
-  fontWeight: 600,
-  marginBottom: 12,
-};
-
-const teacherSelectStyle: CSSProperties = {
-  display: "block",
-  width: "100%",
-  marginTop: 6,
-  padding: "10px 9px",
-  borderRadius: 9,
-  border: "1px solid rgba(255,255,255,0.1)",
-  background: "#171a22",
-  color: "#fff",
-  outline: "none",
-};
-
-const chatSectionStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  display: "flex",
-  flexDirection: "column",
-};
-
-const messagesStyle: CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "28px max(25px, 8vw)",
-};
-
-const listenButtonStyle: CSSProperties = {
-  marginTop: 7,
-  border: 0,
-  background: "transparent",
-  color: "#fff",
-  opacity: 0.55,
-  cursor: "pointer",
-  fontSize: 12,
-};
-
-const composerAreaStyle: CSSProperties = {
-  padding: "12px 24px 18px",
-  borderTop: "1px solid rgba(255,255,255,0.06)",
-};
-
-const modeIndicatorStyle: CSSProperties = {
-  maxWidth: 950,
-  margin: "0 auto 7px",
-  paddingLeft: 6,
-  fontSize: 11,
-  opacity: 0.65,
-};
-
-const composerStyle: CSSProperties = {
-  maxWidth: 950,
-  margin: "0 auto",
-  position: "relative",
-  display: "flex",
-  alignItems: "center",
+  display: "grid",
   gap: 8,
-  padding: 8,
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 18,
-  background: "#171a22",
-};
-
-const composerButtonStyle: CSSProperties = {
-  width: 40,
-  height: 40,
-  minWidth: 40,
-  border: "none",
-  borderRadius: 12,
-  background: "rgba(255,255,255,0.07)",
-  color: "#fff",
-  cursor: "pointer",
-  fontSize: 17,
-};
-
-const textAreaStyle: CSSProperties = {
-  flex: 1,
-  minHeight: 28,
-  maxHeight: 120,
-  resize: "none",
-  border: 0,
-  outline: 0,
-  background: "transparent",
-  color: "#fff",
-  padding: "9px 5px",
-  fontFamily: "inherit",
-  fontSize: 14,
-};
-
-const uploadPopupStyle: CSSProperties = {
-  position: "absolute",
-  bottom: 52,
-  left: 0,
-  width: 190,
-  padding: 8,
-  borderRadius: 14,
-  background: "#20232d",
-  border: "1px solid rgba(255,255,255,0.1)",
-  boxShadow: "0 15px 50px rgba(0,0,0,0.45)",
-  zIndex: 100,
-};
-
-const uploadMenuButtonStyle: CSSProperties = {
-  width: "100%",
-  padding: "11px 12px",
-  border: 0,
-  borderRadius: 9,
-  background: "transparent",
-  color: "#fff",
-  textAlign: "left",
-  cursor: "pointer",
-};
-
-const attachmentPreviewStyle: CSSProperties = {
-  maxWidth: 950,
-  margin: "0 auto 8px",
-  padding: "10px 13px",
-  borderRadius: 12,
-  background: "rgba(255,255,255,0.06)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  fontSize: 12,
-};
-
-const closeButtonStyle: CSSProperties = {
-  border: 0,
-  background: "transparent",
-  color: "#fff",
-  cursor: "pointer",
-  fontSize: 17,
-};
-
-const statusStyle: CSSProperties = {
-  textAlign: "center",
-  fontSize: 10,
-  opacity: 0.4,
-  marginTop: 7,
-};
-
-const thinkingPopupWrapStyle: CSSProperties = {
-  maxWidth: 950,
-  margin: "0 auto 10px",
-  display: "flex",
-  justifyContent: "center",
-};
-
-const thinkingPopupStyle: CSSProperties = {
-  width: 255,
-  padding: "12px 14px 11px",
-  borderRadius: 18,
-  background: "linear-gradient(180deg, #2a2c31, #17191f)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  boxShadow: "0 18px 50px rgba(0,0,0,0.45)",
-};
-
-const thinkingPopupTopStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  position: "relative",
-  fontSize: 14,
   marginBottom: 10,
 };
 
-const thinkingRangeStyle: CSSProperties = {
+const selectStyle: CSSProperties = {
   width: "100%",
-  accentColor: "#3b82f6",
-  cursor: "pointer",
+  padding: 10,
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "#11111c",
+  color: "#fff",
 };
 
-const thinkingDotsStyle: CSSProperties = {
+const profileCardStyle: CSSProperties = {
   display: "flex",
-  justifyContent: "space-between",
-  padding: "0 9px",
-  marginTop: "-13px",
-  pointerEvents: "none",
+  alignItems: "center",
+  gap: 12,
+  marginTop: 18,
+  padding: 14,
+  borderRadius: 20,
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.08)",
 };
 
-const thinkingPillStyle: CSSProperties = {
-  minWidth: 145,
-  height: 40,
-  padding: "0 14px",
-  border: 0,
+const avatarStyle: CSSProperties = {
+  width: 42,
+  height: 42,
+  borderRadius: "50%",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(255,255,255,0.08)",
+};
+
+const profileBadgeStyle: CSSProperties = {
+  marginTop: 4,
+  display: "inline-block",
+  padding: "3px 8px",
+  borderRadius: 999,
+  fontSize: 11,
+  color: "#ffb4c4",
+  background: "rgba(255,47,88,0.18)",
+};
+
+const miniStatsStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 10,
+  marginTop: 12,
+  fontSize: 12,
+};
+
+const mainPanelStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  minWidth: 0,
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 30,
+  background: "rgba(8,8,16,0.62)",
+  backdropFilter: "blur(24px)",
+  overflow: "hidden",
+};
+
+const heroStyle: CSSProperties = {
+  position: "relative",
+  minHeight: 310,
+  padding: "34px 42px",
+  overflow: "hidden",
+  background:
+    "linear-gradient(120deg, rgba(8,8,16,0.9), rgba(38,7,19,0.55)), radial-gradient(circle at 80% 30%, rgba(255,45,85,0.24), transparent 35%)",
+};
+
+const heroContentStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 2,
+  maxWidth: 660,
+};
+
+const welcomeStyle: CSSProperties = {
+  letterSpacing: 12,
+  color: "#ff8aa4",
+  fontSize: 12,
+  marginBottom: 10,
+};
+
+const heroTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 86,
+  lineHeight: 0.95,
+  letterSpacing: 10,
+  fontWeight: 900,
+};
+
+const heroLineStyle: CSSProperties = {
+  width: 460,
+  maxWidth: "100%",
+  height: 2,
+  margin: "16px 0 12px",
+  background: "linear-gradient(90deg, transparent, #ff355d, transparent)",
+};
+
+const taglineStyle: CSSProperties = {
+  letterSpacing: 8,
+  color: "rgba(255,255,255,0.62)",
+  fontSize: 12,
+};
+
+const introCardStyle: CSSProperties = {
+  marginTop: 28,
+  display: "flex",
+  alignItems: "center",
+  gap: 18,
+  maxWidth: 620,
+  borderRadius: 28,
+  padding: 22,
+  background: "rgba(8,8,16,0.72)",
+  border: "1px solid rgba(255,75,105,0.35)",
+  boxShadow: "0 20px 70px rgba(0,0,0,0.35)",
+};
+
+const introBirdStyle: CSSProperties = {
+  width: 86,
+  height: 86,
+  objectFit: "cover",
+  borderRadius: 22,
+};
+
+const introTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 34,
+};
+
+const introTextStyle: CSSProperties = {
+  margin: "4px 0 0",
+  fontSize: 30,
+  color: "#c6b8ff",
+};
+
+const introSmallStyle: CSSProperties = {
+  margin: "12px 0 0",
+  color: "rgba(255,255,255,0.68)",
+  lineHeight: 1.6,
+};
+
+const heroBirdStyle: CSSProperties = {
+  position: "absolute",
+  right: 34,
+  top: 20,
+  width: 310,
+  height: 310,
+  objectFit: "cover",
+  borderRadius: 40,
+  opacity: 0.85,
+  filter: "drop-shadow(0 0 45px rgba(255,47,88,0.32))",
+};
+
+const promptGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: 14,
+  padding: "18px 24px 8px",
+};
+
+const promptCardStyle: CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 20,
+  background: "rgba(255,255,255,0.055)",
+  color: "#fff",
+  padding: 16,
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  cursor: "pointer",
+  textAlign: "left",
+};
+
+const promptIconStyle: CSSProperties = {
+  width: 42,
+  height: 42,
+  borderRadius: 14,
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(255,47,88,0.14)",
+  fontSize: 22,
+};
+
+const chatAreaStyle: CSSProperties = {
+  flex: 1,
+  overflowY: "auto",
+  padding: "22px 34px 10px",
+};
+
+const assistantMessageWrapStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  maxWidth: "74%",
+};
+
+const userMessageWrapStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-end",
+  maxWidth: "74%",
+};
+
+const messageAvatarStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  objectFit: "cover",
+  borderRadius: "50%",
+  marginBottom: 8,
+  boxShadow: "0 0 24px rgba(255,47,88,0.35)",
+};
+
+function messageBubbleStyle(role: "user" | "assistant"): CSSProperties {
+  return {
+    padding: "15px 18px",
+    borderRadius: role === "user" ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
+    background:
+      role === "user"
+        ? "linear-gradient(135deg, rgba(92,108,255,0.28), rgba(255,255,255,0.08))"
+        : "rgba(255,255,255,0.075)",
+    border: "1px solid rgba(255,255,255,0.09)",
+    lineHeight: 1.65,
+    whiteSpace: "pre-wrap",
+  };
+}
+
+const filePillStyle: CSSProperties = {
+  display: "inline-block",
+  marginBottom: 8,
+  padding: "4px 9px",
   borderRadius: 999,
   background: "rgba(255,255,255,0.09)",
-  color: "#d8d8d8",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 7,
-  cursor: "pointer",
-  fontSize: 14,
+  fontSize: 12,
 };
 
-const modalOverlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  zIndex: 9999,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 20,
-  background: "rgba(0,0,0,0.72)",
-};
-
-const modalStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 430,
-  maxHeight: "90vh",
-  overflowY: "auto",
-  padding: 28,
-  borderRadius: 24,
-  background: "#171a22",
+const listenButtonStyle: CSSProperties = {
+  marginTop: 8,
   border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 999,
+  padding: "7px 12px",
+  background: "rgba(255,255,255,0.06)",
+  color: "#fff",
+  cursor: "pointer",
 };
 
-const modalHeaderStyle: CSSProperties = {
+const thinkingStyle: CSSProperties = {
+  opacity: 0.72,
+  marginBottom: 20,
+};
+
+const composerPanelStyle: CSSProperties = {
+  padding: 18,
+  borderTop: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(8,8,16,0.72)",
+};
+
+const thinkingPanelStyle: CSSProperties = {
   display: "flex",
-  justifyContent: "space-between",
   alignItems: "center",
-  marginBottom: 25,
+  gap: 16,
+  marginBottom: 12,
 };
 
-const profilePhotoStyle: CSSProperties = {
-  width: 92,
-  height: 92,
+const thinkingInfoStyle: CSSProperties = {
+  minWidth: 220,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+};
+
+const thinkingBirdButtonStyle: CSSProperties = {
+  width: 44,
+  height: 44,
+  padding: 4,
+  display: "grid",
+  placeItems: "center",
+  borderRadius: 14,
+  border: "1px solid rgba(255,80,120,0.5)",
+  background: "rgba(255,255,255,0.07)",
+  boxShadow: "0 0 18px rgba(255,47,88,0.18)",
+  cursor: "pointer",
+};
+
+const thinkingBirdImageStyle: CSSProperties = {
+  width: 34,
+  height: 34,
+  borderRadius: 12,
+  objectFit: "cover",
+};
+
+const thinkingButtonsStyle: CSSProperties = {
+  display: "flex",
+  gap: 10,
+  flex: 1,
+  overflowX: "auto",
+};
+
+const thinkingButtonStyle: CSSProperties = {
+  minWidth: 96,
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 14,
+  padding: "10px 12px",
+  background: "rgba(255,255,255,0.045)",
+  color: "#fff",
+  cursor: "pointer",
+};
+
+const activeThinkingButtonStyle: CSSProperties = {
+  ...thinkingButtonStyle,
+  border: "1px solid rgba(255,75,105,0.65)",
+  background: "rgba(255,47,88,0.18)",
+  boxShadow: "0 0 25px rgba(255,47,88,0.18)",
+};
+
+const attachmentPreviewStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "10px 12px",
+  borderRadius: 14,
+  background: "rgba(255,255,255,0.06)",
+  marginBottom: 10,
+};
+
+const inputRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 22,
+  padding: "10px 12px",
+  background: "rgba(255,255,255,0.045)",
+};
+
+const roundButtonStyle: CSSProperties = {
+  width: 42,
+  height: 42,
   borderRadius: "50%",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "rgba(255,255,255,0.06)",
   color: "#fff",
   cursor: "pointer",
-  overflow: "hidden",
-  fontSize: 32,
+  fontSize: 20,
 };
 
-const profileLabelStyle: CSSProperties = {
-  display: "block",
-  marginBottom: 16,
-  fontSize: 12,
-  fontWeight: 600,
-};
-
-const profileInputStyle: CSSProperties = {
-  display: "block",
-  width: "100%",
-  boxSizing: "border-box",
-  marginTop: 7,
-  padding: "12px 13px",
-  borderRadius: 10,
-  border: "1px solid rgba(255,255,255,0.1)",
-  background: "#101219",
-  color: "#fff",
-  outline: "none",
-};
-
-const saveButtonStyle: CSSProperties = {
-  width: "100%",
-  marginTop: 10,
-  padding: 14,
+const textareaStyle: CSSProperties = {
+  flex: 1,
   border: 0,
-  borderRadius: 12,
-  cursor: "pointer",
-  fontWeight: 700,
-  fontSize: 14,
+  outline: 0,
+  resize: "none",
+  background: "transparent",
+  color: "#fff",
+  fontSize: 16,
+  minHeight: 42,
+  paddingTop: 11,
 };
 
-const signOutButtonStyle: CSSProperties = {
-  width: "100%",
-  marginTop: 10,
-  padding: 14,
-  border: "1px solid rgba(255,80,80,0.35)",
-  borderRadius: 12,
+const sendButtonStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  borderRadius: "50%",
+  border: "1px solid rgba(255,118,143,0.7)",
+  background: "linear-gradient(135deg,#ff315d,#a855f7)",
+  color: "#fff",
   cursor: "pointer",
-  fontWeight: 700,
-  fontSize: 14,
-  background: "rgba(255,80,80,0.10)",
-  color: "#ff8a8a",
+  fontSize: 21,
+  boxShadow: "0 0 30px rgba(255,47,88,0.28)",
+};
+
+const uploadMenuStyle: CSSProperties = {
+  position: "absolute",
+  bottom: 50,
+  left: 0,
+  minWidth: 150,
+  padding: 8,
+  borderRadius: 14,
+  background: "#11111c",
+  border: "1px solid rgba(255,255,255,0.12)",
+  zIndex: 10,
+};
+
+const uploadMenuButtonStyle: CSSProperties = {
+  width: "100%",
+  border: 0,
+  background: "transparent",
+  color: "#fff",
+  textAlign: "left",
+  padding: 10,
+  cursor: "pointer",
+};
+
+const closeButtonStyle: CSSProperties = {
+  border: 0,
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+  borderRadius: 999,
+  width: 30,
+  height: 30,
+  cursor: "pointer",
+};
+
+const planBannerStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 16,
+  marginTop: 12,
+  padding: "12px 16px",
+  borderRadius: 18,
+  border: "1px solid rgba(255,75,105,0.26)",
+  background: "rgba(255,47,88,0.08)",
+  fontSize: 13,
+};
+
+const statusStyle: CSSProperties = {
+  marginTop: 10,
+  fontSize: 12,
+  opacity: 0.7,
+};
+
+const modalOverlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(0,0,0,0.62)",
+  zIndex: 50,
+  padding: 24,
+};
+
+const modalStyle: CSSProperties = {
+  width: "min(920px, 96vw)",
+  maxHeight: "86vh",
+  overflowY: "auto",
+  borderRadius: 28,
+  padding: 22,
+  background: "rgba(10,10,18,0.98)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  color: "#fff",
+};
+
+const smallModalStyle: CSSProperties = {
+  width: "min(440px, 94vw)",
+  borderRadius: 28,
+  padding: 22,
+  background: "rgba(10,10,18,0.98)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  color: "#fff",
+};
+
+const modalHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 14,
+  marginBottom: 18,
+};
+
+const planGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+  gap: 14,
+};
+
+const planCardStyle: CSSProperties = {
+  padding: 16,
+  borderRadius: 20,
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.09)",
+};
+
+const activePlanCardStyle: CSSProperties = {
+  ...planCardStyle,
+  border: "1px solid rgba(255,75,105,0.55)",
+  background: "rgba(255,47,88,0.12)",
+};
+
+const priceStyle: CSSProperties = {
+  fontSize: 28,
+  fontWeight: 900,
+  color: "#ff6b8c",
+};
+
+function planButtonStyle(active: boolean): CSSProperties {
+  return {
+    width: "100%",
+    border: 0,
+    borderRadius: 14,
+    padding: "10px 12px",
+    marginTop: 10,
+    background: active ? "rgba(255,255,255,0.16)" : "#fff",
+    color: active ? "#fff" : "#111",
+    cursor: "pointer",
+    fontWeight: 800,
+  };
+}
+
+const labelStyle: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  fontSize: 13,
+};
+
+const inputStyle: CSSProperties = {
+  padding: 12,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.06)",
+  color: "#fff",
+};
+
+const profileSummaryStyle: CSSProperties = {
+  marginTop: 14,
+  padding: 14,
+  borderRadius: 16,
+  background: "rgba(255,255,255,0.06)",
 };

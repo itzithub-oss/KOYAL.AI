@@ -9,11 +9,9 @@ type ChatBody = {
   thinkingLevel?: string;
   voiceMode?: boolean;
   language?: string;
-
   subscriptionPlan?: string;
   selectedPlan?: string;
   plan?: string;
-
   name?: string;
   characterMode?: string;
   philosophicalMode?: boolean;
@@ -21,7 +19,6 @@ type ChatBody = {
   teacherMode?: boolean;
   teacherClass?: string;
   teacherSubject?: string;
-
   profile?: {
     name?: string;
     dob?: string;
@@ -29,10 +26,13 @@ type ChatBody = {
   };
 };
 
+const SERVER_ERROR_REPLY =
+  "sorry,there is a problem in my server please try me later";
+
 const OLLAMA_URL = "http://127.0.0.1:11434/api/chat";
 const OLLAMA_MODEL = "qwen2.5:3b";
 
-// LOCKED GEMINI MODEL
+// LOCKED MODEL — this route will not use another Gemini model.
 const GEMINI_MODEL = "gemini-3.1-flash-lite" as const;
 
 function getPlan(body: ChatBody) {
@@ -49,7 +49,7 @@ function buildSystemPrompt(body: ChatBody) {
   const language = body.language || "English by default";
 
   let prompt = `
-You are KOYAL AI.
+You are Koyal, a helpful AI assistant.
 Answer clearly, naturally, and helpfully.
 
 Current mode: ${mode}
@@ -58,19 +58,14 @@ Language preference: ${language}
 
 LANGUAGE RULES:
 - Reply in English by default.
-- Use Hindi only if the user clearly asks for Hindi, such as:
-  "Hindi me bolo"
-  "answer in Hindi"
-  "reply in Hindi"
-  "speak in Hindi"
-  "हिंदी में बताओ"
-  "हिंदी में बोलो"
+- Use Hindi only if the user clearly asks for Hindi, such as "Hindi me bolo", "answer in Hindi", "reply in Hindi", "speak in Hindi", "हिंदी में बताओ", or "हिंदी में बोलो".
 - Do not automatically switch to Hindi just because the user typed a Hindi word.
 - Do not automatically switch to Hindi because the user uses an Indian name, place, or Hinglish word.
 - If the user asks normally, answer in English.
 - Use another language only if the user clearly asks for that language.
 
 GENERAL RULES:
+- Introduce yourself as Koyal, not Koyal AI.
 - Keep voice-mode answers short and natural.
 - Do not repeatedly say "as an AI".
 `.trim();
@@ -84,12 +79,7 @@ GENERAL RULES:
   }
 
   if (body.teacherMode) {
-    prompt += `
-
-Teacher Mode is enabled.
-Student class: ${body.teacherClass || "unknown"}.
-Subject: ${body.teacherSubject || "unknown"}.
-Explain at the correct student level.`;
+    prompt += `\n\nTeacher Mode is enabled. Student class: ${body.teacherClass || "unknown"}. Subject: ${body.teacherSubject || "unknown"}. Explain at the correct student level.`;
   }
 
   if (body.philosophicalMode) {
@@ -115,14 +105,10 @@ async function askGemini(message: string, body: ChatBody) {
   const apiKey = getGeminiApiKey();
 
   if (!apiKey) {
-    throw new Error(
-      "GEMINI_API_KEY is missing in Vercel Environment Variables."
-    );
+    throw new Error("GEMINI_API_KEY missing.");
   }
 
-  const ai = new GoogleGenAI({
-    apiKey,
-  });
+  const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `
 ${buildSystemPrompt(body)}
@@ -136,7 +122,7 @@ ${message}
     contents: prompt,
   });
 
-  return response.text || "I could not generate a reply.";
+  return response.text || SERVER_ERROR_REPLY;
 }
 
 async function askOllama(message: string, body: ChatBody) {
@@ -162,13 +148,12 @@ async function askOllama(message: string, body: ChatBody) {
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || "Ollama request failed.");
+    throw new Error("Ollama request failed.");
   }
 
   const data = await response.json();
 
-  return data?.message?.content || "I could not generate a reply.";
+  return data?.message?.content || SERVER_ERROR_REPLY;
 }
 
 async function readBody(request: NextRequest): Promise<ChatBody> {
@@ -183,11 +168,9 @@ async function readBody(request: NextRequest): Promise<ChatBody> {
       thinkingLevel: String(formData.get("thinkingLevel") || ""),
       voiceMode: String(formData.get("voiceMode") || "") === "true",
       language: String(formData.get("language") || ""),
-
       subscriptionPlan: String(formData.get("subscriptionPlan") || ""),
       selectedPlan: String(formData.get("selectedPlan") || ""),
       plan: String(formData.get("plan") || ""),
-
       name: String(formData.get("name") || ""),
       characterMode: String(formData.get("characterMode") || ""),
       philosophicalMode:
@@ -205,18 +188,10 @@ async function readBody(request: NextRequest): Promise<ChatBody> {
 export async function POST(request: NextRequest) {
   try {
     const body = await readBody(request);
-
     const message = body.message?.trim();
 
     if (!message) {
-      return NextResponse.json(
-        {
-          error: "Message is required.",
-        },
-        {
-          status: 400,
-        }
-      );
+      return NextResponse.json({ reply: "Message is required." });
     }
 
     const plan = getPlan(body);
@@ -227,15 +202,11 @@ export async function POST(request: NextRequest) {
     let modelUsed = "";
 
     if (process.env.VERCEL === "1") {
-      // Online Vercel cannot use local Ollama.
-      // So online version always uses locked Gemini model.
+      // Vercel cannot use local Ollama, so deployed website uses locked Gemini.
       reply = await askGemini(message, body);
       providerUsed = supreme ? "Gemini Supreme" : "Gemini Online";
       modelUsed = GEMINI_MODEL;
     } else {
-      // Local laptop:
-      // Supreme uses Gemini.
-      // Other plans use local Ollama.
       if (supreme) {
         reply = await askGemini(message, body);
         providerUsed = "Gemini Supreme";
@@ -253,17 +224,11 @@ export async function POST(request: NextRequest) {
       providerUsed,
       modelUsed,
     });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Something went wrong.";
-
-    return NextResponse.json(
-      {
-        error: message,
-      },
-      {
-        status: 500,
-      }
-    );
+  } catch {
+    // Return normal JSON with a reply so the chat can show this message.
+    return NextResponse.json({
+      reply: SERVER_ERROR_REPLY,
+      error: SERVER_ERROR_REPLY,
+    });
   }
 }
