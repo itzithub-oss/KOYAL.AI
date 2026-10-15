@@ -145,9 +145,7 @@ export default function VoiceMode({
       clean.includes("हिंदी में") ||
       clean.includes("हिन्दी में") ||
       clean.includes("हिंदी मे") ||
-      clean.includes("हिन्दी मे") ||
-      clean.includes("हिंदी में बोलो") ||
-      clean.includes("हिंदी में बताओ")
+      clean.includes("हिन्दी मे")
     );
   }
 
@@ -408,19 +406,13 @@ export default function VoiceMode({
       const voicePrompt = `
 You are KOYAL AI represented as a friendly speaking bird.
 
-LANGUAGE RULES:
+Language rules:
 - Reply in English by default.
-- Use Hindi only if the user clearly asks for Hindi, such as:
-  "Hindi me bolo"
-  "answer in Hindi"
-  "reply in Hindi"
-  "speak in Hindi"
-  "हिंदी में बताओ"
-  "हिंदी में बोलो"
+- Use Hindi only if the user clearly asks for Hindi, such as "Hindi me bolo", "answer in Hindi", "reply in Hindi", or "हिंदी में बताओ".
 - Do not automatically reply in Hindi just because the user used one Hindi word.
 - Use another language only if the user clearly asks for that language.
 
-VOICE RULES:
+Voice rules:
 - Keep the answer short, clear, and natural for voice communication.
 - Do not say "as an AI".
 - Sound friendly like a helpful bird assistant.
@@ -513,8 +505,7 @@ ${cleanText}
 
     const recognition = new SpeechRecognition();
 
-    // English by default.
-    // Hindi reply happens only when user asks for Hindi.
+    // English by default. Hindi answer happens only when asked.
     recognition.lang = "en-IN";
     recognition.interimResults = true;
     recognition.continuous = true;
