@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 230 190" fill="none">
+  <defs>
+    <linearGradient id="feather" x1="35" y1="20" x2="207" y2="157" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff657e"/><stop offset=".22" stop-color="#ff1c59"/>
+      <stop offset=".53" stop-color="#5e0d2e"/><stop offset=".78" stop-color="#280823"/><stop offset="1" stop-color="#f83d78"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="40" y1="20" x2="190" y2="150" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff0fa"/><stop offset=".2" stop-color="#ff6fa0"/><stop offset=".65" stop-color="#e00047"/><stop offset="1" stop-color="#5e0945"/>
+    </linearGradient>
+    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <g stroke="#180716" stroke-width="2" stroke-linejoin="round">
+    <path d="M217 138 Q141 104 27 15 Q45 89 163 161 Q191 166 217 138Z" fill="url(#feather)"/>
+    <path d="M216 139 Q146 104 11 40 Q42 107 169 161 Q191 164 216 139Z" fill="url(#feather)"/>
+    <path d="M217 141 Q136 108 7 73 Q59 134 173 166 Q201 162 217 141Z" fill="url(#feather)"/>
+    <path d="M217 145 Q142 126 16 109 Q82 165 173 168 Q205 159 217 145Z" fill="url(#feather)"/>
+    <path d="M214 147 Q131 149 43 150 Q106 188 179 171 Q203 166 214 147Z" fill="url(#feather)"/>
+  </g>
+  <g stroke="url(#shine)" stroke-linecap="round" filter="url(#glow)">
+    <path d="M205 137 Q145 102 37 31" stroke-width="2.4"/>
+    <path d="M205 140 Q137 107 32 58" stroke-width="2"/>
+    <path d="M208 144 Q143 123 41 89" stroke-width="2"/>
+    <path d="M208 150 Q137 142 50 122" stroke-width="1.8"/>
+    <path d="M204 156 Q141 165 87 160" stroke-width="1.6"/>
+  </g>
+</svg>

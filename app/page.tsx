@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import VoiceMode from "./components/VoiceMode";
+import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
 
 type Message = {
@@ -17,6 +18,16 @@ type CharacterMode =
 type ThinkingEffort =
   | "just" | "let-it" | "care" | "high" | "ultra-high" | "elite" | "supreme";
 type ChatApiResponse = { reply?: string; error?: string };
+type Profile = { name: string; gender: string; phone: string; dob: string; photo: string };
+const EMPTY_PROFILE: Profile = { name: "", gender: "", phone: "", dob: "", photo: "" };
+type FeatherPack = { quantity: number; rupees: number };
+const FEATHER_PACKS: FeatherPack[] = [
+  { quantity: 100, rupees: 50 },
+  { quantity: 450, rupees: 225 },
+  { quantity: 700, rupees: 350 },
+  { quantity: 1000, rupees: 500 },
+];
+const PRICE_PER_FEATHER = 0.5;
 type IconName =
   | "chat" | "user" | "brain" | "masks" | "book" | "message" | "feather"
   | "diamond" | "moon" | "sun" | "search" | "dots" | "plus" | "paperclip"
@@ -109,8 +120,15 @@ export default function Home() {
   const [teacherClass, setTeacherClass] = useState("8");
   const [teacherSubject, setTeacherSubject] = useState("General Science");
   const [philosophicalMode, setPhilosophicalMode] = useState(false);
-  const [profileName, setProfileName] = useState("Divyansh");
+  const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
+  const [draftProfile, setDraftProfile] = useState<Profile>(EMPTY_PROFILE);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [featherShopOpen, setFeatherShopOpen] = useState(false);
+  const [customFeathers, setCustomFeathers] = useState("250");
+  const [purchaseNotice, setPurchaseNotice] = useState("");
+  const profilePhotoInput = useRef<HTMLInputElement>(null);
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
@@ -142,8 +160,21 @@ export default function Home() {
       if (plans.some((p) => p.name === plan)) setSelectedPlan(plan as PlanName);
       const featherStore = localStorage.getItem("koyal-ai-feather-balance");
       if (featherStore !== null && Number.isFinite(Number(featherStore))) setFeathers(Number(featherStore));
-      const name = localStorage.getItem("koyal-ai-profile-name");
-      if (name) setProfileName(name);
+      const profileJson = localStorage.getItem("koyal-ai-profile-v2");
+      if (profileJson) {
+        const stored = JSON.parse(profileJson) as Partial<Profile>;
+        const valid: Profile = {
+          name: typeof stored.name === "string" ? stored.name : "",
+          gender: typeof stored.gender === "string" ? stored.gender : "",
+          phone: typeof stored.phone === "string" ? stored.phone : "",
+          dob: typeof stored.dob === "string" ? stored.dob : "",
+          photo: typeof stored.photo === "string" ? stored.photo : "",
+        };
+        setProfile(valid);
+      } else {
+        const oldName = localStorage.getItem("koyal-ai-profile-name");
+        if (oldName) setProfile({ ...EMPTY_PROFILE, name: oldName });
+      }
     } catch {
       // Ignore invalid local data and keep defaults.
     }
@@ -154,6 +185,18 @@ export default function Home() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
   useEffect(() => () => { if (typeof window !== "undefined") window.speechSynthesis?.cancel(); }, []);
+  useEffect(() => {
+    if (!profileOpen && !subscriptionOpen && !featherShopOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setProfileOpen(false);
+        setSubscriptionOpen(false);
+        setFeatherShopOpen(false);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [profileOpen, subscriptionOpen, featherShopOpen]);
 
   function resetChat() {
     setMessages([{ ...WELCOME, time: timestamp() }]);
@@ -162,6 +205,8 @@ export default function Home() {
     setSearch("");
     setSearchOpen(false);
     setMobileNav(false);
+    setProfileOpen(false);
+    setEditingProfile(false);
     window.speechSynthesis?.cancel();
   }
   function changeThinking(idx: number) {
@@ -174,6 +219,69 @@ export default function Home() {
   }
   function handleFile(event: ChangeEvent<HTMLInputElement>) {
     setSelectedFile(event.target.files?.[0] || null);
+  }
+  function openProfile() {
+    setDraftProfile({ ...profile });
+    setProfileError("");
+    setEditingProfile(false);
+    setProfileOpen(true);
+    setMobileNav(false);
+  }
+  function saveProfile() {
+    const name = draftProfile.name.trim();
+    const digits = draftProfile.phone.replace(/\D/g, "");
+    if (!name) { setProfileError("Please enter your name."); return; }
+    if (draftProfile.phone && (digits.length < 7 || digits.length > 15)) {
+      setProfileError("Enter a valid phone number (7–15 digits)."); return;
+    }
+    if (draftProfile.dob && draftProfile.dob > new Date().toISOString().slice(0, 10)) {
+      setProfileError("Date of birth cannot be in the future."); return;
+    }
+    const saved = { ...draftProfile, name };
+    try {
+      localStorage.setItem("koyal-ai-profile-v2", JSON.stringify(saved));
+      localStorage.setItem("koyal-ai-profile-name", name);
+    } catch {
+      setProfileError("Could not save the photo. Try a smaller photo."); return;
+    }
+    setProfile(saved);
+    setDraftProfile(saved);
+    setEditingProfile(false);
+    setProfileError("");
+  }
+  function uploadProfilePhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setProfileError("Choose a PNG, JPG, or WebP photo."); return;
+    }
+    if (file.size > 900_000) {
+      setProfileError("Choose a photo smaller than 900 KB for browser storage."); return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setDraftProfile((old) => ({ ...old, photo: reader.result as string }));
+        setProfileError("");
+      }
+    };
+    reader.onerror = () => setProfileError("Could not read the selected photo.");
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  }
+  function openFeatherShop() {
+    setPurchaseNotice("");
+    setFeatherShopOpen(true);
+    setMobileNav(false);
+  }
+  function requestFeatherPurchase(amount: number, rupees: number) {
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100000) {
+      setPurchaseNotice("Choose a whole number between 1 and 100,000 feathers.");
+      return;
+    }
+    // IMPORTANT: Browser-only accounts cannot securely receive paid credits.
+    // A verified payment gateway, database and authenticated webhook are required.
+    setPurchaseNotice(`₹${rupees.toLocaleString("en-IN")} for ${amount.toLocaleString("en-IN")} feathers. Checkout is not connected yet; no payment was taken and your balance has not changed.`);
   }
   function selectPlan(plan: PlanName) {
     setSelectedPlan(plan);
@@ -207,7 +315,7 @@ export default function Home() {
     if (loading) return;
     const text = input.trim();
     if (!text && !selectedFile) return;
-    if (featherCost > feathers) { setSubscriptionOpen(true); return; }
+    if (featherCost > feathers) { openFeatherShop(); return; }
     const message = text || `I attached a file named ${selectedFile?.name}.`;
     setMessages((old) => [...old, { role: "user", content: message, fileName: selectedFile?.name, time: timestamp() }]);
     setInput("");
@@ -232,7 +340,7 @@ export default function Home() {
           thinkingLevel: currentThinking.name,
           language: "English by default",
           subscriptionPlan: selectedPlan,
-          name: profileName,
+          name: profile.name,
           characterMode,
           teacherMode,
           teacherClass,
@@ -265,11 +373,12 @@ export default function Home() {
           <div className={styles.brand}>
             <img className={styles.brandBird} src="/koyal-bird.png" alt="KOYAL bird" />
             <div className={styles.brandName}>KOYAL <span>AI</span></div>
+            <div className={styles.brandTagline}>Intelligence with a Softer Soul</div>
             <div className={styles.credits}>Brought to you by<br/><strong>Divyansh Acharjee &amp; Tejas Raj</strong></div>
           </div>
           <nav className={styles.nav} aria-label="Koyal features">
             <button type="button" onClick={resetChat} className={`${styles.navItem} ${styles.navMain}`}><Icon name="chat"/><strong>New Chat</strong></button>
-            <button type="button" onClick={() => { setProfileOpen(true); closeSidebar(); }} className={styles.navItem}><Icon name="user"/>Profile</button>
+            <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
@@ -284,10 +393,20 @@ export default function Home() {
               <label>Subject<select value={teacherSubject} onChange={(e) => setTeacherSubject(e.target.value)}>{teacherSubjects.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
             </div>}
             <button type="button" onClick={() => setPhilosophicalMode((v) => !v)} className={`${styles.navItem} ${philosophicalMode ? styles.navOn : ""}`}><Icon name="message"/>Philosophical Mode<span className={styles.navSmall}>{philosophicalMode ? "On" : ""}</span></button>
-            <button type="button" onClick={() => setSubscriptionOpen(true)} className={styles.navItem}><Icon name="feather"/>Feather Balance<span className={styles.navSmall}>{feathers}</span></button>
+            <button type="button" onClick={openFeatherShop} className={styles.navItem}><Icon name="feather"/>Feather Balance<span className={styles.navSmall}>{selectedPlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</span></button>
             <button type="button" onClick={() => { setSubscriptionOpen(true); closeSidebar(); }} className={styles.navItem}><Icon name="diamond"/>Subscription</button>
           </nav>
-          <div className={styles.sidebarFoot}><div className={styles.onlineDot}/><div>Koyal is ready</div><span>{selectedPlan} Plan</span></div>
+          <button type="button" className={styles.sidebarProfile} onClick={openProfile} aria-label="Open your profile">
+            <div className={styles.sidebarProfileTop}>
+              <WingedAvatar photo={profile.photo} supreme={selectedPlan === "Supreme"} variant="small" />
+              <span className={styles.sidebarProfileName}><strong>{profile.name || "Your Profile"}</strong><small>{selectedPlan === "Supreme" ? "♛ Supreme Plan" : `${selectedPlan} Plan`}</small></span>
+              <Icon name="chevron" size={17}/>
+            </div>
+            <div className={styles.sidebarProfileStats}>
+              <span>🪶 <strong>{selectedPlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</strong><small>Feather balance</small></span>
+              <span>◇ <strong>{selectedPlan}</strong><small>Active plan</small></span>
+            </div>
+          </button>
         </aside>
 
         <section className={styles.mainPanel}>
@@ -308,7 +427,40 @@ export default function Home() {
 
           <section className={styles.chatSpace} aria-label="Conversation">
             <div className={styles.sceneBackdrop}/>
-            <div className={styles.chatScroll}>
+      {profileOpen && <div className={styles.profileModal} role="region" aria-label="Profile">
+          <div className={styles.profileHead}>
+            <div><h2>Profile</h2><p>Manage your personal information and account details</p></div>
+            <div className={styles.profileHeadActions}>
+              <button type="button" className={styles.editProfileButton} onClick={() => {setEditingProfile((v) => !v);setProfileError("");setDraftProfile({ ...profile });}}>{editingProfile ? "Cancel Edit" : "✎ Edit Profile"}</button>
+              <button type="button" aria-label="Close profile" className={styles.profileClose} onClick={() => setProfileOpen(false)}><Icon name="x" size={24}/></button>
+            </div>
+          </div>
+          <div className={styles.profileBody}>
+            <div className={styles.profileVisual}>
+              <div className={styles.bigAvatarContainer}>
+                <WingedAvatar photo={draftProfile.photo || profile.photo} supreme={selectedPlan === "Supreme"} variant="large" />
+                {editingProfile && <>
+                  <input ref={profilePhotoInput} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={uploadProfilePhoto} />
+                  <button type="button" aria-label="Change profile photo" className={styles.cameraButton} onClick={() => profilePhotoInput.current?.click()}>📷</button>
+                </>}
+              </div>
+              <div className={styles.profilePlanBadge}>{selectedPlan === "Supreme" ? "♛ Supreme Plan" : `${selectedPlan} Plan`}</div>
+              <div className={styles.identityCard}><div className={styles.identityTitle}>🪶 Your KOYAL Identity</div><p>Your profile helps Koyal personalize your experience. Supreme members have animated wings around their photo.</p></div>
+            </div>
+            <div className={styles.profileFields}>
+              <label><span>♙ Name</span><input value={draftProfile.name} disabled={!editingProfile} placeholder="Your name" onChange={(e) => setDraftProfile((old) => ({ ...old, name: e.target.value }))} /></label>
+              <label><span>⚥ Gender</span><select value={draftProfile.gender} disabled={!editingProfile} onChange={(e) => setDraftProfile((old) => ({ ...old, gender: e.target.value }))}>
+                <option value="">Select gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Non-binary">Non-binary</option><option value="Prefer not to say">Prefer not to say</option><option value="Other">Other</option>
+              </select></label>
+              <label><span>♧ Phone No</span><input type="tel" inputMode="tel" autoComplete="tel" disabled={!editingProfile} value={draftProfile.phone} placeholder="+91 98765 43210" onChange={(e) => setDraftProfile((old) => ({ ...old, phone: e.target.value }))} /></label>
+              <label><span>▦ DOB</span><input type="date" max={new Date().toISOString().slice(0,10)} disabled={!editingProfile} value={draftProfile.dob} onChange={(e) => setDraftProfile((old) => ({ ...old, dob: e.target.value }))} /></label>
+              {profileError && <p className={styles.profileError} role="alert">{profileError}</p>}
+              {editingProfile && <button type="button" className={styles.saveProfileButton} onClick={saveProfile}>Save Profile</button>}
+              <p className={styles.profilePrivacy}>Profile information and photos are saved only in this browser in this version.</p>
+            </div>
+          </div>
+      </div>}
+            {!profileOpen && <div className={styles.chatScroll}>
               <div className={styles.messages}>
                 {visibleMessages.length === 0 && <div className={styles.noResults}>No matching messages found.</div>}
                 {visibleMessages.map((message, index) => <div key={`${index}-${message.role}`} className={`${styles.messageRow} ${message.role === "user" ? styles.userRow : styles.assistantRow}`}>
@@ -317,7 +469,7 @@ export default function Home() {
                     <div className={`${styles.bubble} ${message.role === "user" ? styles.userBubble : styles.assistantBubble}`}>
                       {message.fileName && <div className={styles.fileLabel}><Icon name="paperclip" size={14}/>{message.fileName}</div>}
                       <span>{message.content}</span>
-                      <div className={styles.bubbleFooter}><time>{message.time || ""}</time>{message.role === "user" && <span className={styles.checks}>✓✓</span>}</div>
+                      <div className={styles.bubbleFooter}><time>{message.time || ""}</time></div>
                     </div>
                     {message.role === "assistant" && <button type="button" className={styles.listen} title="Read this message aloud" onClick={() => speakMessage(message.content,index)}><Icon name={speakingIndex === index ? "stop" : "volume"} size={15}/>{speakingIndex === index ? "Stop" : "Listen"}</button>}
                   </div>
@@ -326,13 +478,13 @@ export default function Home() {
                 {loading && <div className={styles.messageRow}><span className={styles.messageAvatar}><img src="/koyal-bird.png" alt=""/></span><div className={styles.loadingBubble}><span/><span/><span/> Koyal is thinking...</div></div>}
                 <div ref={bottomRef} />
               </div>
-            </div>
+            </div>}
           </section>
 
-          <div className={styles.bottomArea}>
+          {!profileOpen && <div className={styles.bottomArea}>
             <div className={styles.effortCard}>
               <div className={styles.effortHeading}>Thinking Effort</div>
-              <button className={styles.thinkingLabel} type="button" onClick={() => changeThinking((indexThinking + 1) % thinking.length)} title="Click to change thinking level"><span>{currentThinking.feathers === 0 && thinkingId === "supreme" ? "★" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong><Icon name="chevron" size={14}/></button>
+              <button className={styles.thinkingLabel} type="button" onClick={() => changeThinking((indexThinking + 1) % thinking.length)} title="Click to change thinking level"><span>{selectedPlan === "Supreme" ? "∞" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong><Icon name="chevron" size={14}/></button>
               <div className={styles.sliderOuter}>
                 <div className={styles.sliderTrack}><div className={styles.sliderFilled} style={{ width: `${indexThinking/6*100}%` }}/>{thinking.map((item,index) => <span key={item.id} className={styles.sliderMark} style={{ left: `${index/6*100}%` }}/>)}</div>
                 <div className={styles.birdThumb} style={{ left: `${indexThinking/6*100}%` }}><img src="/koyal-bird.png" alt=""/></div>
@@ -349,12 +501,26 @@ export default function Home() {
                 <button type="submit" className={styles.sendButton} disabled={loading || (!input.trim() && !selectedFile)} title="Send message" aria-label="Send message"><Icon name="send" size={22}/></button>
               </div>
             </form>
-          </div>
+          </div>}
         </section>
       </div>
 
-      {profileOpen && <div className={styles.modalOverlay} onClick={() => setProfileOpen(false)}><div className={styles.modalSmall} role="dialog" aria-modal="true" aria-label="Profile" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>Profile</h2><button onClick={() => setProfileOpen(false)} type="button"><Icon name="x"/></button></div><label className={styles.field}>Name<input value={profileName} onChange={(e) => {setProfileName(e.target.value);localStorage.setItem("koyal-ai-profile-name",e.target.value);}}/></label><p>Current plan: <b>{selectedPlan}</b></p><p>Feather balance: <b>{feathers} 🪶</b></p></div></div>}
-      {subscriptionOpen && <div className={styles.modalOverlay} onClick={() => setSubscriptionOpen(false)}><div className={styles.modal} role="dialog" aria-modal="true" aria-label="Subscription plans" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>KOYAL Plans</h2><button onClick={() => setSubscriptionOpen(false)} type="button"><Icon name="x"/></button></div><p className={styles.demoNotice}>Demo plan selector only. Selecting a plan does not charge money or verify payment.</p><div className={styles.planGrid}>{plans.map((plan) => <div key={plan.name} className={`${styles.planCard} ${selectedPlan === plan.name ? styles.planCurrent : ""}`}><h3>{plan.name}</h3><div className={styles.price}>₹{plan.price}<small>/mo</small></div><p>{plan.description}</p><button type="button" onClick={() => selectPlan(plan.name)}>{selectedPlan === plan.name ? "Selected" : "Select demo plan"}</button></div>)}</div></div></div>}
+      {featherShopOpen && <div className={styles.modalOverlay} onClick={() => setFeatherShopOpen(false)}><div className={styles.featherModal} role="dialog" aria-modal="true" aria-label="Feather store" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}><h2>🪶 Feather Store</h2><button type="button" aria-label="Close feather store" onClick={() => setFeatherShopOpen(false)}><Icon name="x"/></button></div>
+        <p className={styles.featherBalanceLine}>Current balance: <strong>{selectedPlan === "Supreme" ? "∞ Unlimited feathers" : `${feathers.toLocaleString("en-IN")} feathers`}</strong></p>
+        <p className={styles.demoNotice}>Prices are shown in INR. Payment checkout is not connected, so these buttons will not take payment or add feathers.</p>
+        <div className={styles.packGrid}>{FEATHER_PACKS.map((pack) => <div className={styles.pack} key={pack.quantity}>
+          <div className={styles.packCount}>🪶 {pack.quantity.toLocaleString("en-IN")}</div><div className={styles.packPrice}>₹{pack.rupees}</div><small>₹0.50 per feather</small>
+          <button type="button" onClick={() => requestFeatherPurchase(pack.quantity,pack.rupees)}>View purchase</button>
+        </div>)}</div>
+        <div className={styles.customPack}><div><strong>Custom feather amount</strong><p>₹0.50 per feather</p></div>
+          <label>Feathers <input type="number" min="1" max="100000" step="1" value={customFeathers} onChange={(e) => setCustomFeathers(e.target.value)} /></label>
+          <div className={styles.customTotal}>₹{(Math.max(0,Number(customFeathers) || 0) * PRICE_PER_FEATHER).toLocaleString("en-IN",{maximumFractionDigits:2})}</div>
+          <button type="button" onClick={() => requestFeatherPurchase(Number(customFeathers), Number(customFeathers) * PRICE_PER_FEATHER)}>View purchase</button>
+        </div>
+        {purchaseNotice && <div className={styles.purchaseNotice} role="status">{purchaseNotice}</div>}
+      </div></div>}
+      {subscriptionOpen && <div className={styles.modalOverlay} onClick={() => setSubscriptionOpen(false)}><div className={styles.modal} role="dialog" aria-modal="true" aria-label="Subscription plans" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>KOYAL Plans</h2><button onClick={() => setSubscriptionOpen(false)} type="button"><Icon name="x"/></button></div><p className={styles.demoNotice}>Demo plan selector only. Selecting Supreme locally shows unlimited feathers and wings, but does not activate a paid subscription. Production subscriptions require server-side payment verification.</p><div className={styles.planGrid}>{plans.map((plan) => <div key={plan.name} className={`${styles.planCard} ${selectedPlan === plan.name ? styles.planCurrent : ""}`}><h3>{plan.name}</h3><div className={styles.price}>₹{plan.price}<small>/mo</small></div><p>{plan.description}</p><button type="button" onClick={() => selectPlan(plan.name)}>{selectedPlan === plan.name ? "Selected" : "Select demo plan"}</button></div>)}</div></div></div>}
     </main>
   );
 }

@@ -212,3 +212,90 @@
   .characterItem { min-height: 24px; padding-top: 1px; padding-bottom: 1px; }
   .messages { padding-top: 48px; }
 }
+
+/* APPROVED KOYAL PROFILE PANEL — animated Supreme wings */
+.brandTagline { margin-top: 4px; color: #dad0de; font-size: 11px; letter-spacing: .05em; }
+.credits { margin-top: 8px; }
+.sidebarProfile { margin-top: auto; flex-shrink: 0; display: block; width: 100%; border-radius: 15px; border: 1px solid rgba(255,109,164,.24); background: linear-gradient(145deg,rgba(26,20,39,.92),rgba(10,10,20,.98)); padding: 12px 10px; color: #fff; text-align: left; box-shadow: 0 9px 24px rgba(0,0,0,.25); }
+.sidebarProfile:hover { border-color: #fa547d; }
+.sidebarProfileTop { display: flex; align-items: center; gap: 9px; min-height: 69px; }
+.sidebarProfileTop > svg { transform: rotate(-90deg); color: #e7dbea; flex: 0 0 auto; }
+.sidebarProfileName { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.sidebarProfileName strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; }
+.sidebarProfileName small { align-self: flex-start; padding: 3px 7px; font-size: 10px; border: 1px solid #f8346e; border-radius: 24px; background: rgba(134,9,47,.34); color: #ffa8b9; }
+.sidebarProfileStats { border-top: 1px solid rgba(255,255,255,.05); margin-top: 11px; padding-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.sidebarProfileStats span { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 2px 4px; font-size: 15px; align-items: center; }
+.sidebarProfileStats span strong { font-size: 12px; color: #fff; overflow: hidden; text-overflow: ellipsis; }
+.sidebarProfileStats span small { grid-column: 2; color: #b4a8c1; font-size: 9px; }
+/* New avatar: center circle is editable; decorative wings stay behind and always visible. */
+.wingedAvatar { position: relative; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; isolation: isolate; }
+.wingedSmall { width: 79px; height: 72px; margin-left: -14px; margin-right: -7px; }
+.wingedLarge { width: min(100%,390px); height: 275px; margin: 0 auto; }
+.avatarPhotoRing { position: relative; z-index: 3; border: 2px solid #fb3c7c; background: #180919; border-radius: 50%; box-shadow: 0 0 0 3px rgba(249,38,88,.09), 0 0 28px rgba(255,39,93,.34); display: grid; place-items: center; overflow: hidden; }
+.wingedSmall .avatarPhotoRing { width: 59px; height: 59px; }
+.wingedLarge .avatarPhotoRing { width: 244px; height: 244px; border-width: 3px; }
+.avatarPhoto { width: 100%; height: 100%; object-fit: cover; }
+.avatarWing { position: absolute; z-index: 2; top: 50%; pointer-events: none; user-select: none; filter: drop-shadow(0 0 7px rgba(249,30,96,.6)); }
+.wingedSmall .avatarWing { width: 50px; height: 54px; margin-top: -27px; }
+.wingedLarge .avatarWing { width: 132px; height: 138px; margin-top: -71px; }
+.wingLeft { left: -15%; transform-origin: 100% 70%; animation: flapLeft 2.9s ease-in-out infinite; }
+.wingRight { right: -15%; transform-origin: 0% 70%; animation: flapRight 2.9s ease-in-out infinite; }
+.wingedSmall .wingLeft { left: -14%; }
+.wingedSmall .wingRight { right: -14%; }
+/* Wing asset points to the right; mirror it for the right side. */
+@keyframes flapLeft { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(7deg); } }
+@keyframes flapRight { 0%,100% { transform: scaleX(-1) rotate(-6deg); } 50% { transform: scaleX(-1) rotate(7deg); } }
+.profileModal { width: min(1210px,97vw); max-height: 92vh; overflow: auto; color: #fff; background: linear-gradient(125deg, rgba(12,11,22,.98),rgba(22,10,25,.98)); border: 1px solid rgba(248,88,143,.32); border-radius: 23px; padding: 24px 18px 17px; box-shadow: 0 28px 100px rgba(0,0,0,.85), 0 0 55px rgba(159,10,54,.17); }
+.profileHead { display: flex; align-items: flex-start; justify-content: space-between; padding: 0 24px 15px; gap: 15px; }
+.profileHead h2 { margin: 0 0 8px; font-size: 32px; }
+.profileHead p { margin: 0; font-size: 14px; color: #aaa2bd; }
+.profileHeadActions { display: flex; align-items: center; gap: 14px; }
+.editProfileButton,.profileClose,.saveProfileButton { color: #fff; border: 1px solid #fc5288; background: linear-gradient(110deg,rgba(115,10,49,.8),rgba(58,7,53,.9)); border-radius: 13px; padding: 12px 18px; box-shadow: 0 0 16px rgba(248,24,87,.24); }
+.profileClose { width: 49px; height: 49px; padding: 7px; display: grid; place-items: center; }
+.profileBody { border-radius: 20px; border: 1px solid rgba(233,83,143,.2); background: linear-gradient(130deg,rgba(18,10,24,.83),rgba(5,7,15,.75)); display: grid; grid-template-columns: minmax(270px,1fr) minmax(320px,1.1fr); gap: 35px; padding: 30px 29px; }
+.profileVisual { display: flex; align-items: center; flex-direction: column; justify-content: center; min-width: 0; }
+.bigAvatarContainer { position: relative; width: 100%; }
+.cameraButton { position: absolute; z-index: 5; bottom: 8px; right: max(12%,calc(50% - 130px)); width: 46px; height: 46px; border-radius: 50%; border: 1px solid #ff5281; background: #360c24; color: #fff; font-size: 21px; box-shadow: 0 0 14px rgba(255,55,112,.3); }
+.profilePlanBadge { margin-top: 6px; padding: 9px 29px; font-weight: 680; color: #ffe2ec; border: 1px solid #ff3d7c; background: linear-gradient(100deg,#58122b,#1e0927); border-radius: 90px; box-shadow: 0 0 17px rgba(252,32,95,.28); }
+.identityCard { width: min(100%,450px); margin-top: 20px; padding: 23px 24px; border-radius: 17px; border: 1px solid rgba(244,75,133,.37); background: rgba(50,12,30,.38); }
+.identityTitle { font-size: 16px; color: #fce6ee; font-weight: 650; }
+.identityCard p { color: #b8adc4; margin: 12px 0 0; font-size: 13px; line-height: 1.65; }
+.profileFields { display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+.profileFields label { display: grid; gap: 10px; color: #f8eaf3; font-size: 15px; }
+.profileFields label > span { font-size: 16px; }
+.profileFields input,.profileFields select { width: 100%; min-height: 54px; background: #13131e; border: 1px solid rgba(143,147,185,.35); border-radius: 12px; padding: 12px 17px; color: #fff; outline: none; color-scheme: dark; }
+.profileFields input:disabled,.profileFields select:disabled { opacity: 1; color: #f3e9f1; }
+.profileFields input::placeholder { color: #757085; }
+.profileError { color: #ff9db7; font-size: 13px; margin: 0; }
+.saveProfileButton { align-self: flex-start; padding: 12px 25px; }
+.profilePrivacy { color: #9189a2; font-size: 11px; line-height: 1.5; margin: 1px 0 0; }
+.featherModal { width: min(960px,96vw); max-height: 90vh; overflow: auto; padding: 25px; border-radius: 22px; border: 1px solid rgba(251,84,144,.4); background: #13101b; color: #fff; box-shadow: 0 20px 75px #000; }
+.featherBalanceLine { margin: 12px 0; color: #c9bacf; }
+.featherBalanceLine strong { color: #fff; }
+.packGrid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin-top: 16px; }
+.pack { padding: 19px 12px; text-align: center; background: linear-gradient(140deg,rgba(90,17,48,.31),rgba(17,18,31,.93)); border: 1px solid rgba(255,69,134,.32); border-radius: 16px; display: grid; gap: 9px; }
+.packCount { font-size: 20px; font-weight: 760; }
+.packPrice { color: #ff729a; font-size: 27px; font-weight: 730; }
+.pack small { color: #a99daf; }
+.pack button,.customPack button { background: linear-gradient(110deg,#7c1139,#ad2056); border: 1px solid rgba(255,103,151,.7); color: #fff; padding: 10px; border-radius: 11px; }
+.customPack { margin-top: 18px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid rgba(255,72,132,.28); padding: 16px; border-radius: 17px; }
+.customPack > div:first-child { flex: 1; min-width: 180px; }
+.customPack p { margin: 6px 0 0; color: #aa9ab3; font-size: 12px; }
+.customPack label { color: #a99eae; font-size: 12px; display: grid; gap: 5px; }
+.customPack input { width: 145px; border-radius: 10px; padding: 10px; color: white; background: #201729; border: 1px solid rgba(255,255,255,.19); }
+.customTotal { color: #ff82ab; font-weight: 750; font-size: 22px; }
+.purchaseNotice { margin-top: 16px; border-radius: 12px; background: rgba(255,153,42,.06); border: 1px solid rgba(255,153,42,.27); padding: 12px 16px; color: #ffd2a0; font-size: 13px; }
+@media(max-width:900px) { .profileBody { grid-template-columns: 1fr; gap: 18px; } .profileModal { max-height: 96vh; } .profileFields { max-width: 630px; width: 100%; margin: 0 auto; } .packGrid { grid-template-columns: repeat(2,1fr); } }
+@media(max-width:600px) { .profileHead { padding: 0 2px 18px; } .profileHead h2 { font-size: 24px; } .profileHead p { font-size: 11px; } .profileHeadActions { gap: 6px; } .editProfileButton { font-size: 11px!important; padding: 9px!important; } .profileClose { width: 38px; height: 38px; } .profileBody { padding: 15px; } .wingedLarge { height: 206px; } .wingedLarge .avatarPhotoRing { width: 176px; height: 176px; } .wingedLarge .avatarWing { width: 92px; height: 96px; margin-top: -47px; } .identityCard { padding: 14px; } .packGrid { grid-template-columns: repeat(2,1fr); } .packCount { font-size: 15px; } .packPrice { font-size: 22px; } .sidebarProfileStats span small { font-size: 9px; } }
+@media(prefers-reduced-motion: reduce) { .avatarWing { animation: none !important; } }
+/* Profile is a page within the chat area, not a popup obscuring the header/sidebar. */
+.chatSpace > .profileModal { position: relative; z-index: 2; width: min(1180px,calc(100% - 52px)); max-height: calc(100% - 44px); margin: 22px auto; padding: 21px 16px 15px; align-self: flex-start; box-shadow: 0 17px 75px rgba(0,0,0,.6),0 0 28px rgba(159,10,54,.15); }
+@media(max-width:700px){ .chatSpace > .profileModal { width: calc(100% - 16px); max-height: calc(100% - 12px); margin: 6px auto; padding: 14px 10px; } }
+
+/* Defensive sizing: keep artwork and controls within the chat layout. */
+.app .chatSpace img { max-width: 100%; }
+.app .sceneBackdrop { background-repeat: no-repeat; }
+.app .messages img { max-width: 60px; max-height: 60px; }
+.app .birdThumb img { max-width: 46px; max-height: 45px; }
+.app .bottomArea { position: relative; min-width: 0; }
+.app .composer { width: 100%; max-width: 100%; }
