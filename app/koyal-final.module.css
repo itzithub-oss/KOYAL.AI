@@ -299,3 +299,33 @@
 .app .birdThumb img { max-width: 46px; max-height: 45px; }
 .app .bottomArea { position: relative; min-width: 0; }
 .app .composer { width: 100%; max-width: 100%; }
+
+/* Cross-device viewport and touch layout improvements */
+.app { width: 100%; height: 100dvh; min-height: 0; }
+.layout, .mainPanel, .chatSpace, .messages { min-width: 0; min-height: 0; }
+.app textarea, .app input, .app select { max-width: 100%; }
+@media (max-width: 700px) {
+  .app { height: 100dvh; overflow: hidden; }
+  .layout { height: 100%; min-height: 0; }
+  .mainPanel { height: 100%; min-height: 0; width: 100%; }
+  .sidebar { height: 100dvh; padding-bottom: max(16px,env(safe-area-inset-bottom)); }
+  .topbar { flex-shrink: 0; padding-top: max(8px,env(safe-area-inset-top)); }
+  .mobileMenuButton { top: max(16px,env(safe-area-inset-top)); }
+  .bottomArea { padding-bottom: max(10px,env(safe-area-inset-bottom)); flex-shrink: 0; }
+  .messages { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .composer textarea, .profileFields input, .profileFields select, .field input { font-size: 16px; }
+  .profileModal { max-width: 100%; }
+  .profileHead, .profileHeadActions { flex-wrap: wrap; }
+  .profileBody { grid-template-columns: minmax(0,1fr); }
+  .planGrid { grid-template-columns: repeat(auto-fit,minmax(min(140px,100%),1fr)); }
+}
+@media (max-width: 380px) {
+  .headerText strong { font-size: 15px; }
+  .headerText small { display: none; }
+  .headerAvatar { width: 34px; height: 34px; flex-basis: 34px; }
+  .topActions { gap: 2px; }
+  .roundTop { width: 29px; height: 29px; }
+  .effortCard { flex-wrap: wrap; }
+  .packGrid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 7px; }
+  .profileHead h2 { font-size: 20px; }
+}
