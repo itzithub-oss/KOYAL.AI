@@ -27,10 +27,10 @@ test("rejects unsafe schemes, credentials, local hosts, IP literals and unusual 
 test("extracts only successful safe URL-context retrievals", () => {
   assert.deepEqual(extractUrlContextSources({
     urlMetadata: [
-      { urlRetrievalStatus: "SUCCESS", retrievedUrl: "https://example.com/page", title: "Example page" },
+      { urlRetrievalStatus: "URL_RETRIEVAL_STATUS_SUCCESS", retrievedUrl: "https://example.com/page", title: "Example page" },
       { urlRetrievalStatus: "URL_RETRIEVAL_STATUS_UNSAFE", retrievedUrl: "https://unsafe.example/" },
-      { urlRetrievalStatus: "SUCCESS", retrievedUrl: "javascript:alert(1)" },
-      { urlRetrievalStatus: "SUCCESS", retrievedUrl: "https://example.com/page", title: "Duplicate" },
+      { urlRetrievalStatus: "URL_RETRIEVAL_STATUS_SUCCESS", retrievedUrl: "javascript:alert(1)" },
+      { urlRetrievalStatus: "URL_RETRIEVAL_STATUS_SUCCESS", retrievedUrl: "https://example.com/page", title: "Duplicate" },
     ],
   }), [{ title: "Example page", url: "https://example.com/page" }]);
 });
