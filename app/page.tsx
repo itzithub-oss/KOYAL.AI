@@ -134,6 +134,8 @@ export default function Home() {
   const [memoryError, setMemoryError] = useState("");
   const [pendingMemorySuggestion, setPendingMemorySuggestion] = useState("");
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [urlReaderEnabled, setUrlReaderEnabled] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [featherShopOpen, setFeatherShopOpen] = useState(false);
@@ -367,9 +369,9 @@ export default function Home() {
     event.preventDefault();
     if (loading) return;
     const text = input.trim();
-    if (!text && !selectedFile) return;
+    if (!text && !selectedFile && !(urlReaderEnabled && urlInput.trim())) return;
     if (featherCost > feathers) { openFeatherShop(); return; }
-    const message = text || `I attached a file named ${selectedFile?.name}.`;
+    const message = text || (urlReaderEnabled ? "Please summarize this webpage." : `I attached a file named ${selectedFile?.name}.`);
     setMessages((old) => [...old, { role: "user", content: message, fileName: selectedFile?.name, time: timestamp() }]);
     setInput("");
     setSelectedFile(null);
@@ -402,6 +404,7 @@ export default function Home() {
           preciseMode,
           philosophicalMode,
           webSearch: webSearchEnabled,
+          urlContextUrl: urlReaderEnabled ? urlInput.trim() : undefined,
         }),
       });
       const data: ChatApiResponse = await response.json();
@@ -590,14 +593,21 @@ export default function Home() {
                   <Icon name="search" size={15}/> Web Search {webSearchEnabled ? "On" : "Off"}
                 </button>
                 {webSearchEnabled && <small style={{ opacity: .7 }}>Searches current web sources. Uses Gemini online.</small>}
+                <button type="button" aria-pressed={urlReaderEnabled} onClick={() => setUrlReaderEnabled((enabled) => !enabled)} style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 999, padding: "7px 12px", border: urlReaderEnabled ? "1px solid rgba(255,71,109,.8)" : "1px solid var(--border, rgba(150,150,150,.3))", background: urlReaderEnabled ? "rgba(255,71,109,.13)" : "transparent", color: "inherit", fontSize: 12, cursor: "pointer" }}>
+                  ↗ Read URL {urlReaderEnabled ? "On" : "Off"}
+                </button>
+                {urlReaderEnabled && <small style={{ opacity: .7 }}>Paste a public webpage link. Uses Gemini URL Context.</small>}
               </div>
+              {urlReaderEnabled && <div style={{ padding: "0 12px 10px" }}>
+                <input type="url" aria-label="Webpage URL to read" value={urlInput} onChange={(event) => setUrlInput(event.target.value)} placeholder="https://example.com/article" maxLength={2048} required style={{ width: "100%", minWidth: 0, borderRadius: 12, border: "1px solid var(--border, rgba(150,150,150,.3))", padding: "11px 13px", background: "transparent", color: "inherit", font: "inherit", fontSize: 13 }} />
+              </div>}
               {selectedFile && <div className={styles.attachment}><Icon name="paperclip" size={16}/>{selectedFile.name}<button type="button" aria-label="Remove attachment" onClick={() => {setSelectedFile(null);if(fileInput.current)fileInput.current.value="";}}><Icon name="x" size={14}/></button></div>}
               <div className={styles.composerRow}>
                 <input ref={fileInput} type="file" hidden onChange={handleFile}/>
                 <button type="button" className={styles.attachmentButton} title="Attach a file (file name only)" aria-label="Attach a file" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
                 <textarea value={input} placeholder={teacherMode ? `Ask your Class ${teacherClass} ${teacherSubject} teacher...` : characterMode !== "normal" ? `Message ${currentCharacter.name}...` : "Message Koyal..."} rows={1} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
                 <div className={styles.voiceButton}><VoiceMode subscriptionPlan={selectedPlan}/></div>
-                <button type="submit" className={styles.sendButton} disabled={loading || (!input.trim() && !selectedFile)} title="Send message" aria-label="Send message"><Icon name="send" size={22}/></button>
+                <button type="submit" className={styles.sendButton} disabled={loading || (!input.trim() && !selectedFile && !(urlReaderEnabled && urlInput.trim()))} title="Send message" aria-label="Send message"><Icon name="send" size={22}/></button>
               </div>
             </form>
           </div>}
