@@ -5,7 +5,7 @@ import VoiceMode from "./components/VoiceMode";
 import BootScreen from "./components/BootScreen";
 import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
-import { addMemory, buildMemoryContext, deleteMemory, loadMemories, type KoyalMemory } from "../lib/koyal-memory.mjs";
+import { addMemory, buildMemoryContext, deleteMemory, loadMemories, suggestMemoryFromMessage, type KoyalMemory } from "../lib/koyal-memory.mjs";
 
 type Message = {
   role: "user" | "assistant";
@@ -131,6 +131,7 @@ export default function Home() {
   const [memories, setMemories] = useState<KoyalMemory[]>([]);
   const [memoryDraft, setMemoryDraft] = useState("");
   const [memoryError, setMemoryError] = useState("");
+  const [pendingMemorySuggestion, setPendingMemorySuggestion] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [featherShopOpen, setFeatherShopOpen] = useState(false);
@@ -212,6 +213,7 @@ export default function Home() {
 
   function resetChat() {
     setMessages([{ ...WELCOME, time: timestamp() }]);
+    setPendingMemorySuggestion("");
     setInput("");
     setSelectedFile(null);
     setSearch("");
@@ -252,6 +254,17 @@ export default function Home() {
       const next = addMemory(localStorage, memories, memoryDraft);
       setMemories(next);
       setMemoryDraft("");
+      setMemoryError("");
+    } catch (error) {
+      setMemoryError(error instanceof Error ? error.message : "Could not save this memory.");
+    }
+  }
+  function saveSuggestedMemory() {
+    if (!pendingMemorySuggestion) return;
+    try {
+      const next = addMemory(localStorage, memories, pendingMemorySuggestion);
+      setMemories(next);
+      setPendingMemorySuggestion("");
       setMemoryError("");
     } catch (error) {
       setMemoryError(error instanceof Error ? error.message : "Could not save this memory.");
@@ -391,12 +404,14 @@ export default function Home() {
       const data: ChatApiResponse = await response.json();
       if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(ERROR_REPLY);
       setMessages((old) => [...old, { role: "assistant", content: data.reply || ERROR_REPLY, time: timestamp() }]);
+      setPendingMemorySuggestion(suggestMemoryFromMessage(text, memories));
       if (featherCost > 0) setFeathers((old) => {
         const value = Math.max(0, old - featherCost);
         localStorage.setItem("koyal-ai-feather-balance", String(value));
         return value;
       });
     } catch {
+      setPendingMemorySuggestion("");
       setMessages((old) => [...old, { role: "assistant", content: ERROR_REPLY, time: timestamp() }]);
     } finally { setLoading(false); }
   }
@@ -539,6 +554,15 @@ export default function Home() {
                   {message.role === "user" && <span className={`${styles.messageAvatar} ${styles.userAvatar}`}><Icon name="user" size={23}/></span>}
                 </div>)}
                 {loading && <div className={styles.messageRow}><span className={styles.messageAvatar}><img src="/koyal-bird.png" alt=""/></span><div className={styles.loadingBubble}><span/><span/><span/> Koyal is thinking...</div></div>}
+                {pendingMemorySuggestion && !loading && <div role="status" aria-live="polite" style={{ margin: "12px 42px 16px", padding: "14px 16px", border: "1px solid rgba(255,71,109,.38)", borderRadius: 16, background: "rgba(255,71,109,.08)", maxWidth: 520 }}>
+                  <strong style={{ display: "block", marginBottom: 6 }}>Should I remember this?</strong>
+                  <p style={{ margin: "0 0 12px", overflowWrap: "anywhere" }}>{pendingMemorySuggestion}</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    <button type="button" className={styles.saveProfileButton} onClick={saveSuggestedMemory}>Yes, remember</button>
+                    <button type="button" className={styles.editProfileButton} onClick={() => setPendingMemorySuggestion("")}>Not now</button>
+                  </div>
+                  <small style={{ display: "block", marginTop: 8, opacity: .75 }}>Nothing is saved unless you choose “Yes, remember”.</small>
+                </div>}
                 <div ref={bottomRef} />
               </div>
             </div>}
