@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   MEMORY_STORAGE_KEY, MAX_MEMORIES, MAX_MEMORY_LENGTH,
   addMemory, buildMemoryContext, createMemory, deleteMemory,
-  loadMemories, normalizeMemories, saveMemories,
+  loadMemories, normalizeMemories, saveMemories, suggestMemoryFromMessage,
 } from "../lib/koyal-memory.mjs";
 
 function memoryStorage() {
@@ -64,4 +64,19 @@ test("storage failures are handled safely", () => {
   const broken = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("full"); } };
   assert.deepEqual(loadMemories(broken), []);
   assert.equal(saveMemories(broken, []), false);
+});
+
+
+test("suggests only clearly phrased, low-risk memories without saving them", () => {
+  assert.equal(suggestMemoryFromMessage("I prefer short explanations with examples."), "User prefers short explanations with examples");
+  assert.equal(suggestMemoryFromMessage("My goal is to become an IAS officer."), "User's goal is to become an IAS officer");
+  assert.equal(suggestMemoryFromMessage("Remember that I enjoy football."), "I enjoy football");
+  assert.equal(suggestMemoryFromMessage("What is the capital of India?"), "");
+  assert.equal(suggestMemoryFromMessage("I prefer using email address demo@example.com"), "");
+  assert.equal(suggestMemoryFromMessage("Remember my password is abc123"), "");
+});
+
+test("does not suggest a memory that is already saved", () => {
+  const saved = [{ id: "existing", text: "User prefers short explanations with examples", createdAt: 1 }];
+  assert.equal(suggestMemoryFromMessage("I prefer short explanations with examples.", saved), "");
 });
