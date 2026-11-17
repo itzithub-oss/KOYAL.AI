@@ -115,6 +115,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
   const [feathers, setFeathers] = useState(2480);
   const [thinkingId, setThinkingId] = useState<ThinkingEffort>("high");
@@ -237,7 +238,22 @@ export default function Home() {
     setThinkingId(option.id);
   }
   function handleFile(event: ChangeEvent<HTMLInputElement>) {
-    setSelectedFile(event.target.files?.[0] || null);
+    const file = event.target.files?.[0] || null;
+    setFileError("");
+    if (!file) { setSelectedFile(null); return; }
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setSelectedFile(null);
+      setFileError("Please choose a PDF file.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size <= 0 || file.size > 8 * 1024 * 1024) {
+      setSelectedFile(null);
+      setFileError("PDF files must be between 1 byte and 8 MB.");
+      event.target.value = "";
+      return;
+    }
+    setSelectedFile(file);
   }
   function openProfile() {
     setDraftProfile({ ...profile });
@@ -369,10 +385,11 @@ export default function Home() {
     event.preventDefault();
     if (loading) return;
     const text = input.trim();
-    if (!text && !selectedFile && !(urlReaderEnabled && urlInput.trim())) return;
+    const attachment = selectedFile;
+    if (!text && !attachment && !(urlReaderEnabled && urlInput.trim())) return;
     if (featherCost > feathers) { openFeatherShop(); return; }
-    const message = text || (urlReaderEnabled ? "Please summarize this webpage." : `I attached a file named ${selectedFile?.name}.`);
-    setMessages((old) => [...old, { role: "user", content: message, fileName: selectedFile?.name, time: timestamp() }]);
+    const message = text || (attachment ? "Please summarize the attached PDF." : urlReaderEnabled ? "Please summarize this webpage." : "Please help me with this attachment.");
+    setMessages((old) => [...old, { role: "user", content: message, fileName: attachment?.name, time: timestamp() }]);
     setInput("");
     setSelectedFile(null);
     if (fileInput.current) fileInput.current.value = "";
@@ -385,12 +402,8 @@ export default function Home() {
         teacherMode ? `Teacher mode: Class ${teacherClass}, ${teacherSubject}.` : "",
         philosophicalMode ? "Philosophical mode: provide thoughtful reasoning." : "",
         buildMemoryContext(memories),
-        selectedFile ? "" : "",
       ].filter(Boolean).join(" ");
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const requestPayload = {
           message: `${message}\n\n${systemDetails}${selectedFile ? `\nThe attached file is named ${selectedFile.name}; its contents have not been sent. Be transparent that you cannot read it.` : ""}`,
           mode: teacherMode ? "Teacher" : philosophicalMode ? "Philosophical" : preciseMode ? "Precise" : "Normal",
           thinkingLevel: currentThinking.name,
@@ -405,7 +418,24 @@ export default function Home() {
           philosophicalMode,
           webSearch: webSearchEnabled,
           urlContextUrl: urlReaderEnabled ? urlInput.trim() : undefined,
-        }),
+        };
+      let requestBody: BodyInit;
+      let requestHeaders: HeadersInit | undefined;
+      if (attachment) {
+        const formData = new FormData();
+        for (const [key, value] of Object.entries(requestPayload)) {
+          if (value !== undefined && value !== null) formData.append(key, String(value));
+        }
+        formData.append("file", attachment);
+        requestBody = formData;
+      } else {
+        requestHeaders = { "Content-Type": "application/json" };
+        requestBody = JSON.stringify(requestPayload);
+      }
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: requestHeaders,
+        body: requestBody,
       });
       const data: ChatApiResponse = await response.json();
       if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(ERROR_REPLY);
@@ -601,10 +631,11 @@ export default function Home() {
               {urlReaderEnabled && <div style={{ padding: "0 12px 10px" }}>
                 <input type="url" aria-label="Webpage URL to read" value={urlInput} onChange={(event) => setUrlInput(event.target.value)} placeholder="https://example.com/article" maxLength={2048} required style={{ width: "100%", minWidth: 0, borderRadius: 12, border: "1px solid var(--border, rgba(150,150,150,.3))", padding: "11px 13px", background: "transparent", color: "inherit", font: "inherit", fontSize: 13 }} />
               </div>}
-              {selectedFile && <div className={styles.attachment}><Icon name="paperclip" size={16}/>{selectedFile.name}<button type="button" aria-label="Remove attachment" onClick={() => {setSelectedFile(null);if(fileInput.current)fileInput.current.value="";}}><Icon name="x" size={14}/></button></div>}
+              {fileError && <p role="alert" style={{ margin: "0 12px 8px", color: "#ff647c", fontSize: 12 }}>{fileError}</p>}
+              {selectedFile && <div className={styles.attachment}><Icon name="paperclip" size={16}/>{selectedFile.name}<small style={{ opacity: .7 }}>PDF text will be sent to your AI provider for analysis</small><button type="button" aria-label="Remove attachment" onClick={() => {setSelectedFile(null);setFileError("");if(fileInput.current)fileInput.current.value="";}}><Icon name="x" size={14}/></button></div>}
               <div className={styles.composerRow}>
-                <input ref={fileInput} type="file" hidden onChange={handleFile}/>
-                <button type="button" className={styles.attachmentButton} title="Attach a file (file name only)" aria-label="Attach a file" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
+                <input ref={fileInput} type="file" accept="application/pdf,.pdf" hidden onChange={handleFile}/>
+                <button type="button" className={styles.attachmentButton} title="Attach a PDF (up to 8 MB and 30 pages)" aria-label="Attach a PDF" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
                 <textarea value={input} placeholder={teacherMode ? `Ask your Class ${teacherClass} ${teacherSubject} teacher...` : characterMode !== "normal" ? `Message ${currentCharacter.name}...` : "Message Koyal..."} rows={1} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
                 <div className={styles.voiceButton}><VoiceMode subscriptionPlan={selectedPlan}/></div>
                 <button type="submit" className={styles.sendButton} disabled={loading || (!input.trim() && !selectedFile && !(urlReaderEnabled && urlInput.trim()))} title="Send message" aria-label="Send message"><Icon name="send" size={22}/></button>
