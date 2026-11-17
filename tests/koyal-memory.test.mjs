@@ -4,7 +4,7 @@ import {
   MEMORY_STORAGE_KEY, MAX_MEMORIES, MAX_MEMORY_LENGTH,
   addMemory, buildMemoryContext, createMemory, deleteMemory,
   loadMemories, normalizeMemories, saveMemories,
-} from "../lib/koyal-memory.js";
+} from "../lib/koyal-memory.mjs";
 
 function memoryStorage() {
   const values = new Map();
