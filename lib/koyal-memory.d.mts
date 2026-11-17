@@ -10,3 +10,5 @@ export function createMemory(text: string, options?: { id?: string; createdAt?: 
 export function addMemory(storage: Pick<Storage, "setItem">, memories: unknown, text: string, options?: { id?: string; createdAt?: number }): KoyalMemory[];
 export function deleteMemory(storage: Pick<Storage, "setItem">, memories: unknown, id: string): KoyalMemory[];
 export function buildMemoryContext(memories: unknown): string;
+
+export function suggestMemoryFromMessage(message: unknown, memories?: unknown): string;
