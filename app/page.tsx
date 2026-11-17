@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import VoiceMode from "./components/VoiceMode";
+import BootScreen from "./components/BootScreen";
 import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
 
@@ -106,6 +107,7 @@ function timestamp() {
 }
 
 export default function Home() {
+  const [booting, setBooting] = useState(true);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -179,6 +181,8 @@ export default function Home() {
       // Ignore invalid local data and keep defaults.
     }
     loadedRef.current = true;
+    const bootTimer = window.setTimeout(() => setBooting(false), 1900);
+    return () => window.clearTimeout(bootTimer);
   }, []);
   useEffect(() => {
     if (loadedRef.current) localStorage.setItem("koyal-ai-chat", JSON.stringify(messages));
@@ -366,6 +370,7 @@ export default function Home() {
 
   return (
     <main className={`${styles.app} ${lightMode ? styles.light : ""}`}>
+      {booting && <BootScreen />}
       <div className={styles.layout}>
         <button type="button" aria-label="Open navigation" className={styles.mobileMenuButton} onClick={() => setMobileNav(true)}><Icon name="menu"/></button>
         {mobileNav && <button type="button" aria-label="Close menu" className={styles.mobileDimmer} onClick={closeSidebar}/>}
