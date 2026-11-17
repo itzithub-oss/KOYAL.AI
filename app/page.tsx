@@ -12,6 +12,7 @@ type Message = {
   content: string;
   fileName?: string;
   time?: string;
+  sources?: { title: string; url: string }[];
 };
 type PlanName = "Just" | "Let It" | "Care" | "Elite" | "Supreme";
 type CharacterMode =
@@ -19,7 +20,7 @@ type CharacterMode =
   | "school-female-friend" | "business-partner" | "enemy";
 type ThinkingEffort =
   | "just" | "let-it" | "care" | "high" | "ultra-high" | "elite" | "supreme";
-type ChatApiResponse = { reply?: string; error?: string };
+type ChatApiResponse = { reply?: string; error?: string; sources?: { title: string; url: string }[] };
 type Profile = { name: string; gender: string; phone: string; dob: string; photo: string };
 const EMPTY_PROFILE: Profile = { name: "", gender: "", phone: "", dob: "", photo: "" };
 type FeatherPack = { quantity: number; rupees: number };
@@ -132,6 +133,7 @@ export default function Home() {
   const [memoryDraft, setMemoryDraft] = useState("");
   const [memoryError, setMemoryError] = useState("");
   const [pendingMemorySuggestion, setPendingMemorySuggestion] = useState("");
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [featherShopOpen, setFeatherShopOpen] = useState(false);
@@ -399,11 +401,12 @@ export default function Home() {
           teacherSubject,
           preciseMode,
           philosophicalMode,
+          webSearch: webSearchEnabled,
         }),
       });
       const data: ChatApiResponse = await response.json();
       if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(ERROR_REPLY);
-      setMessages((old) => [...old, { role: "assistant", content: data.reply || ERROR_REPLY, time: timestamp() }]);
+      setMessages((old) => [...old, { role: "assistant", content: data.reply || ERROR_REPLY, time: timestamp(), sources: Array.isArray(data.sources) ? data.sources : [] }]);
       setPendingMemorySuggestion(suggestMemoryFromMessage(text, memories));
       if (featherCost > 0) setFeathers((old) => {
         const value = Math.max(0, old - featherCost);
@@ -549,6 +552,9 @@ export default function Home() {
                       <span>{message.content}</span>
                       <div className={styles.bubbleFooter}><time>{message.time || ""}</time></div>
                     </div>
+                    {message.role === "assistant" && Boolean(message.sources?.length) && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "8px 4px 4px" }} aria-label="Web sources">
+                      {message.sources?.filter((source) => /^https?:\/\//i.test(source.url)).map((source, sourceIndex) => <a key={source.url + sourceIndex} href={source.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", maxWidth: "100%", padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,71,109,.3)", color: "inherit", fontSize: 12, textDecoration: "none", overflowWrap: "anywhere" }}>{source.title || "Source"} ↗</a>)}
+                    </div>}
                     {message.role === "assistant" && <button type="button" className={styles.listen} title="Read this message aloud" onClick={() => speakMessage(message.content,index)}><Icon name={speakingIndex === index ? "stop" : "volume"} size={15}/>{speakingIndex === index ? "Stop" : "Listen"}</button>}
                   </div>
                   {message.role === "user" && <span className={`${styles.messageAvatar} ${styles.userAvatar}`}><Icon name="user" size={23}/></span>}
@@ -579,6 +585,12 @@ export default function Home() {
               </div>
             </div>
             <form className={styles.composer} onSubmit={sendMessage}>
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "0 12px 8px" }}>
+                <button type="button" aria-pressed={webSearchEnabled} onClick={() => setWebSearchEnabled((enabled) => !enabled)} style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 999, padding: "7px 12px", border: webSearchEnabled ? "1px solid rgba(255,71,109,.8)" : "1px solid var(--border, rgba(150,150,150,.3))", background: webSearchEnabled ? "rgba(255,71,109,.13)" : "transparent", color: "inherit", fontSize: 12, cursor: "pointer" }}>
+                  <Icon name="search" size={15}/> Web Search {webSearchEnabled ? "On" : "Off"}
+                </button>
+                {webSearchEnabled && <small style={{ opacity: .7 }}>Searches current web sources. Uses Gemini online.</small>}
+              </div>
               {selectedFile && <div className={styles.attachment}><Icon name="paperclip" size={16}/>{selectedFile.name}<button type="button" aria-label="Remove attachment" onClick={() => {setSelectedFile(null);if(fileInput.current)fileInput.current.value="";}}><Icon name="x" size={14}/></button></div>}
               <div className={styles.composerRow}>
                 <input ref={fileInput} type="file" hidden onChange={handleFile}/>
