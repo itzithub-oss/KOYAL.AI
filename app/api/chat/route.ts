@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { extractWebSources, type KoyalWebSource } from "../../../lib/koyal-web-sources.mjs";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,7 @@ type ChatBody = {
   name?: string;
   characterMode?: string;
   philosophicalMode?: boolean;
+  webSearch?: boolean;
   preciseMode?: boolean;
   teacherMode?: boolean;
   teacherClass?: string;
@@ -344,7 +346,7 @@ function getGeminiApiKey() {
 async function askGemini(
   conversation: ChatMessage[],
   body: ChatBody
-) {
+): Promise<{ reply: string; sources: KoyalWebSource[] }> {
   const apiKey = getGeminiApiKey();
 
   if (!apiKey) {
@@ -357,6 +359,7 @@ async function askGemini(
     model: GEMINI_MODEL,
     config: {
       systemInstruction: buildSystemPrompt(body),
+      ...(body.webSearch ? { tools: [{ googleSearch: {} }] } : {}),
     },
     contents: conversation.map((message) => ({
       role: message.role === "assistant" ? "model" : "user",
@@ -370,7 +373,11 @@ async function askGemini(
     throw new Error("Gemini returned an empty response.");
   }
 
-  return reply;
+  const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+  return {
+    reply,
+    sources: body.webSearch ? extractWebSources(groundingMetadata) : [],
+  };
 }
 
 async function askOllama(
@@ -464,6 +471,7 @@ async function readBody(request: NextRequest): Promise<ChatBody> {
       name: text("name"),
       characterMode: text("characterMode"),
       philosophicalMode: text("philosophicalMode") === "true",
+      webSearch: text("webSearch") === "true",
       preciseMode: text("preciseMode") === "true",
       teacherMode: text("teacherMode") === "true",
       teacherClass: text("teacherClass"),
@@ -495,7 +503,7 @@ async function readBody(request: NextRequest): Promise<ChatBody> {
     }
   }
   const normalized = { ...data } as ChatBody;
-  for (const key of ["voiceMode", "philosophicalMode", "preciseMode", "teacherMode"] as const) {
+  for (const key of ["voiceMode", "philosophicalMode", "preciseMode", "teacherMode", "webSearch"] as const) {
     normalized[key] = data[key] === true || data[key] === "true";
   }
   return normalized;
@@ -525,12 +533,15 @@ export async function POST(request: NextRequest) {
     const conversation = buildConversation(message, body);
 
     let reply: string;
+    let sources: KoyalWebSource[] = [];
     let providerUsed: string;
     let modelUsed: string;
 
-    if (process.env.VERCEL === "1" || supreme) {
-      reply = await askGemini(conversation, body);
-      providerUsed = supreme ? "Gemini Supreme" : "Gemini Online";
+    if (process.env.VERCEL === "1" || supreme || body.webSearch) {
+      const result = await askGemini(conversation, body);
+      reply = result.reply;
+      sources = result.sources;
+      providerUsed = supreme ? "Gemini Supreme" : body.webSearch ? "Gemini Web Search" : "Gemini Online";
       modelUsed = GEMINI_MODEL;
     } else {
       reply = await askOllama(conversation, body);
@@ -543,6 +554,8 @@ export async function POST(request: NextRequest) {
       planUsed: plan,
       providerUsed,
       modelUsed,
+      sources,
+      webSearchUsed: Boolean(body.webSearch && sources.length),
       characterUsed: resolveCharacter(body.characterMode),
     });
   } catch (error: unknown) {
