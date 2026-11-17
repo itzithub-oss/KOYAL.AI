@@ -1,10 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import styles from "./BootScreen.module.css";
 
 export default function BootScreen() {
+  const [leaving, setLeaving] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setLeaving(true), 1450);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
-    <div className={styles.screen} role="status" aria-label="KOYAL AI is starting">
+    <div className={`${styles.screen} ${leaving ? styles.leaving : ""}`} role="status" aria-label="KOYAL AI is starting">
       <div className={styles.ambient} />
       <div className={styles.content}>
         <div className={styles.orbit}>
