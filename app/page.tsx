@@ -197,17 +197,18 @@ export default function Home() {
   }, [messages]);
   useEffect(() => () => { if (typeof window !== "undefined") window.speechSynthesis?.cancel(); }, []);
   useEffect(() => {
-    if (!profileOpen && !subscriptionOpen && !featherShopOpen) return;
+    if (!profileOpen && !memoryOpen && !subscriptionOpen && !featherShopOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setProfileOpen(false);
+        setMemoryOpen(false);
         setSubscriptionOpen(false);
         setFeatherShopOpen(false);
       }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [profileOpen, subscriptionOpen, featherShopOpen]);
+  }, [profileOpen, memoryOpen, subscriptionOpen, featherShopOpen]);
 
   function resetChat() {
     setMessages([{ ...WELCOME, time: timestamp() }]);
