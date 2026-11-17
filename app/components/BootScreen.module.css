@@ -1,200 +1,119 @@
 .screen {
-  position: fixed;
-  inset: 0;
-  z-index: 20000;
-  display: grid;
-  place-items: center;
+  position: fixed; inset: 0; z-index: 20000; overflow: hidden; isolation: isolate;
+  background: #090a16; color: #fff; opacity: 1;
+  animation: sceneFadeIn .8s ease both;
+}
+.leaving { opacity: 0; pointer-events: none; transition: opacity 1.1s ease; }
+.sky {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,#090d26 0%,#26345b 46%,#b56c61 78%,#f0a879 100%);
+  animation: skyTravel 12.6s ease-in-out both;
+}
+.building {
+  position: absolute; z-index: 2; left: 50%; bottom: -4%; width: min(72vw,760px); height: 84%;
+  transform: translateX(-50%); border: 2px solid rgba(255,224,191,.15);
+  border-bottom: 0; border-radius: 8px 8px 0 0;
+  background: linear-gradient(90deg,#171927,#343044 48%,#171927);
+  box-shadow: 0 0 90px #090b1c, inset 0 0 55px #090b1c;
+  animation: buildingAway 12.6s ease-in-out both;
+}
+.buildingTop {
+  position: absolute; top: 8%; width: 100%; text-align: center; color: #d7b4a4;
+  font: 600 10px/1 sans-serif; letter-spacing: .65em; opacity: .6;
+}
+.buildingWindow {
+  position: absolute; left: 50%; top: 19%; width: min(31vw,270px); height: min(48vh,390px);
+  transform: translateX(-50%); border: 9px solid #211b29; border-radius: 5px;
+  background: #ffbd83; box-shadow: 0 0 70px 20px rgba(255,153,95,.38);
   overflow: hidden;
-  isolation: isolate;
-  color: #fff;
-  background:
-    radial-gradient(ellipse at 50% 42%, rgba(104, 13, 42, .34), transparent 34%),
-    radial-gradient(ellipse at 15% 90%, rgba(75, 8, 38, .28), transparent 42%),
-    #07050b;
-  animation: screenIn .45s ease both;
-  transition: opacity .45s ease;
 }
-
- .leaving {
-  opacity: 0;
-  pointer-events: none;
+.room {
+  position: absolute; inset: 0; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 65%,#ffd7a5 0%,#c77c65 48%,#533e55 100%);
 }
-
-.ambient {
-  position: absolute;
-  inset: -25%;
-  z-index: -1;
-  background: conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255, 48, 99, .055) 65deg, transparent 135deg, rgba(116, 27, 84, .06) 220deg, transparent 300deg);
-  filter: blur(38px);
-  animation: ambientTurn 22s linear infinite;
+.curtainLeft,.curtainRight {
+  position:absolute;top:0;bottom:0;width:19%;background:linear-gradient(90deg,#321c32,#7b3949,#351d32);
+  box-shadow: inset -8px 0 14px #1a1325;
 }
-
-.content {
-  width: min(88vw, 440px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  transform: translateY(-1.5vh);
+.curtainLeft {left:0}.curtainRight {right:0;transform:scaleX(-1)}
+.man {position:absolute;left:37%;bottom:0;width:32%;height:78%;z-index:2}
+.manHead {position:absolute;top:5%;left:28%;width:44%;aspect-ratio:1;border-radius:50%;background:#171522;box-shadow:inset -5px -3px 0 #352638}
+.manBody {position:absolute;left:9%;bottom:-8%;width:83%;height:69%;border-radius:45% 45% 0 0;background:linear-gradient(90deg,#141522,#302436,#11121f)}
+.manArm {position:absolute;z-index:3;right:-35%;top:48%;width:67%;height:12%;border-radius:99px;background:#a96d5c;transform:rotate(-13deg);transform-origin:left center}
+.hand {position:absolute;z-index:4;left:58%;top:49%;width:25%;height:7%;border-radius:50%;background:#e0a080;transform:rotate(-9deg)}
+.handBird {position:absolute;z-index:5;left:58%;top:30%;width:27%;height:27%;object-fit:contain;filter:drop-shadow(0 5px 7px #301624);animation:handBirdGlow 2.8s ease-in-out both}
+.kiss {position:absolute;z-index:6;left:54%;top:33%;width:12px;height:12px;border-radius:50%;background:#ffe1b5;box-shadow:0 0 22px 9px #ffe1b5;opacity:0;animation:kiss 12.6s ease both}
+.windowCrossV,.windowCrossH {position:absolute;z-index:8;background:#211b29;box-shadow:0 0 5px #100d18}
+.windowCrossV {left:50%;top:0;bottom:0;width:7px;transform:translateX(-50%)}
+.windowCrossH {left:0;right:0;top:55%;height:7px}
+.windowGlow {position:absolute;left:50%;top:18%;width:35vw;height:50vh;transform:translateX(-50%);background:#ffad77;filter:blur(85px);opacity:.22}
+.outdoor {position:absolute;inset:0;z-index:1;opacity:0;animation:outdoorReveal 12.6s ease both}
+.moon {position:absolute;right:17%;top:12%;width:54px;height:54px;border-radius:50%;background:#ffe7c2;box-shadow:0 0 48px #ffd7a0}
+.cloud {position:absolute;width:190px;height:35px;border-radius:50%;background:rgba(255,220,190,.13);filter:blur(10px)}
+.cloudOne {left:12%;top:26%}.cloudTwo {right:8%;top:39%;transform:scale(1.4)}
+.hills {position:absolute;bottom:-8%;left:-10%;width:120%;height:43%;border-radius:50% 50% 0 0;background:linear-gradient(180deg,#283a3b,#101b25)}
+.tree {position:absolute;right:8%;bottom:0;width:38%;height:70%}
+.trunk {position:absolute;right:27%;bottom:-5%;width:17%;height:83%;background:linear-gradient(90deg,#211b22,#51302c,#211b22);transform:skew(-9deg);border-radius:50% 50% 0 0}
+.branch {position:absolute;right:24%;top:37%;width:77%;height:13px;border-radius:100%;background:#35232a;transform:rotate(-9deg)}
+.leaves {position:absolute;right:2%;top:3%;width:80%;height:48%;border-radius:48% 52% 42% 58%;background:radial-gradient(ellipse at 30% 40%,#52704e,#1b3c37 65%,#122a2c);filter:drop-shadow(0 12px 15px #09151a)}
+.flyingBird,.perchedBird {
+  position:absolute;z-index:5;width:clamp(85px,13vw,155px);height:auto;object-fit:contain;
+  filter:drop-shadow(0 12px 18px rgba(0,0,0,.48));
 }
-
-.orbit {
-  position: relative;
-  width: clamp(170px, 25vw, 238px);
-  aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-  margin-bottom: 27px;
-  border-radius: 50%;
+.flyingBird {left:17%;top:37%;opacity:0;animation:birdFlight 12.6s cubic-bezier(.4,.05,.2,1) both}
+.perchedBird {right:18%;bottom:34%;width:clamp(75px,10vw,120px);opacity:0;transform:rotate(-7deg);animation:birdPerch 12.6s ease both}
+.eyeZoom {
+  position:absolute;z-index:10;left:50%;top:48%;width:clamp(95px,14vw,170px);aspect-ratio:1;
+  transform:translate(-50%,-50%) scale(.12);border-radius:50%;overflow:hidden;opacity:0;
+  background:#05050a;box-shadow:0 0 0 9999px rgba(0,0,0,0);
+  animation:eyePush 12.6s cubic-bezier(.55,0,.25,1) both;
 }
-
-.orbitRing,
-.orbitRingInner {
-  position: absolute;
-  inset: 2%;
-  border-radius: 50%;
-  pointer-events: none;
+.eyeZoom img {width:100%;height:100%;object-fit:cover;object-position:62% 34%;transform:scale(2.3);filter:contrast(1.3) saturate(.8)}
+.brand {
+  position:absolute;z-index:11;left:50%;top:12%;transform:translateX(-50%);
+  text-align:center;opacity:0;animation:brandReveal 12.6s ease both;
 }
+.brandName {font:800 clamp(23px,4vw,38px)/1 sans-serif;letter-spacing:.24em;text-shadow:0 0 28px #ff476e}
+.brandName span {color:#ff527b}
+.brandLine {margin-top:10px;font:600 8px sans-serif;letter-spacing:.32em;color:#f1c7d1}
+.introHint {position:absolute;z-index:12;bottom:7%;left:50%;transform:translateX(-50%);font:500 10px sans-serif;letter-spacing:.2em;color:#f5d6d0;opacity:.7;white-space:nowrap;animation:hintFade 12.6s ease both}
+.fadeOut {position:absolute;inset:0;z-index:20;background:#05050a;opacity:0;pointer-events:none;animation:finalFade 12.6s ease both}
 
-.orbitRing {
-  border: 1px solid rgba(255, 91, 133, .15);
-  border-top-color: rgba(255, 65, 111, .95);
-  border-right-color: rgba(255, 65, 111, .5);
-  box-shadow: 0 0 22px rgba(255, 42, 94, .18), inset 0 0 22px rgba(255, 42, 94, .07);
-  animation: orbitSpin 3.8s linear infinite;
+@keyframes sceneFadeIn {from{opacity:0}to{opacity:1}}
+@keyframes skyTravel {0%,18%{filter:brightness(.55)}35%,100%{filter:brightness(1)}}
+@keyframes buildingAway {0%,17%{transform:translateX(-50%) scale(1)}33%,100%{transform:translateX(-50%) scale(2.7);opacity:0}}
+@keyframes outdoorReveal {0%,25%{opacity:0}36%,100%{opacity:1}}
+@keyframes handBirdGlow {0%,22%{transform:scale(1)}28%{transform:scale(1.12) translateY(-4px)}34%,100%{opacity:0}}
+@keyframes kiss {0%,20%{opacity:0;transform:scale(.2)}24%{opacity:1;transform:scale(1.4)}28%,100%{opacity:0}}
+@keyframes birdFlight {
+  0%,28%{opacity:0;left:49%;top:35%;transform:scale(.55) rotate(-8deg)}
+  34%{opacity:1;left:49%;top:35%;transform:scale(.75) rotate(0)}
+  52%{left:22%;top:16%;transform:scale(.9) rotate(-12deg)}
+  72%{left:55%;top:24%;transform:scale(1) rotate(8deg);opacity:1}
+  79%,100%{opacity:0;left:75%;top:46%;transform:scale(.75) rotate(0)}
 }
-
-.orbitRingInner {
-  inset: 9%;
-  border: 1px solid rgba(255, 112, 150, .13);
-  border-bottom-color: rgba(255, 112, 150, .65);
-  animation: orbitSpinReverse 5.2s linear infinite;
+@keyframes birdPerch {
+  0%,68%{opacity:0;transform:translateY(-35px) rotate(-15deg)}
+  76%{opacity:1;transform:translateY(0) rotate(-7deg)}
+  91%,100%{opacity:0;transform:scale(1.1)}
 }
-
-.glow {
-  position: absolute;
-  width: 72%;
-  height: 72%;
-  border-radius: 50%;
-  background: rgba(236, 27, 81, .2);
-  filter: blur(32px);
-  animation: glowPulse 2.4s ease-in-out infinite;
+@keyframes eyePush {
+  0%,78%{opacity:0;transform:translate(-50%,-50%) scale(.12);border-radius:50%}
+  84%{opacity:1;transform:translate(-50%,-50%) scale(1.2);border-radius:50%}
+  96%,100%{opacity:1;transform:translate(-50%,-50%) scale(28);border-radius:50%}
 }
-
-.bird {
-  position: relative;
-  z-index: 1;
-  width: 76%;
-  height: 76%;
-  object-fit: contain;
-  filter: drop-shadow(0 10px 25px rgba(255, 29, 85, .32));
-  animation: birdFloat 3.1s ease-in-out infinite;
+@keyframes brandReveal {0%,78%{opacity:0}84%{opacity:1}95%,100%{opacity:0}}
+@keyframes hintFade {0%,8%{opacity:0}12%,80%{opacity:.7}90%,100%{opacity:0}}
+@keyframes finalFade {0%,94%{opacity:0}100%{opacity:1}}
+@media (max-width:650px) {
+  .building {width:88vw;height:77%}
+  .buildingWindow {width:47vw;height:42vh;top:21%}
+  .tree {right:-4%;width:48%;height:59%}
+  .moon {width:38px;height:38px}
+  .brand {top:14%}
 }
-
-.wordmark {
-  font-size: clamp(29px, 5vw, 43px);
-  line-height: 1;
-  letter-spacing: .17em;
-  font-weight: 800;
-  text-indent: .17em;
-  text-shadow: 0 0 24px rgba(255, 44, 100, .2);
-}
-
-.wordmark span {
-  color: #ff416d;
-}
-
-.tagline {
-  margin-top: 12px;
-  color: rgba(235, 211, 224, .66);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: .24em;
-  text-indent: .24em;
-}
-
-.loader {
-  position: relative;
-  width: min(190px, 48vw);
-  height: 3px;
-  margin-top: 42px;
-  overflow: hidden;
-  border-radius: 99px;
-  background: rgba(255, 255, 255, .1);
-  box-shadow: 0 0 12px rgba(255, 45, 99, .12);
-}
-
-.loader span {
-  position: absolute;
-  inset: 0 auto 0 -42%;
-  width: 42%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, #ff416d, #ff9ab3, transparent);
-  box-shadow: 0 0 12px rgba(255, 65, 109, .8);
-  animation: loadSweep 1.35s ease-in-out infinite;
-}
-
-.loadingText {
-  margin-top: 13px;
-  color: rgba(255, 154, 180, .72);
-  font-size: 9px;
-  font-weight: 650;
-  letter-spacing: .28em;
-  text-indent: .28em;
-  animation: textPulse 1.6s ease-in-out infinite;
-}
-
-.bottomLine {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 50, 105, .8), transparent);
-  box-shadow: 0 0 18px rgba(255, 50, 105, .4);
-}
-
-@keyframes screenIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes orbitSpin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes orbitSpinReverse {
-  to { transform: rotate(-360deg); }
-}
-
-@keyframes ambientTurn {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes birdFloat {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-7px) scale(1.025); }
-}
-
-@keyframes glowPulse {
-  0%, 100% { opacity: .45; transform: scale(.88); }
-  50% { opacity: .95; transform: scale(1.12); }
-}
-
-@keyframes loadSweep {
-  0% { left: -42%; }
-  100% { left: 105%; }
-}
-
-@keyframes textPulse {
-  0%, 100% { opacity: .48; }
-  50% { opacity: 1; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .screen { transition: none; }
-  .screen, .ambient, .orbitRing, .orbitRingInner, .bird, .glow, .loader span, .loadingText {
-    animation-duration: 8s;
-    animation-iteration-count: 1;
+  .screen,.sky,.building,.outdoor,.handBird,.kiss,.flyingBird,.perchedBird,.eyeZoom,.brand,.introHint,.fadeOut {
+    animation-duration:12.6s;
   }
 }
