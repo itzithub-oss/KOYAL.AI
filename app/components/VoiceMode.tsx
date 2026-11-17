@@ -664,6 +664,7 @@ ${cleanText}
 
   return (
     <div style={{ position: "relative" }}>
+      <style>{".koyal-voice-face{position:relative;display:inline-block;flex:0 0 auto;overflow:hidden;border-radius:50%;vertical-align:middle;isolation:isolate}.koyal-voice-face img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}.koyal-voice-face .koyal-voice-open{opacity:0}.koyal-voice-face.is-speaking .koyal-voice-closed{animation:koyalBeakClosed 280ms steps(1,end) infinite}.koyal-voice-face.is-speaking .koyal-voice-open{animation:koyalBeakOpen 280ms steps(1,end) infinite}@keyframes koyalBeakClosed{0%,49%{opacity:1}50%,100%{opacity:0}}@keyframes koyalBeakOpen{0%,49%{opacity:0}50%,100%{opacity:1}}.koyal-voice-face.is-speaking{filter:drop-shadow(0 0 12px rgba(255,35,86,.72))}"}</style>
       <button
         type="button"
         onClick={startBirdCommunication}
@@ -683,7 +684,14 @@ ${cleanText}
         }}
         title="Talk with KOYAL bird"
       >
-        {speaking ? "🐦" : listening ? "🟢" : "🐦"}
+        <span
+          className={"koyal-voice-face " + (speaking ? "is-speaking" : "")}
+          style={{ width: 36, height: 36 }}
+          aria-label={speaking ? "KOYAL speaking" : listening ? "KOYAL listening" : "KOYAL voice"}
+        >
+          <img className="koyal-voice-closed" src="/koyal-voice-closed.png" alt="" />
+          <img className="koyal-voice-open" src="/koyal-voice-open.png" alt="" />
+        </span>
       </button>
 
       {open && (
@@ -750,14 +758,18 @@ ${cleanText}
             }}
           >
             <div
+              className={"koyal-voice-face " + (speaking ? "is-speaking" : "")}
               style={{
-                fontSize: 58,
-                lineHeight: 1,
-                transform: speaking ? "scale(1.08)" : "scale(1)",
-                transition: "0.2s ease",
+                width: 132,
+                height: 132,
+                transform: speaking ? "scale(1.06)" : "scale(1)",
+                transition: "transform 0.2s ease, filter 0.2s ease",
               }}
+              role="img"
+              aria-label={speaking ? "KOYAL is speaking" : listening ? "KOYAL is listening" : "KOYAL bird"}
             >
-              🐦
+              <img className="koyal-voice-closed" src="/koyal-voice-closed.png" alt="" />
+              <img className="koyal-voice-open" src="/koyal-voice-open.png" alt="" />
             </div>
 
             <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
