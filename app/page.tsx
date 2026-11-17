@@ -404,7 +404,7 @@ export default function Home() {
         buildMemoryContext(memories),
       ].filter(Boolean).join(" ");
       const requestPayload = {
-          message: `${message}\n\n${systemDetails}${selectedFile ? `\nThe attached file is named ${selectedFile.name}; its contents have not been sent. Be transparent that you cannot read it.` : ""}`,
+          message: `${message}\n\n${systemDetails}`,
           mode: teacherMode ? "Teacher" : philosophicalMode ? "Philosophical" : preciseMode ? "Precise" : "Normal",
           thinkingLevel: currentThinking.name,
           language: "English by default",
