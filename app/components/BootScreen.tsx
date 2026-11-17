@@ -37,8 +37,8 @@ export default function BootScreen() {
 
       <div className={styles.outdoor}>
         <div className={styles.moon} />
-        <div className={styles.cloud cloudOne} />
-        <div className={styles.cloud cloudTwo} />
+        <div className={`${styles.cloud} ${styles.cloudOne}`} />
+        <div className={`${styles.cloud} ${styles.cloudTwo}`} />
         <div className={styles.hills} />
         <div className={styles.tree}>
           <span className={styles.trunk} />
