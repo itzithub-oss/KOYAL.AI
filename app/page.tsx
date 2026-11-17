@@ -5,7 +5,7 @@ import VoiceMode from "./components/VoiceMode";
 import BootScreen from "./components/BootScreen";
 import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
-import { addMemory, buildMemoryContext, deleteMemory, loadMemories, type KoyalMemory } from "../lib/koyal-memory.js";
+import { addMemory, buildMemoryContext, deleteMemory, loadMemories, type KoyalMemory } from "../lib/koyal-memory.mjs";
 
 type Message = {
   role: "user" | "assistant";
