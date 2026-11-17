@@ -12,6 +12,12 @@
     radial-gradient(ellipse at 15% 90%, rgba(75, 8, 38, .28), transparent 42%),
     #07050b;
   animation: screenIn .45s ease both;
+  transition: opacity .45s ease;
+}
+
+ .leaving {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .ambient {
@@ -186,6 +192,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .screen { transition: none; }
   .screen, .ambient, .orbitRing, .orbitRingInner, .bird, .glow, .loader span, .loadingText {
     animation-duration: 8s;
     animation-iteration-count: 1;
