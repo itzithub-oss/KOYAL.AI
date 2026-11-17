@@ -145,7 +145,12 @@ function makeStoredZip(files: { name: string; content: string }[]) {
   const ev = new DataView(end.buffer);
   u32(ev,0,0x06054b50); u16(ev,8,files.length); u16(ev,10,files.length);
   u32(ev,12,centralSize); u32(ev,16,offset);
-  return new Blob([...chunks,...central,end], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  const parts = [...chunks, ...central, end];
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(total);
+  let cursor = 0;
+  for (const part of parts) { output.set(part, cursor); cursor += part.length; }
+  return new Blob([output.buffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 }
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -455,7 +460,7 @@ export default function Home() {
       ]);
       downloadBlob(blob, `${safeName}.docx`);
     } else {
-      const printWindow = window.open("", "_blank", "noopener,noreferrer");
+      const printWindow = window.open("", "_blank");
       if (!printWindow) { window.alert("Allow pop-ups for Koyal to create a PDF."); return; }
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>body{font:14px/1.6 Arial,sans-serif;color:#222;max-width:850px;margin:40px auto;padding:0 24px}h1{font-size:22px}article{white-space:pre-wrap;overflow-wrap:anywhere;margin:16px 0;padding-bottom:12px;border-bottom:1px solid #ddd}.who{font-weight:bold;color:#9b1c3c}@media print{body{margin:0 auto}}</style></head><body><h1>${title}</h1>${messages.map(m=>`<article><div class="who">${xmlEscape(m.role === "assistant" ? "Koyal" : "You")}${m.time ? " · " + xmlEscape(m.time) : ""}</div>${xmlEscape(m.content)}${m.fileName ? "\\n[Attachment: " + xmlEscape(m.fileName) + "]" : ""}${(m.sources || []).map(s=>"\\n"+xmlEscape(s.title+": "+s.url)).join("")}</article>`).join("")}<script>window.onload=()=>window.print()<\/script></body></html>`;
       printWindow.document.write(html);
