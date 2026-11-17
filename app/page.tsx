@@ -105,6 +105,55 @@ function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
   return <svg {...base}>{paths[name]}</svg>;
 }
 
+
+function xmlEscape(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+function makeStoredZip(files: { name: string; content: string }[]) {
+  const encoder = new TextEncoder();
+  const chunks: Uint8Array[] = [];
+  const central: Uint8Array[] = [];
+  let offset = 0;
+  const crc32 = (data: Uint8Array) => {
+    let crc = 0xffffffff;
+    for (const byte of data) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  };
+  const u16 = (view: DataView, at: number, value: number) => view.setUint16(at, value, true);
+  const u32 = (view: DataView, at: number, value: number) => view.setUint32(at, value, true);
+  for (const file of files) {
+    const name = encoder.encode(file.name);
+    const data = encoder.encode(file.content);
+    const crc = crc32(data);
+    const local = new Uint8Array(30 + name.length);
+    const lv = new DataView(local.buffer);
+    u32(lv,0,0x04034b50); u16(lv,4,20); u16(lv,6,0x0800); u16(lv,8,0);
+    u32(lv,14,crc); u32(lv,18,data.length); u32(lv,22,data.length); u16(lv,26,name.length);
+    local.set(name,30); chunks.push(local,data);
+    const entry = new Uint8Array(46 + name.length);
+    const ev = new DataView(entry.buffer);
+    u32(ev,0,0x02014b50); u16(ev,4,20); u16(ev,6,20); u16(ev,8,0x0800); u16(ev,10,0);
+    u32(ev,16,crc); u32(ev,20,data.length); u32(ev,24,data.length); u16(ev,28,name.length);
+    u32(ev,42,offset); entry.set(name,46); central.push(entry);
+    offset += local.length + data.length;
+  }
+  const centralSize = central.reduce((sum, item) => sum + item.length, 0);
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  u32(ev,0,0x06054b50); u16(ev,8,files.length); u16(ev,10,files.length);
+  u32(ev,12,centralSize); u32(ev,16,offset);
+  return new Blob([...chunks,...central,end], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+}
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url; link.download = filename; link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function timestamp() {
   return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
@@ -372,13 +421,46 @@ export default function Home() {
     utterance.onerror = () => setSpeakingIndex(null);
     window.speechSynthesis.speak(utterance);
   }
+  function chatTranscript() {
+    return messages.map((m) => `${m.role === "assistant" ? "Koyal" : "You"}${m.time ? ` · ${m.time}` : ""}:\n${m.content}${m.fileName ? `\n[Attachment: ${m.fileName}]` : ""}${m.sources?.length ? `\nSources:\n${m.sources.map((s) => `- ${s.title}: ${s.url}`).join("\n")}` : ""}`).join("\n\n------------------------------\n\n");
+  }
   async function copyChat() {
-    const transcript = messages.map((m) => `${m.role === "assistant" ? "Koyal" : "You"}: ${m.content}`).join("\n\n");
     try {
-      await navigator.clipboard.writeText(transcript);
+      await navigator.clipboard.writeText(chatTranscript());
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch { setCopied(false); }
+    setMenuOpen(false);
+  }
+  function exportChat(format: "txt" | "docx" | "pdf") {
+    const title = "KOYAL AI Conversation";
+    const transcript = chatTranscript();
+    const safeName = `koyal-chat-${new Date().toISOString().slice(0,10)}`;
+    if (format === "txt") {
+      downloadBlob(new Blob([transcript], { type: "text/plain;charset=utf-8" }), `${safeName}.txt`);
+    } else if (format === "docx") {
+      const paragraphs = messages.map((m) => {
+        const label = m.role === "assistant" ? "Koyal" : "You";
+        const lines = [`<w:p><w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">${xmlEscape(label + (m.time ? ` · ${m.time}` : ""))}</w:t></w:r></w:p>`];
+        for (const line of m.content.split(/\r?\n/)) lines.push(`<w:p><w:r><w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r></w:p>`);
+        if (m.fileName) lines.push(`<w:p><w:r><w:t>${xmlEscape("[Attachment: " + m.fileName + "]")}</w:t></w:r></w:p>`);
+        for (const source of m.sources || []) lines.push(`<w:p><w:r><w:t>${xmlEscape(source.title + ": " + source.url)}</w:t></w:r></w:p>`);
+        return lines.join("");
+      }).join('<w:p><w:r><w:t> </w:t></w:r></w:p>');
+      const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:rPr><w:b/><w:sz w:val="32"/></w:rPr><w:t>${title}</w:t></w:r></w:p>${paragraphs}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>`;
+      const blob = makeStoredZip([
+        { name: "[Content_Types].xml", content: '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>' },
+        { name: "_rels/.rels", content: '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
+        { name: "word/document.xml", content: documentXml },
+      ]);
+      downloadBlob(blob, `${safeName}.docx`);
+    } else {
+      const printWindow = window.open("", "_blank", "noopener,noreferrer");
+      if (!printWindow) { window.alert("Allow pop-ups for Koyal to create a PDF."); return; }
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>body{font:14px/1.6 Arial,sans-serif;color:#222;max-width:850px;margin:40px auto;padding:0 24px}h1{font-size:22px}article{white-space:pre-wrap;overflow-wrap:anywhere;margin:16px 0;padding-bottom:12px;border-bottom:1px solid #ddd}.who{font-weight:bold;color:#9b1c3c}@media print{body{margin:0 auto}}</style></head><body><h1>${title}</h1>${messages.map(m=>`<article><div class="who">${xmlEscape(m.role === "assistant" ? "Koyal" : "You")}${m.time ? " · " + xmlEscape(m.time) : ""}</div>${xmlEscape(m.content)}${m.fileName ? "\\n[Attachment: " + xmlEscape(m.fileName) + "]" : ""}${(m.sources || []).map(s=>"\\n"+xmlEscape(s.title+": "+s.url)).join("")}</article>`).join("")}<script>window.onload=()=>window.print()<\/script></body></html>`;
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
     setMenuOpen(false);
   }
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
@@ -508,11 +590,17 @@ export default function Home() {
               <span className={styles.headerText}><strong>KOYAL <em>AI</em></strong><small>INTELLIGENCE WITH A SOFTER SOUL</small></span>
             </div>
             <div className={styles.topActions}>
-              {searchOpen && <input value={search} onChange={(e) => setSearch(e.target.value)} autoFocus className={styles.searchInput} placeholder="Search this chat..." aria-label="Search messages"/>}
+              {searchOpen && <input value={search} onChange={(e) => setSearch(e.target.value)} autoFocus className={styles.searchInput} placeholder="Search this chat..." aria-label="Search messages"/>}{searchOpen && search.trim() && <small aria-live="polite" style={{ whiteSpace: "nowrap", opacity: .75 }}>{visibleMessages.length} match{visibleMessages.length === 1 ? "" : "es"}</small>}
               <button type="button" className={styles.roundTop} title={lightMode ? "Dark theme" : "Light theme"} aria-label="Toggle theme" onClick={() => setLightMode((v) => !v)}><Icon name={lightMode ? "sun" : "moon"}/></button>
               <button type="button" className={styles.roundTop} title="Search messages" aria-label="Search messages" onClick={() => {setSearchOpen((v) => !v);setSearch("");}}><Icon name="search"/></button>
               <div className={styles.menuWrap}><button type="button" className={styles.roundTop} title="More options" aria-label="More options" onClick={() => setMenuOpen((v) => !v)}><Icon name="dots"/></button>
-                {menuOpen && <div className={styles.overflowMenu}><button type="button" onClick={copyChat}><Icon name="copy" size={16}/>{copied ? "Copied" : "Copy conversation"}</button><button type="button" onClick={() => {resetChat();setMenuOpen(false);}}><Icon name="chat" size={16}/>Clear conversation</button></div>}
+                {menuOpen && <div className={styles.overflowMenu}>
+                  <button type="button" onClick={copyChat}><Icon name="copy" size={16}/>{copied ? "Copied" : "Copy conversation"}</button>
+                  <button type="button" onClick={() => exportChat("txt")}>Download TXT</button>
+                  <button type="button" onClick={() => exportChat("docx")}>Download Word (.docx)</button>
+                  <button type="button" onClick={() => exportChat("pdf")}>Print / Save as PDF</button>
+                  <button type="button" onClick={() => {resetChat();setMenuOpen(false);}}><Icon name="chat" size={16}/>Clear conversation</button>
+                </div>}
               </div>
             </div>
           </header>
