@@ -664,30 +664,39 @@ ${cleanText}
 
   return (
     <div style={{ position: "relative" }}>
-      <style>{".koyal-voice-face{position:relative;display:inline-block;flex:0 0 auto;overflow:hidden;border-radius:50%;vertical-align:middle;isolation:isolate}.koyal-voice-face img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}.koyal-voice-face .koyal-voice-open{opacity:0}.koyal-voice-face.is-speaking .koyal-voice-closed{animation:koyalBeakClosed 280ms steps(1,end) infinite}.koyal-voice-face.is-speaking .koyal-voice-open{animation:koyalBeakOpen 280ms steps(1,end) infinite}@keyframes koyalBeakClosed{0%,49%{opacity:1}50%,100%{opacity:0}}@keyframes koyalBeakOpen{0%,49%{opacity:0}50%,100%{opacity:1}}.koyal-voice-face.is-speaking{filter:drop-shadow(0 0 12px rgba(255,35,86,.72))}"}</style>
+      <style>{".koyal-voice-face{position:relative;display:inline-block;flex:0 0 auto;overflow:hidden;border-radius:50%;vertical-align:middle;isolation:isolate;background:radial-gradient(circle,rgba(130,12,43,.28),rgba(8,5,12,.96))}.koyal-voice-face img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}.koyal-voice-face .koyal-voice-open{opacity:0}.koyal-voice-face.is-speaking .koyal-voice-closed{animation:koyalBeakClosed 280ms steps(1,end) infinite}.koyal-voice-face.is-speaking .koyal-voice-open{animation:koyalBeakOpen 280ms steps(1,end) infinite}.koyal-voice-face.is-speaking{filter:drop-shadow(0 0 22px rgba(255,35,86,.85))}.koyal-voice-face.is-listening{filter:drop-shadow(0 0 18px rgba(80,220,150,.7))}@keyframes koyalBeakClosed{0%,49%{opacity:1}50%,100%{opacity:0}}@keyframes koyalBeakOpen{0%,49%{opacity:0}50%,100%{opacity:1}}"} </style>
       <button
         type="button"
-        onClick={startBirdCommunication}
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: listening
-            ? "rgba(34,197,94,0.28)"
-            : speaking
-            ? "rgba(59,130,246,0.28)"
-            : "rgba(255,255,255,0.08)",
-          color: "#ffffff",
-          cursor: "pointer",
-          fontSize: 22,
+        onClick={() => {
+          if (open) {
+            stopEverything();
+            setOpen(false);
+          } else {
+            startBirdCommunication();
+          }
         }}
-        title="Talk with KOYAL bird"
+        aria-label={open ? "Close KOYAL voice" : "Open KOYAL voice"}
+        title={undefined}
+        style={{
+          width: 48,
+          height: 48,
+          padding: 0,
+          display: "grid",
+          placeItems: "center",
+          borderRadius: "50%",
+          border: "1px solid rgba(255,65,105,.55)",
+          background: "rgba(12,7,14,.9)",
+          cursor: "pointer",
+          boxShadow: speaking
+            ? "0 0 22px rgba(255,35,86,.65)"
+            : listening
+            ? "0 0 18px rgba(80,220,150,.55)"
+            : "0 0 12px rgba(255,35,86,.2)",
+        }}
       >
         <span
           className={"koyal-voice-face " + (speaking ? "is-speaking" : "")}
-          style={{ width: 36, height: 36 }}
-          aria-label={speaking ? "KOYAL speaking" : listening ? "KOYAL listening" : "KOYAL voice"}
+          style={{ width: 42, height: 42 }}
         >
           <img className="koyal-voice-closed" src="/koyal-voice-closed.png" alt="" />
           <img className="koyal-voice-open" src="/koyal-voice-open.png" alt="" />
@@ -699,258 +708,62 @@ ${cleanText}
           style={{
             position: "absolute",
             right: 0,
-            bottom: 54,
-            width: 320,
-            padding: 16,
-            borderRadius: 24,
-            background: "rgba(10,10,14,0.98)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
-            zIndex: 50,
+            bottom: 58,
+            width: 300,
+            height: 300,
+            display: "grid",
+            placeItems: "center",
+            borderRadius: "50%",
+            background: "radial-gradient(circle,rgba(72,8,30,.5) 0%,rgba(9,6,13,.97) 68%)",
+            border: "1px solid rgba(255,65,105,.28)",
+            boxShadow: speaking
+              ? "0 0 55px rgba(255,35,86,.28)"
+              : listening
+              ? "0 0 45px rgba(80,220,150,.2)"
+              : "0 18px 55px rgba(0,0,0,.55)",
+            zIndex: 100,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <div>
-              <strong>🐦 KOYAL Bird</strong>
-              <div style={{ fontSize: 11, opacity: 0.55 }}>
-                English default • Hindi only when asked
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
+          <button
+            type="button"
+            onClick={() => {
+              if (listening || speaking || thinking) {
                 stopEverything();
-                setOpen(false);
-              }}
-              style={{
-                border: "none",
-                background: "rgba(255,255,255,0.08)",
-                color: "#ffffff",
-                borderRadius: 999,
-                width: 28,
-                height: 28,
-                cursor: "pointer",
-              }}
-            >
-              ✕
-            </button>
-          </div>
-
-          <div
+              } else {
+                startBirdCommunication();
+              }
+            }}
+            aria-label={listening || speaking || thinking ? "Stop voice communication" : "Start voice communication"}
             style={{
-              textAlign: "center",
-              padding: "18px 10px",
-              borderRadius: 20,
-              background: speaking
-                ? "rgba(59,130,246,0.16)"
+              width: 236,
+              height: 236,
+              padding: 0,
+              border: "none",
+              borderRadius: "50%",
+              background: "transparent",
+              cursor: "pointer",
+              display: "grid",
+              placeItems: "center",
+              transform: speaking ? "scale(1.045)" : "scale(1)",
+              transition: "transform .22s ease, filter .22s ease",
+              filter: speaking
+                ? "drop-shadow(0 0 24px rgba(255,35,86,.8))"
                 : listening
-                ? "rgba(34,197,94,0.14)"
-                : "rgba(255,255,255,0.06)",
-              marginBottom: 12,
+                ? "drop-shadow(0 0 20px rgba(80,220,150,.65))"
+                : "none",
             }}
           >
-            <div
-              className={"koyal-voice-face " + (speaking ? "is-speaking" : "")}
-              style={{
-                width: 132,
-                height: 132,
-                transform: speaking ? "scale(1.06)" : "scale(1)",
-                transition: "transform 0.2s ease, filter 0.2s ease",
-              }}
-              role="img"
-              aria-label={speaking ? "KOYAL is speaking" : listening ? "KOYAL is listening" : "KOYAL bird"}
+            <span
+              className={
+                "koyal-voice-face " +
+                (speaking ? "is-speaking" : listening ? "is-listening" : "")
+              }
+              style={{ width: 224, height: 224 }}
             >
               <img className="koyal-voice-closed" src="/koyal-voice-closed.png" alt="" />
               <img className="koyal-voice-open" src="/koyal-voice-open.png" alt="" />
-            </div>
-
-            <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
-              {speaking
-                ? "Speaking..."
-                : thinking
-                ? "Thinking..."
-                : listening
-                ? "Listening..."
-                : "Ready"}
-            </div>
-          </div>
-
-          <div
-            style={{
-              padding: 10,
-              borderRadius: 14,
-              background: "rgba(255,255,255,0.06)",
-              fontSize: 12,
-              lineHeight: 1.5,
-              marginBottom: 10,
-            }}
-          >
-            <strong>Status:</strong> {status}
-
-            <div style={{ marginTop: 6 }}>
-              <strong>Reply language:</strong> {outputLanguage.name}
-            </div>
-
-            {heardText && (
-              <div style={{ marginTop: 6 }}>
-                <strong>You:</strong> {heardText}
-              </div>
-            )}
-
-            {aiText && (
-              <div style={{ marginTop: 6 }}>
-                <strong>Bird:</strong> {aiText}
-              </div>
-            )}
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gap: 8,
-              padding: 10,
-              borderRadius: 14,
-              background: "rgba(255,255,255,0.05)",
-              marginBottom: 10,
-              fontSize: 12,
-            }}
-          >
-            <label>
-              Bird voice
-              <select
-                value={selectedVoiceURI}
-                onChange={(event) => setSelectedVoiceURI(event.target.value)}
-                style={{
-                  width: "100%",
-                  marginTop: 5,
-                  padding: 8,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "#111827",
-                  color: "#ffffff",
-                }}
-              >
-                {voices.map((voice) => (
-                  <option key={voice.voiceURI} value={voice.voiceURI}>
-                    {voice.name} — {voice.lang}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Speed: {rate.toFixed(2)}
-              <input
-                type="range"
-                min="0.7"
-                max="1.25"
-                step="0.05"
-                value={rate}
-                onChange={(event) => setRate(Number(event.target.value))}
-                style={{ width: "100%" }}
-              />
-            </label>
-
-            <label>
-              Tone: {pitch.toFixed(2)}
-              <input
-                type="range"
-                min="0.7"
-                max="1.4"
-                step="0.05"
-                value={pitch}
-                onChange={(event) => setPitch(Number(event.target.value))}
-                style={{ width: "100%" }}
-              />
-            </label>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              type="button"
-              onClick={startBirdCommunication}
-              disabled={listening}
-              style={{
-                flex: 1,
-                minWidth: 120,
-                border: "none",
-                borderRadius: 999,
-                padding: "10px 12px",
-                background: listening
-                  ? "rgba(34,197,94,0.35)"
-                  : "linear-gradient(135deg,#2563eb,#7c3aed)",
-                color: "#ffffff",
-                cursor: listening ? "not-allowed" : "pointer",
-                fontWeight: 700,
-              }}
-            >
-              {listening ? "Listening" : "Start"}
-            </button>
-
-            <button
-              type="button"
-              onClick={sendHeardTextManually}
-              disabled={!heardText.trim() || thinking}
-              style={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 999,
-                padding: "10px 12px",
-                background: "rgba(255,255,255,0.08)",
-                color: "#ffffff",
-                cursor:
-                  !heardText.trim() || thinking ? "not-allowed" : "pointer",
-                fontWeight: 700,
-              }}
-            >
-              Send
-            </button>
-
-            <button
-              type="button"
-              onClick={testBirdVoice}
-              style={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 999,
-                padding: "10px 12px",
-                background: "rgba(255,255,255,0.08)",
-                color: "#ffffff",
-                cursor: "pointer",
-                fontWeight: 700,
-              }}
-            >
-              Test
-            </button>
-
-            <button
-              type="button"
-              onClick={stopEverything}
-              style={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 999,
-                padding: "10px 12px",
-                background: "rgba(255,255,255,0.08)",
-                color: "#ffffff",
-                cursor: "pointer",
-                fontWeight: 700,
-              }}
-            >
-              Stop
-            </button>
-          </div>
+            </span>
+          </button>
         </div>
       )}
     </div>
