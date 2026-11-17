@@ -376,7 +376,7 @@ function buildConversation(message: string, body: ChatBody): ChatMessage[] {
   if (body.documentText) {
     const lastUserMessage = [...conversation].reverse().find((entry) => entry.role === "user");
     if (lastUserMessage) {
-      lastUserMessage.content += `\\n\\n[Extracted text from uploaded PDF: ${body.documentName || "document"}]\\n${body.documentText}\\n[End of PDF text]`;
+      lastUserMessage.content += `\n\n[Extracted text from uploaded PDF: ${body.documentName || "document"}]\n${body.documentText}\n[End of PDF text]`;
     }
   }
   return conversation;
