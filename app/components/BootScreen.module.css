@@ -1,0 +1,193 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(104, 13, 42, .34), transparent 34%),
+    radial-gradient(ellipse at 15% 90%, rgba(75, 8, 38, .28), transparent 42%),
+    #07050b;
+  animation: screenIn .45s ease both;
+}
+
+.ambient {
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  background: conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255, 48, 99, .055) 65deg, transparent 135deg, rgba(116, 27, 84, .06) 220deg, transparent 300deg);
+  filter: blur(38px);
+  animation: ambientTurn 22s linear infinite;
+}
+
+.content {
+  width: min(88vw, 440px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transform: translateY(-1.5vh);
+}
+
+.orbit {
+  position: relative;
+  width: clamp(170px, 25vw, 238px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  margin-bottom: 27px;
+  border-radius: 50%;
+}
+
+.orbitRing,
+.orbitRingInner {
+  position: absolute;
+  inset: 2%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.orbitRing {
+  border: 1px solid rgba(255, 91, 133, .15);
+  border-top-color: rgba(255, 65, 111, .95);
+  border-right-color: rgba(255, 65, 111, .5);
+  box-shadow: 0 0 22px rgba(255, 42, 94, .18), inset 0 0 22px rgba(255, 42, 94, .07);
+  animation: orbitSpin 3.8s linear infinite;
+}
+
+.orbitRingInner {
+  inset: 9%;
+  border: 1px solid rgba(255, 112, 150, .13);
+  border-bottom-color: rgba(255, 112, 150, .65);
+  animation: orbitSpinReverse 5.2s linear infinite;
+}
+
+.glow {
+  position: absolute;
+  width: 72%;
+  height: 72%;
+  border-radius: 50%;
+  background: rgba(236, 27, 81, .2);
+  filter: blur(32px);
+  animation: glowPulse 2.4s ease-in-out infinite;
+}
+
+.bird {
+  position: relative;
+  z-index: 1;
+  width: 76%;
+  height: 76%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 25px rgba(255, 29, 85, .32));
+  animation: birdFloat 3.1s ease-in-out infinite;
+}
+
+.wordmark {
+  font-size: clamp(29px, 5vw, 43px);
+  line-height: 1;
+  letter-spacing: .17em;
+  font-weight: 800;
+  text-indent: .17em;
+  text-shadow: 0 0 24px rgba(255, 44, 100, .2);
+}
+
+.wordmark span {
+  color: #ff416d;
+}
+
+.tagline {
+  margin-top: 12px;
+  color: rgba(235, 211, 224, .66);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .24em;
+  text-indent: .24em;
+}
+
+.loader {
+  position: relative;
+  width: min(190px, 48vw);
+  height: 3px;
+  margin-top: 42px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .1);
+  box-shadow: 0 0 12px rgba(255, 45, 99, .12);
+}
+
+.loader span {
+  position: absolute;
+  inset: 0 auto 0 -42%;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #ff416d, #ff9ab3, transparent);
+  box-shadow: 0 0 12px rgba(255, 65, 109, .8);
+  animation: loadSweep 1.35s ease-in-out infinite;
+}
+
+.loadingText {
+  margin-top: 13px;
+  color: rgba(255, 154, 180, .72);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .28em;
+  text-indent: .28em;
+  animation: textPulse 1.6s ease-in-out infinite;
+}
+
+.bottomLine {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 50, 105, .8), transparent);
+  box-shadow: 0 0 18px rgba(255, 50, 105, .4);
+}
+
+@keyframes screenIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes orbitSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orbitSpinReverse {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes ambientTurn {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes birdFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-7px) scale(1.025); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: .45; transform: scale(.88); }
+  50% { opacity: .95; transform: scale(1.12); }
+}
+
+@keyframes loadSweep {
+  0% { left: -42%; }
+  100% { left: 105%; }
+}
+
+@keyframes textPulse {
+  0%, 100% { opacity: .48; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen, .ambient, .orbitRing, .orbitRingInner, .bird, .glow, .loader span, .loadingText {
+    animation-duration: 8s;
+    animation-iteration-count: 1;
+  }
+}
