@@ -5,6 +5,7 @@ import VoiceMode from "./components/VoiceMode";
 import BootScreen from "./components/BootScreen";
 import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
+import { addMemory, buildMemoryContext, deleteMemory, loadMemories, type KoyalMemory } from "../lib/koyal-memory.js";
 
 type Message = {
   role: "user" | "assistant";
@@ -33,7 +34,7 @@ type IconName =
   | "chat" | "user" | "brain" | "masks" | "book" | "message" | "feather"
   | "diamond" | "moon" | "sun" | "search" | "dots" | "plus" | "paperclip"
   | "send" | "chevron" | "x" | "volume" | "stop" | "menu" | "check"
-  | "arrow" | "copy";
+  | "arrow" | "copy" | "memory";
 
 const ERROR_REPLY = "sorry,there is a problem in my server please try me later";
 const WELCOME: Message = {
@@ -98,6 +99,7 @@ function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
     check: <path d="m5 12 4 4L19 6"/>,
     arrow: <path d="M5 12h14m-6-6 6 6-6 6"/>,
     copy: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
+    memory: <><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
   };
   return <svg {...base}>{paths[name]}</svg>;
 }
@@ -125,6 +127,10 @@ export default function Home() {
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [draftProfile, setDraftProfile] = useState<Profile>(EMPTY_PROFILE);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  const [memories, setMemories] = useState<KoyalMemory[]>([]);
+  const [memoryDraft, setMemoryDraft] = useState("");
+  const [memoryError, setMemoryError] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [featherShopOpen, setFeatherShopOpen] = useState(false);
@@ -153,6 +159,7 @@ export default function Home() {
 
   useEffect(() => {
     try {
+      setMemories(loadMemories(localStorage));
       const saved = localStorage.getItem("koyal-ai-chat");
       if (saved) {
         const parsed: Message[] = JSON.parse(saved);
@@ -210,6 +217,7 @@ export default function Home() {
     setSearchOpen(false);
     setMobileNav(false);
     setProfileOpen(false);
+    setMemoryOpen(false);
     setEditingProfile(false);
     window.speechSynthesis?.cancel();
   }
@@ -229,7 +237,32 @@ export default function Home() {
     setProfileError("");
     setEditingProfile(false);
     setProfileOpen(true);
+    setMemoryOpen(false);
     setMobileNav(false);
+  }
+  function openMemory() {
+    setProfileOpen(false);
+    setMemoryOpen(true);
+    setMemoryError("");
+    setMobileNav(false);
+  }
+  function saveLocalMemory() {
+    try {
+      const next = addMemory(localStorage, memories, memoryDraft);
+      setMemories(next);
+      setMemoryDraft("");
+      setMemoryError("");
+    } catch (error) {
+      setMemoryError(error instanceof Error ? error.message : "Could not save this memory.");
+    }
+  }
+  function removeLocalMemory(id: string) {
+    try {
+      setMemories(deleteMemory(localStorage, memories, id));
+      setMemoryError("");
+    } catch (error) {
+      setMemoryError(error instanceof Error ? error.message : "Could not delete this memory.");
+    }
   }
   function saveProfile() {
     const name = draftProfile.name.trim();
@@ -333,6 +366,7 @@ export default function Home() {
         characterMode !== "normal" ? `Character mode: ${currentCharacter.name}.` : "",
         teacherMode ? `Teacher mode: Class ${teacherClass}, ${teacherSubject}.` : "",
         philosophicalMode ? "Philosophical mode: provide thoughtful reasoning." : "",
+        buildMemoryContext(memories),
         selectedFile ? "" : "",
       ].filter(Boolean).join(" ");
       const response = await fetch("/api/chat", {
@@ -384,6 +418,7 @@ export default function Home() {
           <nav className={styles.nav} aria-label="Koyal features">
             <button type="button" onClick={resetChat} className={`${styles.navItem} ${styles.navMain}`}><Icon name="chat"/><strong>New Chat</strong></button>
             <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
+            <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
@@ -432,6 +467,28 @@ export default function Home() {
 
           <section className={styles.chatSpace} aria-label="Conversation">
             <div className={styles.sceneBackdrop}/>
+      {memoryOpen && <div className={styles.profileModal} role="region" aria-label="Koyal local memory">
+          <div className={styles.profileHead}>
+            <div><h2>Koyal Memory</h2><p>Saved only in this browser. You choose what Koyal remembers.</p></div>
+            <button type="button" aria-label="Close memory" className={styles.profileClose} onClick={() => setMemoryOpen(false)}><Icon name="x" size={24}/></button>
+          </div>
+          <div className={styles.profileBody}>
+            <div className={styles.profileFields}>
+              <label><span>Add a memory (max 500 characters)</span><textarea value={memoryDraft} maxLength={500} rows={3} placeholder="Example: I prefer short explanations with examples." onChange={(e) => setMemoryDraft(e.target.value)} /></label>
+              <button type="button" className={styles.saveProfileButton} onClick={saveLocalMemory} disabled={!memoryDraft.trim()}>Save Memory</button>
+              {memoryError && <p className={styles.profileError} role="alert">{memoryError}</p>}
+              <p className={styles.profilePrivacy}>Memories are stored locally on this device. When you send a chat message, saved memories are included in that request to the configured AI provider. Do not save passwords, payment details or other secrets.</p>
+            </div>
+            <div className={styles.profileFields}>
+              <h3>Saved memories ({memories.length}/100)</h3>
+              {memories.length === 0 && <p className={styles.profilePrivacy}>No memories saved yet. Add a fact or preference above.</p>}
+              {memories.map((memory) => <div key={memory.id} className={styles.identityCard} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                <p style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{memory.text}</p>
+                <button type="button" className={styles.profileClose} aria-label="Delete memory" title="Delete memory" onClick={() => removeLocalMemory(memory.id)}><Icon name="x" size={18}/></button>
+              </div>)}
+            </div>
+          </div>
+      </div>}
       {profileOpen && <div className={styles.profileModal} role="region" aria-label="Profile">
           <div className={styles.profileHead}>
             <div><h2>Profile</h2><p>Manage your personal information and account details</p></div>
@@ -465,7 +522,7 @@ export default function Home() {
             </div>
           </div>
       </div>}
-            {!profileOpen && <div className={styles.chatScroll}>
+            {!profileOpen && !memoryOpen && <div className={styles.chatScroll}>
               <div className={styles.messages}>
                 {visibleMessages.length === 0 && <div className={styles.noResults}>No matching messages found.</div>}
                 {visibleMessages.map((message, index) => <div key={`${index}-${message.role}`} className={`${styles.messageRow} ${message.role === "user" ? styles.userRow : styles.assistantRow}`}>
@@ -486,7 +543,7 @@ export default function Home() {
             </div>}
           </section>
 
-          {!profileOpen && <div className={styles.bottomArea}>
+          {!profileOpen && !memoryOpen && <div className={styles.bottomArea}>
             <div className={styles.effortCard}>
               <div className={styles.effortHeading}>Thinking Effort</div>
               <button className={styles.thinkingLabel} type="button" onClick={() => changeThinking((indexThinking + 1) % thinking.length)} title="Click to change thinking level"><span>{selectedPlan === "Supreme" ? "∞" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong><Icon name="chevron" size={14}/></button>
