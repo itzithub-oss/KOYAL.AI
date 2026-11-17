@@ -518,6 +518,10 @@ async function readBody(request: NextRequest): Promise<ChatBody> {
   const contentType = request.headers.get("content-type") || "";
 
   if (contentType.includes("multipart/form-data")) {
+    const contentLength = Number(request.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > MAX_PDF_BYTES + 1_000_000) {
+      throw new InputError("The upload is too large. PDF files are limited to 8 MB.");
+    }
     const formData = await request.formData();
 
     const text = (key: string) => {
