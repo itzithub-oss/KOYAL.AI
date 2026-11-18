@@ -711,8 +711,10 @@ async function readBody(request: NextRequest): Promise<ChatBody> {
 }
 
 export async function POST(request: NextRequest) {
+  let requestKind = "chat";
   try {
     const body = await readBody(request);
+    requestKind = body.webSearch ? "web-search" : body.urlContextUrl ? "url-context" : "chat";
 
     const message =
       typeof body.message === "string"
@@ -760,12 +762,27 @@ export async function POST(request: NextRequest) {
       characterUsed: resolveCharacter(body.characterMode),
     });
   } catch (error: unknown) {
-    // Keep the existing JSON response contract so the chat can show errors.
+    const detail = error instanceof Error ? error.message : String(error);
+    const errorName = error instanceof Error ? error.name : "UnknownError";
+    const status = typeof error === "object" && error !== null && "status" in error
+      ? (error as { status?: unknown }).status
+      : undefined;
+
+    // Keep the user's existing public-facing fallback, but preserve the real
+    // provider failure in server logs so web-search failures can be diagnosed.
+    console.error("[KOYAL API] Request failed", {
+      requestKind,
+      errorName,
+      status,
+      message: detail,
+    });
+
     const reply = error instanceof InputError ? error.message : SERVER_ERROR_REPLY;
     return NextResponse.json({
       reply,
       error: reply,
       code: error instanceof InputError ? "INVALID_REQUEST" : "PROVIDER_ERROR",
+      ...(process.env.NODE_ENV !== "production" ? { debug: { requestKind, errorName, status, message: detail } } : {}),
     });
   }
 }
