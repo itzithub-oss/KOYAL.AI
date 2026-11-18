@@ -15,6 +15,7 @@ const SESSION_KEY = "koyal-ai-auth-session";
 
 export default function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
+  const [guest, setGuest] = useState(false);
   const [ready, setReady] = useState(false);
   const [mode, setMode] = useState<"login" | "signup" | "reset">("login");
   const [email, setEmail] = useState("");
@@ -61,7 +62,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     async function restore() {
       try {
         const raw = localStorage.getItem(SESSION_KEY);
-        if (!raw) return;
+        if (!raw) {
+          if (localStorage.getItem("koyal-ai-guest-mode") === "true" && active) setGuest(true);
+          return;
+        }
         const stored = JSON.parse(raw) as AuthSession;
         if (!stored.refresh_token || !stored.access_token) {
           localStorage.removeItem(SESSION_KEY);
@@ -161,6 +165,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     </>;
   }
 
+  if (guest) return <>
+    {children}
+    <button type="button" onClick={() => { localStorage.removeItem("koyal-ai-guest-mode"); setGuest(false); }} style={{ position: "fixed", zIndex: 121, top: 12, right: 14, border: "1px solid rgba(255,71,109,.5)", borderRadius: 999, padding: "9px 13px", background: "rgba(12,12,19,.94)", color: "#fff", font: "12px system-ui", cursor: "pointer" }}>Log in / Sync account</button>
+  </>;
+
   const heading = mode === "signup" ? "Create your KOYAL account" : mode === "reset" ? "Reset your password" : "Welcome back";
   return (
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20, background: "radial-gradient(ellipse at top, #35101d 0%, #120d16 42%, #08080d 100%)", color: "#fff", fontFamily: "system-ui, sans-serif" }}>
@@ -189,7 +198,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           {mode !== "signup" && <button type="button" onClick={() => { setMode("signup"); setError(""); setNotice(""); }} style={linkStyle}>Create account</button>}
           {mode === "login" && <button type="button" onClick={() => { setMode("reset"); setError(""); setNotice(""); }} style={linkStyle}>Forgot password?</button>}
         </div>
-        <p style={{ margin: "20px 0 0", color: "#9b909b", fontSize: 11, lineHeight: 1.5, textAlign: "center" }}>Your password is handled by Supabase Authentication. Never share your password or API keys. Phone number is optional and is not verified.</p>
+        <button type="button" onClick={() => { localStorage.setItem("koyal-ai-guest-mode", "true"); setGuest(true); }} style={{ width: "100%", marginTop: 14, padding: 12, border: "1px solid #51404b", borderRadius: 12, background: "transparent", color: "#fff", fontWeight: 700, cursor: "pointer" }}>Continue without login</button>
+        <p style={{ margin: "20px 0 0", color: "#9b909b", fontSize: 11, lineHeight: 1.5, textAlign: "center" }}>Your password is handled by Supabase Authentication. Never share your password or API keys. Phone number is optional and is not verified. Guest mode keeps your data on this device.</p>
       </section>
     </main>
   );
