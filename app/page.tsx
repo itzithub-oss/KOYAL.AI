@@ -328,10 +328,12 @@ export default function Home() {
     setEditingProfile(false);
     setProfileOpen(true);
     setMemoryOpen(false);
+    setTasksOpen(false);
     setMobileNav(false);
   }
   function openMemory() {
     setProfileOpen(false);
+    setTasksOpen(false);
     setMemoryOpen(true);
     setMemoryError("");
     setMobileNav(false);
