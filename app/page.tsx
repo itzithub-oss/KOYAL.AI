@@ -308,7 +308,7 @@ function KoyalApp() {
       // Ignore invalid local data and keep defaults.
     }
     loadedRef.current = true;
-    const bootTimer = window.setTimeout(() => setBooting(false), 2000);
+    const bootTimer = window.setTimeout(() => setBooting(false), 2500);
     return () => window.clearTimeout(bootTimer);
   }, []);
   useEffect(() => {
