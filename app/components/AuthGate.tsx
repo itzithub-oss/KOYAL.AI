@@ -63,7 +63,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       try {
         const raw = localStorage.getItem(SESSION_KEY);
         if (!raw) {
-          if (localStorage.getItem("koyal-ai-guest-mode") === "true" && active) setGuest(true);
+          // Guest mode is the default: sign-in is optional, not an app-wide gate.
+          if (active) setGuest(true);
+          localStorage.setItem("koyal-ai-guest-mode", "true");
           return;
         }
         const stored = JSON.parse(raw) as AuthSession;
@@ -80,6 +82,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         if (active) saveSession(next);
       } catch {
         localStorage.removeItem(SESSION_KEY);
+        if (active) setGuest(true);
+        localStorage.setItem("koyal-ai-guest-mode", "true");
       } finally {
         if (active) setReady(true);
       }
@@ -141,6 +145,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   async function signOut() {
     const current = session;
     saveSession(null);
+    localStorage.setItem("koyal-ai-guest-mode", "true");
+    setGuest(true);
     if (current?.access_token && url && key) {
       try {
         await fetch(`${url}/auth/v1/logout`, {
