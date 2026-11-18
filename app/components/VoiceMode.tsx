@@ -6,6 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 const LIVE_MODEL = "gemini-3.8-live";
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
+const LIVE_SYSTEM_INSTRUCTION = `You are Koyal, the friendly voice assistant inside KOYAL AI. Speak naturally, warmly, and clearly. Keep replies concise and easy to understand when spoken. Reply in English by default. Use Hindi only when the user explicitly asks you to speak or reply in Hindi. Understand Hindi and English speech, including code-switching. Do not repeatedly introduce yourself. If asked your name, say Koyal. Stop speaking and listen when the user interrupts. Do not invent facts, memories, or actions.`;
 
 type LiveSession = {
   sendRealtimeInput: (input: any) => void;
@@ -158,6 +159,8 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
         responseModalities: ["AUDIO"],
         inputAudioTranscription: {},
         outputAudioTranscription: {},
+        systemInstruction: { parts: [{ text: LIVE_SYSTEM_INSTRUCTION }] },
+        sessionResumption: {},
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } },
         realtimeInputConfig: { automaticActivityDetection: { disabled: false, prefixPaddingMs: 250, silenceDurationMs: 700 } },
       };
