@@ -378,7 +378,7 @@ function KoyalApp() {
   function changeThinking(idx: number) {
     const option = thinking[Math.max(0, Math.min(6, idx))];
     if (option.id === "supreme" && selectedPlan !== "Supreme") {
-      setSubscriptionOpen(true);
+      if (requireSignIn("access subscription plans")) setSubscriptionOpen(true);
       return;
     }
     setThinkingId(option.id);
@@ -786,7 +786,7 @@ function KoyalApp() {
             </div>}
             <button type="button" onClick={() => setPhilosophicalMode((v) => !v)} className={`${styles.navItem} ${philosophicalMode ? styles.navOn : ""}`}><Icon name="message"/>Philosophical Mode<span className={styles.navSmall}>{philosophicalMode ? "On" : ""}</span></button>
             <button type="button" onClick={openFeatherShop} className={styles.navItem}><Icon name="feather"/>Feather Balance<span className={styles.navSmall}>{selectedPlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</span></button>
-            <button type="button" onClick={() => { setSubscriptionOpen(true); closeSidebar(); }} className={styles.navItem}><Icon name="diamond"/>Subscription</button>
+            <button type="button" onClick={() => { if (requireSignIn("access subscription plans")) setSubscriptionOpen(true); closeSidebar(); }} className={styles.navItem}><Icon name="diamond"/>Subscription</button>
           </nav>
           <button type="button" className={styles.sidebarProfile} onClick={openProfile} aria-label="Open your profile">
             <div className={styles.sidebarProfileTop}>
