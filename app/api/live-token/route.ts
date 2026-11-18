@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 
 export const runtime = "nodejs";
@@ -14,7 +14,13 @@ Do not repeatedly introduce yourself or say you are an AI. If asked your name, s
 You may be interrupted at any time. Stop speaking and listen when the user starts talking.
 Do not invent facts, memories, or actions. Be honest about uncertainty.`;
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (!origin || !host || new URL(origin).host !== host) {
+    return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
