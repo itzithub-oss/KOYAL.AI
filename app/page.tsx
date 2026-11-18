@@ -39,7 +39,7 @@ type IconName =
   | "chat" | "user" | "brain" | "masks" | "book" | "message" | "feather"
   | "diamond" | "moon" | "sun" | "search" | "dots" | "plus" | "paperclip"
   | "send" | "chevron" | "x" | "volume" | "stop" | "menu" | "check"
-  | "arrow" | "copy" | "memory" | "tasks" | "graduation";
+  | "arrow" | "copy" | "memory" | "tasks" | "graduation" | "code";
 
 const ERROR_REPLY = "sorry,there is a problem in my server please try me later";
 const WELCOME: Message = {
@@ -107,6 +107,7 @@ function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
     memory: <><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
     tasks: <><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"/></>,
     graduation: <><path d="m2 9 10-5 10 5-10 5L2 9Z"/><path d="M6 11v5c3 3 9 3 12 0v-5M22 9v6"/></>,
+    code: <><path d="m8 17-5-5 5-5m8 10 5-5-5-5m-3-7-2 20"/></>,
   };
   return <svg {...base}>{paths[name]}</svg>;
 }
@@ -225,6 +226,12 @@ function KoyalApp() {
   const [lightMode, setLightMode] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [codeModeOpen, setCodeModeOpen] = useState(false);
+  const [codeLanguage, setCodeLanguage] = useState("TypeScript");
+  const [codePrompt, setCodePrompt] = useState("");
+  const [codeOutput, setCodeOutput] = useState("");
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeError, setCodeError] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -340,6 +347,7 @@ function KoyalApp() {
   }, [profileOpen, memoryOpen, tasksOpen, subscriptionOpen, featherShopOpen, historyOpen]);
 
   function resetChat() {
+    setCodeModeOpen(false);
     const nextMessages = [{ ...WELCOME, time: timestamp() }];
     const nextSession = createChatSession(nextMessages, "chat-" + Date.now()) as ChatSession;
     const nextSessions = upsertChatSession(chatSessionsRef.current, nextSession) as ChatSession[];
@@ -668,6 +676,49 @@ function KoyalApp() {
     }
     setMenuOpen(false);
   }
+  async function runCodeMode() {
+    const prompt = codePrompt.trim();
+    if (!prompt || codeLoading) return;
+    setCodeLoading(true);
+    setCodeError("");
+    setCodeOutput("");
+    try {
+      const instruction = [
+        "You are Koyal Code Mode, a careful senior software engineer and programming tutor.",
+        "The requested programming language is " + codeLanguage + ".",
+        "Understand whether the user wants code generated, explained, debugged, or improved.",
+        "For code generation or fixes, return the complete, runnable code in a single code block, followed by concise setup or usage notes only when needed.",
+        "For debugging, identify the likely cause and provide the corrected complete code when source is supplied.",
+        "Never claim code was executed or tested unless it actually was.",
+        "Preserve the user's existing framework and constraints; ask a short clarification only if essential information is missing."
+      ].join(" ");
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: instruction + "\n\nUser request:\n" + prompt,
+          mode: "Code",
+          thinkingLevel: currentThinking.name,
+          language: "English by default",
+          subscriptionPlan: selectedPlan,
+          name: profile.name,
+          preciseMode: true,
+          webSearch: false
+        })
+      });
+      const data: ChatApiResponse = await response.json();
+      if (data.debug) console.error("[KOYAL CODE MODE DEBUG]", data.debug);
+      if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) {
+        throw new Error(data.error || "Koyal could not generate code. Please try again.");
+      }
+      setCodeOutput(data.reply);
+    } catch (error) {
+      setCodeError(error instanceof Error ? error.message : "Code Mode is temporarily unavailable.");
+    } finally {
+      setCodeLoading(false);
+    }
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (loading) return;
@@ -767,6 +818,7 @@ function KoyalApp() {
             <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
             <button type="button" onClick={openTasks} className={`${styles.navItem} ${tasksOpen ? styles.navOn : ""}`}><Icon name="tasks"/>Tasks<span className={styles.navSmall}>{tasks.filter((task) => !task.done).length}</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
+            <button type="button" onClick={() => { setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
               {characterOpen && <div className={styles.characterList}>
@@ -930,7 +982,39 @@ function KoyalApp() {
             </div>
           </div>
       </div>}
-            {!profileOpen && !memoryOpen && !tasksOpen && <div className={styles.chatScroll}>
+            {codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", gap:16, width:"min(1100px,calc(100% - 32px))", height:"100%", minHeight:0, margin:"0 auto", padding:"28px 0 18px", overflowY:"auto" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+                <div><h2 style={{ margin:0, fontSize:26 }}>⌘ Code Mode</h2><p style={{ margin:"6px 0 0", opacity:.7, fontSize:13 }}>Generate, explain, debug and improve code with Koyal.</p></div>
+                <button type="button" onClick={() => setCodeModeOpen(false)} className={styles.editProfileButton}>← Back to Chat</button>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:12, padding:16, border:"1px solid rgba(255,71,109,.3)", borderRadius:18, background:"rgba(18,12,25,.88)" }}>
+                <label style={{ display:"grid", gap:7, fontSize:12, opacity:.9 }}>Programming language
+                  <select value={codeLanguage} onChange={(event) => setCodeLanguage(event.target.value)} style={{ width:"100%", maxWidth:320, padding:11, borderRadius:10, color:"inherit", background:"#211827", border:"1px solid rgba(255,255,255,.18)" }}>
+                    {["TypeScript","JavaScript","Python","HTML","CSS","Java","C","C++","C#","Go","Rust","PHP","SQL","Bash"].map((language) => <option key={language} value={language}>{language}</option>)}
+                  </select>
+                </label>
+                <label style={{ display:"grid", gap:8, fontSize:13, fontWeight:650 }}>What should Koyal code?
+                  <textarea value={codePrompt} onChange={(event) => setCodePrompt(event.target.value)} rows={5} placeholder="Describe what you want to build, paste code to explain, or share an error to debug..." style={{ width:"100%", resize:"vertical", minHeight:120, padding:14, borderRadius:12, color:"inherit", background:"#100d18", border:"1px solid rgba(255,255,255,.16)", font:"inherit", fontSize:14, lineHeight:1.55 }} />
+                </label>
+                <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                  <button type="button" onClick={runCodeMode} disabled={codeLoading || !codePrompt.trim()} className={styles.saveProfileButton}>{codeLoading ? "Generating..." : "Generate / Fix Code"}</button>
+                  <button type="button" onClick={() => { setCodePrompt(""); setCodeOutput(""); setCodeError(""); }} className={styles.editProfileButton}>Clear</button>
+                  {codeError && <span role="alert" style={{ color:"#ff9db7", fontSize:12 }}>{codeError}</span>}
+                </div>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", flex:1, minHeight:260, border:"1px solid rgba(255,71,109,.3)", borderRadius:18, overflow:"hidden", background:"#0d0b13" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap", padding:"12px 15px", borderBottom:"1px solid rgba(255,255,255,.1)" }}>
+                  <strong style={{ fontSize:13 }}>Koyal's response</strong>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button type="button" disabled={!codeOutput} onClick={() => { void navigator.clipboard.writeText(codeOutput); }} className={styles.editProfileButton}>Copy</button>
+                    <button type="button" disabled={!codeOutput} onClick={() => { const blob = new Blob([codeOutput],{type:"text/plain;charset=utf-8"}); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href=url; link.download="koyal-code-response.txt"; link.click(); URL.revokeObjectURL(url); }} className={styles.editProfileButton}>Download</button>
+                  </div>
+                </div>
+                <textarea aria-label="Generated code and explanation" readOnly value={codeOutput} placeholder={codeLoading ? "Koyal is working on your code..." : "Your generated code and explanation will appear here."} spellCheck={false} style={{ flex:1, width:"100%", minHeight:230, resize:"vertical", border:0, outline:0, padding:17, color:"#f1eaf7", background:"transparent", fontFamily:"ui-monospace,SFMono-Regular,Consolas,monospace", fontSize:13, lineHeight:1.65, whiteSpace:"pre", overflow:"auto" }} />
+              </div>
+              <p style={{ margin:0, fontSize:11, opacity:.6 }}>Code is generated by AI and is not executed or security-tested inside this workspace. Review it before running.</p>
+            </div>}
+            {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && <div className={styles.chatScroll}>
               <div className={styles.messages}>
                 {visibleMessages.length === 0 && <div className={styles.noResults}>No matching messages found.</div>}
                 {visibleMessages.map((message, index) => <div key={`${index}-${message.role}`} className={`${styles.messageRow} ${message.role === "user" ? styles.userRow : styles.assistantRow}`}>
@@ -963,7 +1047,7 @@ function KoyalApp() {
             </div>}
           </section>
 
-          {!profileOpen && !memoryOpen && !tasksOpen && <div className={styles.bottomArea}>
+          {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && <div className={styles.bottomArea}>
             <div className={styles.effortCard}>
               <div className={styles.effortHeading}>Thinking Effort</div>
               <button className={styles.thinkingLabel} type="button" onClick={() => changeThinking((indexThinking + 1) % thinking.length)} title="Click to change thinking level"><span>{selectedPlan === "Supreme" ? "∞" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong><Icon name="chevron" size={14}/></button>
