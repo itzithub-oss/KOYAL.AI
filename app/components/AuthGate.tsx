@@ -84,6 +84,21 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (!session?.refresh_token) return;
+    const delay = Math.max(1000, (session.expires_at - Math.floor(Date.now() / 1000) - 60) * 1000);
+    const timer = window.setTimeout(async () => {
+      try {
+        const refreshed = await authRequest("token?grant_type=refresh_token", { refresh_token: session.refresh_token });
+        saveSession({ ...refreshed, expires_at: Math.floor(Date.now() / 1000) + Number(refreshed.expires_in || 3600) });
+      } catch {
+        saveSession(null);
+        setError("Your session expired. Please log in again.");
+      }
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [session?.refresh_token, session?.expires_at]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
