@@ -709,13 +709,18 @@ ${cleanText}
             position: "absolute",
             right: 0,
             bottom: 58,
-            width: 300,
-            height: 300,
-            display: "grid",
-            placeItems: "center",
-            borderRadius: "50%",
-            background: "radial-gradient(circle,rgba(72,8,30,.5) 0%,rgba(9,6,13,.97) 68%)",
-            border: "1px solid rgba(255,65,105,.28)",
+            width: "min(340px, calc(100vw - 28px))",
+            minHeight: 390,
+            boxSizing: "border-box",
+            padding: "18px 16px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            borderRadius: 26,
+            background: "linear-gradient(160deg,rgba(65,9,32,.98),rgba(9,6,13,.99) 72%)",
+            border: "1px solid rgba(255,65,105,.35)",
             boxShadow: speaking
               ? "0 0 55px rgba(255,35,86,.28)"
               : listening
@@ -724,19 +729,30 @@ ${cleanText}
             zIndex: 100,
           }}
         >
+          <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <strong style={{ color: "#fff", fontSize: 14, letterSpacing: ".05em" }}>KOYAL VOICE CALL</strong>
+            <span style={{ color: listening ? "#7ce6a7" : speaking ? "#ff7896" : "#d7c5cf", fontSize: 11 }}>
+              {listening ? "Listening" : speaking ? "Speaking" : thinking ? "Thinking" : "Paused"}
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => {
-              if (listening || speaking || thinking) {
+              if (speaking) {
+                stopSpeaking();
+                setStatus("Interrupted. Listening again...");
+                restartListeningAfterAI();
+              } else if (listening) {
                 stopEverything();
+                setStatus("Microphone paused");
               } else {
                 startBirdCommunication();
               }
             }}
-            aria-label={listening || speaking || thinking ? "Stop voice communication" : "Start voice communication"}
+            aria-label={speaking ? "Interrupt Koyal" : listening ? "Pause microphone" : "Resume call"}
             style={{
-              width: 236,
-              height: 236,
+              width: 224,
+              height: 224,
               padding: 0,
               border: "none",
               borderRadius: "50%",
@@ -764,6 +780,39 @@ ${cleanText}
               <img className="koyal-voice-open" src="/koyal-voice-open.png" alt="" />
             </span>
           </button>
+          <div aria-live="polite" style={{ width: "100%", minHeight: 32, textAlign: "center", color: "rgba(255,255,255,.78)", fontSize: 12, lineHeight: 1.45 }}>
+            {status}
+            {heardText && <div style={{ marginTop: 5, color: "rgba(255,255,255,.55)", overflowWrap: "anywhere" }}>You: {heardText}</div>}
+            {aiText && <div style={{ marginTop: 5, color: "#ffb3c5", overflowWrap: "anywhere" }}>Koyal: {aiText}</div>}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%" }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (speaking) {
+                  stopSpeaking();
+                  setStatus("You interrupted Koyal.");
+                  restartListeningAfterAI();
+                } else if (listening) {
+                  stopEverything();
+                  setStatus("Microphone paused");
+                } else {
+                  startBirdCommunication();
+                }
+              }}
+              style={{ flex: 1, border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.08)", color: "white", borderRadius: 24, padding: "11px 10px", cursor: "pointer", fontWeight: 600 }}
+            >
+              {speaking ? "Interrupt" : listening ? "Mute mic" : "Resume"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { stopEverything(); setOpen(false); }}
+              aria-label="End call"
+              style={{ flex: 1, border: 0, background: "#e53955", color: "white", borderRadius: 24, padding: "11px 10px", cursor: "pointer", fontWeight: 700 }}
+            >
+              End call
+            </button>
+          </div>
         </div>
       )}
     </div>
