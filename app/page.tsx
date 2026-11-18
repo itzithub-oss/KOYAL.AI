@@ -5,12 +5,14 @@ import VoiceMode from "./components/VoiceMode";
 import BootScreen from "./components/BootScreen";
 import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
+import { addMemory, buildMemoryContext, deleteMemory, loadMemories, suggestMemoryFromMessage, type KoyalMemory } from "../lib/koyal-memory.mjs";
 
 type Message = {
   role: "user" | "assistant";
   content: string;
   fileName?: string;
   time?: string;
+  sources?: { title: string; url: string }[];
 };
 type PlanName = "Just" | "Let It" | "Care" | "Elite" | "Supreme";
 type CharacterMode =
@@ -18,7 +20,7 @@ type CharacterMode =
   | "school-female-friend" | "business-partner" | "enemy";
 type ThinkingEffort =
   | "just" | "let-it" | "care" | "high" | "ultra-high" | "elite" | "supreme";
-type ChatApiResponse = { reply?: string; error?: string };
+type ChatApiResponse = { reply?: string; error?: string; sources?: { title: string; url: string }[] };
 type Profile = { name: string; gender: string; phone: string; dob: string; photo: string };
 const EMPTY_PROFILE: Profile = { name: "", gender: "", phone: "", dob: "", photo: "" };
 type FeatherPack = { quantity: number; rupees: number };
@@ -33,7 +35,7 @@ type IconName =
   | "chat" | "user" | "brain" | "masks" | "book" | "message" | "feather"
   | "diamond" | "moon" | "sun" | "search" | "dots" | "plus" | "paperclip"
   | "send" | "chevron" | "x" | "volume" | "stop" | "menu" | "check"
-  | "arrow" | "copy";
+  | "arrow" | "copy" | "memory";
 
 const ERROR_REPLY = "sorry,there is a problem in my server please try me later";
 const WELCOME: Message = {
@@ -98,8 +100,63 @@ function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
     check: <path d="m5 12 4 4L19 6"/>,
     arrow: <path d="M5 12h14m-6-6 6 6-6 6"/>,
     copy: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
+    memory: <><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
   };
   return <svg {...base}>{paths[name]}</svg>;
+}
+
+
+function xmlEscape(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+function makeStoredZip(files: { name: string; content: string }[]) {
+  const encoder = new TextEncoder();
+  const chunks: Uint8Array[] = [];
+  const central: Uint8Array[] = [];
+  let offset = 0;
+  const crc32 = (data: Uint8Array) => {
+    let crc = 0xffffffff;
+    for (const byte of data) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  };
+  const u16 = (view: DataView, at: number, value: number) => view.setUint16(at, value, true);
+  const u32 = (view: DataView, at: number, value: number) => view.setUint32(at, value, true);
+  for (const file of files) {
+    const name = encoder.encode(file.name);
+    const data = encoder.encode(file.content);
+    const crc = crc32(data);
+    const local = new Uint8Array(30 + name.length);
+    const lv = new DataView(local.buffer);
+    u32(lv,0,0x04034b50); u16(lv,4,20); u16(lv,6,0x0800); u16(lv,8,0);
+    u32(lv,14,crc); u32(lv,18,data.length); u32(lv,22,data.length); u16(lv,26,name.length);
+    local.set(name,30); chunks.push(local,data);
+    const entry = new Uint8Array(46 + name.length);
+    const ev = new DataView(entry.buffer);
+    u32(ev,0,0x02014b50); u16(ev,4,20); u16(ev,6,20); u16(ev,8,0x0800); u16(ev,10,0);
+    u32(ev,16,crc); u32(ev,20,data.length); u32(ev,24,data.length); u16(ev,28,name.length);
+    u32(ev,42,offset); entry.set(name,46); central.push(entry);
+    offset += local.length + data.length;
+  }
+  const centralSize = central.reduce((sum, item) => sum + item.length, 0);
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  u32(ev,0,0x06054b50); u16(ev,8,files.length); u16(ev,10,files.length);
+  u32(ev,12,centralSize); u32(ev,16,offset);
+  const parts = [...chunks, ...central, end];
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(total);
+  let cursor = 0;
+  for (const part of parts) { output.set(part, cursor); cursor += part.length; }
+  return new Blob([output.buffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+}
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url; link.download = filename; link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function timestamp() {
@@ -112,6 +169,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
   const [feathers, setFeathers] = useState(2480);
   const [thinkingId, setThinkingId] = useState<ThinkingEffort>("high");
@@ -125,6 +183,14 @@ export default function Home() {
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [draftProfile, setDraftProfile] = useState<Profile>(EMPTY_PROFILE);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  const [memories, setMemories] = useState<KoyalMemory[]>([]);
+  const [memoryDraft, setMemoryDraft] = useState("");
+  const [memoryError, setMemoryError] = useState("");
+  const [pendingMemorySuggestion, setPendingMemorySuggestion] = useState("");
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [urlReaderEnabled, setUrlReaderEnabled] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [featherShopOpen, setFeatherShopOpen] = useState(false);
@@ -153,6 +219,7 @@ export default function Home() {
 
   useEffect(() => {
     try {
+      setMemories(loadMemories(localStorage));
       const saved = localStorage.getItem("koyal-ai-chat");
       if (saved) {
         const parsed: Message[] = JSON.parse(saved);
@@ -190,26 +257,29 @@ export default function Home() {
   }, [messages]);
   useEffect(() => () => { if (typeof window !== "undefined") window.speechSynthesis?.cancel(); }, []);
   useEffect(() => {
-    if (!profileOpen && !subscriptionOpen && !featherShopOpen) return;
+    if (!profileOpen && !memoryOpen && !subscriptionOpen && !featherShopOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setProfileOpen(false);
+        setMemoryOpen(false);
         setSubscriptionOpen(false);
         setFeatherShopOpen(false);
       }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [profileOpen, subscriptionOpen, featherShopOpen]);
+  }, [profileOpen, memoryOpen, subscriptionOpen, featherShopOpen]);
 
   function resetChat() {
     setMessages([{ ...WELCOME, time: timestamp() }]);
+    setPendingMemorySuggestion("");
     setInput("");
     setSelectedFile(null);
     setSearch("");
     setSearchOpen(false);
     setMobileNav(false);
     setProfileOpen(false);
+    setMemoryOpen(false);
     setEditingProfile(false);
     window.speechSynthesis?.cancel();
   }
@@ -222,14 +292,65 @@ export default function Home() {
     setThinkingId(option.id);
   }
   function handleFile(event: ChangeEvent<HTMLInputElement>) {
-    setSelectedFile(event.target.files?.[0] || null);
+    const file = event.target.files?.[0] || null;
+    setFileError("");
+    if (!file) { setSelectedFile(null); return; }
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setSelectedFile(null);
+      setFileError("Please choose a PDF file.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size <= 0 || file.size > 8 * 1024 * 1024) {
+      setSelectedFile(null);
+      setFileError("PDF files must be between 1 byte and 8 MB.");
+      event.target.value = "";
+      return;
+    }
+    setSelectedFile(file);
   }
   function openProfile() {
     setDraftProfile({ ...profile });
     setProfileError("");
     setEditingProfile(false);
     setProfileOpen(true);
+    setMemoryOpen(false);
     setMobileNav(false);
+  }
+  function openMemory() {
+    setProfileOpen(false);
+    setMemoryOpen(true);
+    setMemoryError("");
+    setMobileNav(false);
+  }
+  function saveLocalMemory() {
+    try {
+      const next = addMemory(localStorage, memories, memoryDraft);
+      setMemories(next);
+      setMemoryDraft("");
+      setMemoryError("");
+    } catch (error) {
+      setMemoryError(error instanceof Error ? error.message : "Could not save this memory.");
+    }
+  }
+  function saveSuggestedMemory() {
+    if (!pendingMemorySuggestion) return;
+    try {
+      const next = addMemory(localStorage, memories, pendingMemorySuggestion);
+      setMemories(next);
+      setPendingMemorySuggestion("");
+      setMemoryError("");
+    } catch (error) {
+      setMemoryError(error instanceof Error ? error.message : "Could not save this memory.");
+    }
+  }
+  function removeLocalMemory(id: string) {
+    try {
+      setMemories(deleteMemory(localStorage, memories, id));
+      setMemoryError("");
+    } catch (error) {
+      setMemoryError(error instanceof Error ? error.message : "Could not delete this memory.");
+    }
   }
   function saveProfile() {
     const name = draftProfile.name.trim();
@@ -305,23 +426,57 @@ export default function Home() {
     utterance.onerror = () => setSpeakingIndex(null);
     window.speechSynthesis.speak(utterance);
   }
+  function chatTranscript() {
+    return messages.map((m) => `${m.role === "assistant" ? "Koyal" : "You"}${m.time ? ` · ${m.time}` : ""}:\n${m.content}${m.fileName ? `\n[Attachment: ${m.fileName}]` : ""}${m.sources?.length ? `\nSources:\n${m.sources.map((s) => `- ${s.title}: ${s.url}`).join("\n")}` : ""}`).join("\n\n------------------------------\n\n");
+  }
   async function copyChat() {
-    const transcript = messages.map((m) => `${m.role === "assistant" ? "Koyal" : "You"}: ${m.content}`).join("\n\n");
     try {
-      await navigator.clipboard.writeText(transcript);
+      await navigator.clipboard.writeText(chatTranscript());
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch { setCopied(false); }
+    setMenuOpen(false);
+  }
+  function exportChat(format: "txt" | "docx" | "pdf") {
+    const title = "KOYAL AI Conversation";
+    const transcript = chatTranscript();
+    const safeName = `koyal-chat-${new Date().toISOString().slice(0,10)}`;
+    if (format === "txt") {
+      downloadBlob(new Blob([transcript], { type: "text/plain;charset=utf-8" }), `${safeName}.txt`);
+    } else if (format === "docx") {
+      const paragraphs = messages.map((m) => {
+        const label = m.role === "assistant" ? "Koyal" : "You";
+        const lines = [`<w:p><w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">${xmlEscape(label + (m.time ? ` · ${m.time}` : ""))}</w:t></w:r></w:p>`];
+        for (const line of m.content.split(/\r?\n/)) lines.push(`<w:p><w:r><w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r></w:p>`);
+        if (m.fileName) lines.push(`<w:p><w:r><w:t>${xmlEscape("[Attachment: " + m.fileName + "]")}</w:t></w:r></w:p>`);
+        for (const source of m.sources || []) lines.push(`<w:p><w:r><w:t>${xmlEscape(source.title + ": " + source.url)}</w:t></w:r></w:p>`);
+        return lines.join("");
+      }).join('<w:p><w:r><w:t> </w:t></w:r></w:p>');
+      const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:rPr><w:b/><w:sz w:val="32"/></w:rPr><w:t>${title}</w:t></w:r></w:p>${paragraphs}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>`;
+      const blob = makeStoredZip([
+        { name: "[Content_Types].xml", content: '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>' },
+        { name: "_rels/.rels", content: '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
+        { name: "word/document.xml", content: documentXml },
+      ]);
+      downloadBlob(blob, `${safeName}.docx`);
+    } else {
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) { window.alert("Allow pop-ups for Koyal to create a PDF."); return; }
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>body{font:14px/1.6 Arial,sans-serif;color:#222;max-width:850px;margin:40px auto;padding:0 24px}h1{font-size:22px}article{white-space:pre-wrap;overflow-wrap:anywhere;margin:16px 0;padding-bottom:12px;border-bottom:1px solid #ddd}.who{font-weight:bold;color:#9b1c3c}@media print{body{margin:0 auto}}</style></head><body><h1>${title}</h1>${messages.map(m=>`<article><div class="who">${xmlEscape(m.role === "assistant" ? "Koyal" : "You")}${m.time ? " · " + xmlEscape(m.time) : ""}</div>${xmlEscape(m.content)}${m.fileName ? "\\n[Attachment: " + xmlEscape(m.fileName) + "]" : ""}${(m.sources || []).map(s=>"\\n"+xmlEscape(s.title+": "+s.url)).join("")}</article>`).join("")}<script>window.onload=()=>window.print()<\/script></body></html>`;
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
     setMenuOpen(false);
   }
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (loading) return;
     const text = input.trim();
-    if (!text && !selectedFile) return;
+    const attachment = selectedFile;
+    if (!text && !attachment && !(urlReaderEnabled && urlInput.trim())) return;
     if (featherCost > feathers) { openFeatherShop(); return; }
-    const message = text || `I attached a file named ${selectedFile?.name}.`;
-    setMessages((old) => [...old, { role: "user", content: message, fileName: selectedFile?.name, time: timestamp() }]);
+    const message = text || (attachment ? "Please summarize the attached PDF." : urlReaderEnabled ? "Please summarize this webpage." : "Please help me with this attachment.");
+    setMessages((old) => [...old, { role: "user", content: message, fileName: attachment?.name, time: timestamp() }]);
     setInput("");
     setSelectedFile(null);
     if (fileInput.current) fileInput.current.value = "";
@@ -333,13 +488,10 @@ export default function Home() {
         characterMode !== "normal" ? `Character mode: ${currentCharacter.name}.` : "",
         teacherMode ? `Teacher mode: Class ${teacherClass}, ${teacherSubject}.` : "",
         philosophicalMode ? "Philosophical mode: provide thoughtful reasoning." : "",
-        selectedFile ? "" : "",
+        buildMemoryContext(memories),
       ].filter(Boolean).join(" ");
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `${message}\n\n${systemDetails}${selectedFile ? `\nThe attached file is named ${selectedFile.name}; its contents have not been sent. Be transparent that you cannot read it.` : ""}`,
+      const requestPayload = {
+          message: `${message}\n\n${systemDetails}`,
           mode: teacherMode ? "Teacher" : philosophicalMode ? "Philosophical" : preciseMode ? "Precise" : "Normal",
           thinkingLevel: currentThinking.name,
           language: "English by default",
@@ -351,17 +503,38 @@ export default function Home() {
           teacherSubject,
           preciseMode,
           philosophicalMode,
-        }),
+          webSearch: webSearchEnabled,
+          urlContextUrl: urlReaderEnabled ? urlInput.trim() : undefined,
+        };
+      let requestBody: BodyInit;
+      let requestHeaders: HeadersInit | undefined;
+      if (attachment) {
+        const formData = new FormData();
+        for (const [key, value] of Object.entries(requestPayload)) {
+          if (value !== undefined && value !== null) formData.append(key, String(value));
+        }
+        formData.append("file", attachment);
+        requestBody = formData;
+      } else {
+        requestHeaders = { "Content-Type": "application/json" };
+        requestBody = JSON.stringify(requestPayload);
+      }
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: requestHeaders,
+        body: requestBody,
       });
       const data: ChatApiResponse = await response.json();
       if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(ERROR_REPLY);
-      setMessages((old) => [...old, { role: "assistant", content: data.reply || ERROR_REPLY, time: timestamp() }]);
+      setMessages((old) => [...old, { role: "assistant", content: data.reply || ERROR_REPLY, time: timestamp(), sources: Array.isArray(data.sources) ? data.sources : [] }]);
+      setPendingMemorySuggestion(suggestMemoryFromMessage(text, memories));
       if (featherCost > 0) setFeathers((old) => {
         const value = Math.max(0, old - featherCost);
         localStorage.setItem("koyal-ai-feather-balance", String(value));
         return value;
       });
     } catch {
+      setPendingMemorySuggestion("");
       setMessages((old) => [...old, { role: "assistant", content: ERROR_REPLY, time: timestamp() }]);
     } finally { setLoading(false); }
   }
@@ -384,6 +557,7 @@ export default function Home() {
           <nav className={styles.nav} aria-label="Koyal features">
             <button type="button" onClick={resetChat} className={`${styles.navItem} ${styles.navMain}`}><Icon name="chat"/><strong>New Chat</strong></button>
             <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
+            <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
@@ -421,17 +595,45 @@ export default function Home() {
               <span className={styles.headerText}><strong>KOYAL <em>AI</em></strong><small>INTELLIGENCE WITH A SOFTER SOUL</small></span>
             </div>
             <div className={styles.topActions}>
-              {searchOpen && <input value={search} onChange={(e) => setSearch(e.target.value)} autoFocus className={styles.searchInput} placeholder="Search this chat..." aria-label="Search messages"/>}
+              {searchOpen && <input value={search} onChange={(e) => setSearch(e.target.value)} autoFocus className={styles.searchInput} placeholder="Search this chat..." aria-label="Search messages"/>}{searchOpen && search.trim() && <small aria-live="polite" style={{ whiteSpace: "nowrap", opacity: .75 }}>{visibleMessages.length} match{visibleMessages.length === 1 ? "" : "es"}</small>}
               <button type="button" className={styles.roundTop} title={lightMode ? "Dark theme" : "Light theme"} aria-label="Toggle theme" onClick={() => setLightMode((v) => !v)}><Icon name={lightMode ? "sun" : "moon"}/></button>
               <button type="button" className={styles.roundTop} title="Search messages" aria-label="Search messages" onClick={() => {setSearchOpen((v) => !v);setSearch("");}}><Icon name="search"/></button>
               <div className={styles.menuWrap}><button type="button" className={styles.roundTop} title="More options" aria-label="More options" onClick={() => setMenuOpen((v) => !v)}><Icon name="dots"/></button>
-                {menuOpen && <div className={styles.overflowMenu}><button type="button" onClick={copyChat}><Icon name="copy" size={16}/>{copied ? "Copied" : "Copy conversation"}</button><button type="button" onClick={() => {resetChat();setMenuOpen(false);}}><Icon name="chat" size={16}/>Clear conversation</button></div>}
+                {menuOpen && <div className={styles.overflowMenu}>
+                  <button type="button" onClick={copyChat}><Icon name="copy" size={16}/>{copied ? "Copied" : "Copy conversation"}</button>
+                  <button type="button" onClick={() => exportChat("txt")}>Download TXT</button>
+                  <button type="button" onClick={() => exportChat("docx")}>Download Word (.docx)</button>
+                  <button type="button" onClick={() => exportChat("pdf")}>Print / Save as PDF</button>
+                  <button type="button" onClick={() => {resetChat();setMenuOpen(false);}}><Icon name="chat" size={16}/>Clear conversation</button>
+                </div>}
               </div>
             </div>
           </header>
 
           <section className={styles.chatSpace} aria-label="Conversation">
             <div className={styles.sceneBackdrop}/>
+      {memoryOpen && <div className={styles.profileModal} role="region" aria-label="Koyal local memory">
+          <div className={styles.profileHead}>
+            <div><h2>Koyal Memory</h2><p>Saved only in this browser. You choose what Koyal remembers.</p></div>
+            <button type="button" aria-label="Close memory" className={styles.profileClose} onClick={() => setMemoryOpen(false)}><Icon name="x" size={24}/></button>
+          </div>
+          <div className={styles.profileBody}>
+            <div className={styles.profileFields}>
+              <label><span>Add a memory (max 500 characters)</span><textarea value={memoryDraft} maxLength={500} rows={3} placeholder="Example: I prefer short explanations with examples." onChange={(e) => setMemoryDraft(e.target.value)} /></label>
+              <button type="button" className={styles.saveProfileButton} onClick={saveLocalMemory} disabled={!memoryDraft.trim()}>Save Memory</button>
+              {memoryError && <p className={styles.profileError} role="alert">{memoryError}</p>}
+              <p className={styles.profilePrivacy}>Memories are stored locally on this device. When you send a chat message, saved memories are included in that request to the configured AI provider. Do not save passwords, payment details or other secrets.</p>
+            </div>
+            <div className={styles.profileFields}>
+              <h3>Saved memories ({memories.length}/100)</h3>
+              {memories.length === 0 && <p className={styles.profilePrivacy}>No memories saved yet. Add a fact or preference above.</p>}
+              {memories.map((memory) => <div key={memory.id} className={styles.identityCard} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                <p style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{memory.text}</p>
+                <button type="button" className={styles.profileClose} aria-label="Delete memory" title="Delete memory" onClick={() => removeLocalMemory(memory.id)}><Icon name="x" size={18}/></button>
+              </div>)}
+            </div>
+          </div>
+      </div>}
       {profileOpen && <div className={styles.profileModal} role="region" aria-label="Profile">
           <div className={styles.profileHead}>
             <div><h2>Profile</h2><p>Manage your personal information and account details</p></div>
@@ -465,7 +667,7 @@ export default function Home() {
             </div>
           </div>
       </div>}
-            {!profileOpen && <div className={styles.chatScroll}>
+            {!profileOpen && !memoryOpen && <div className={styles.chatScroll}>
               <div className={styles.messages}>
                 {visibleMessages.length === 0 && <div className={styles.noResults}>No matching messages found.</div>}
                 {visibleMessages.map((message, index) => <div key={`${index}-${message.role}`} className={`${styles.messageRow} ${message.role === "user" ? styles.userRow : styles.assistantRow}`}>
@@ -476,17 +678,29 @@ export default function Home() {
                       <span>{message.content}</span>
                       <div className={styles.bubbleFooter}><time>{message.time || ""}</time></div>
                     </div>
+                    {message.role === "assistant" && Boolean(message.sources?.length) && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "8px 4px 4px" }} aria-label="Web sources">
+                      {message.sources?.filter((source) => /^https?:\/\//i.test(source.url)).map((source, sourceIndex) => <a key={source.url + sourceIndex} href={source.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", maxWidth: "100%", padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,71,109,.3)", color: "inherit", fontSize: 12, textDecoration: "none", overflowWrap: "anywhere" }}>{source.title || "Source"} ↗</a>)}
+                    </div>}
                     {message.role === "assistant" && <button type="button" className={styles.listen} title="Read this message aloud" onClick={() => speakMessage(message.content,index)}><Icon name={speakingIndex === index ? "stop" : "volume"} size={15}/>{speakingIndex === index ? "Stop" : "Listen"}</button>}
                   </div>
                   {message.role === "user" && <span className={`${styles.messageAvatar} ${styles.userAvatar}`}><Icon name="user" size={23}/></span>}
                 </div>)}
                 {loading && <div className={styles.messageRow}><span className={styles.messageAvatar}><img src="/koyal-bird.png" alt=""/></span><div className={styles.loadingBubble}><span/><span/><span/> Koyal is thinking...</div></div>}
+                {pendingMemorySuggestion && !loading && <div role="status" aria-live="polite" style={{ margin: "12px 42px 16px", padding: "14px 16px", border: "1px solid rgba(255,71,109,.38)", borderRadius: 16, background: "rgba(255,71,109,.08)", maxWidth: 520 }}>
+                  <strong style={{ display: "block", marginBottom: 6 }}>Should I remember this?</strong>
+                  <p style={{ margin: "0 0 12px", overflowWrap: "anywhere" }}>{pendingMemorySuggestion}</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    <button type="button" className={styles.saveProfileButton} onClick={saveSuggestedMemory}>Yes, remember</button>
+                    <button type="button" className={styles.editProfileButton} onClick={() => setPendingMemorySuggestion("")}>Not now</button>
+                  </div>
+                  <small style={{ display: "block", marginTop: 8, opacity: .75 }}>Nothing is saved unless you choose “Yes, remember”.</small>
+                </div>}
                 <div ref={bottomRef} />
               </div>
             </div>}
           </section>
 
-          {!profileOpen && <div className={styles.bottomArea}>
+          {!profileOpen && !memoryOpen && <div className={styles.bottomArea}>
             <div className={styles.effortCard}>
               <div className={styles.effortHeading}>Thinking Effort</div>
               <button className={styles.thinkingLabel} type="button" onClick={() => changeThinking((indexThinking + 1) % thinking.length)} title="Click to change thinking level"><span>{selectedPlan === "Supreme" ? "∞" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong><Icon name="chevron" size={14}/></button>
@@ -497,13 +711,27 @@ export default function Home() {
               </div>
             </div>
             <form className={styles.composer} onSubmit={sendMessage}>
-              {selectedFile && <div className={styles.attachment}><Icon name="paperclip" size={16}/>{selectedFile.name}<button type="button" aria-label="Remove attachment" onClick={() => {setSelectedFile(null);if(fileInput.current)fileInput.current.value="";}}><Icon name="x" size={14}/></button></div>}
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "0 12px 8px" }}>
+                <button type="button" aria-pressed={webSearchEnabled} onClick={() => setWebSearchEnabled((enabled) => !enabled)} style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 999, padding: "7px 12px", border: webSearchEnabled ? "1px solid rgba(255,71,109,.8)" : "1px solid var(--border, rgba(150,150,150,.3))", background: webSearchEnabled ? "rgba(255,71,109,.13)" : "transparent", color: "inherit", fontSize: 12, cursor: "pointer" }}>
+                  <Icon name="search" size={15}/> Web Search {webSearchEnabled ? "On" : "Off"}
+                </button>
+                {webSearchEnabled && <small style={{ opacity: .7 }}>Searches current web sources. Uses Gemini online.</small>}
+                <button type="button" aria-pressed={urlReaderEnabled} onClick={() => setUrlReaderEnabled((enabled) => !enabled)} style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 999, padding: "7px 12px", border: urlReaderEnabled ? "1px solid rgba(255,71,109,.8)" : "1px solid var(--border, rgba(150,150,150,.3))", background: urlReaderEnabled ? "rgba(255,71,109,.13)" : "transparent", color: "inherit", fontSize: 12, cursor: "pointer" }}>
+                  ↗ Read URL {urlReaderEnabled ? "On" : "Off"}
+                </button>
+                {urlReaderEnabled && <small style={{ opacity: .7 }}>Paste a public webpage link. Uses Gemini URL Context.</small>}
+              </div>
+              {urlReaderEnabled && <div style={{ padding: "0 12px 10px" }}>
+                <input type="url" aria-label="Webpage URL to read" value={urlInput} onChange={(event) => setUrlInput(event.target.value)} placeholder="https://example.com/article" maxLength={2048} required style={{ width: "100%", minWidth: 0, borderRadius: 12, border: "1px solid var(--border, rgba(150,150,150,.3))", padding: "11px 13px", background: "transparent", color: "inherit", font: "inherit", fontSize: 13 }} />
+              </div>}
+              {fileError && <p role="alert" style={{ margin: "0 12px 8px", color: "#ff647c", fontSize: 12 }}>{fileError}</p>}
+              {selectedFile && <div className={styles.attachment}><Icon name="paperclip" size={16}/>{selectedFile.name}<small style={{ opacity: .7 }}>Selectable text is extracted locally; scanned pages use Gemini OCR</small><button type="button" aria-label="Remove attachment" onClick={() => {setSelectedFile(null);setFileError("");if(fileInput.current)fileInput.current.value="";}}><Icon name="x" size={14}/></button></div>}
               <div className={styles.composerRow}>
-                <input ref={fileInput} type="file" hidden onChange={handleFile}/>
-                <button type="button" className={styles.attachmentButton} title="Attach a file (file name only)" aria-label="Attach a file" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
+                <input ref={fileInput} type="file" accept="application/pdf,.pdf" hidden onChange={handleFile}/>
+                <button type="button" className={styles.attachmentButton} title="Attach a PDF (up to 8 MB and 30 pages)" aria-label="Attach a PDF" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
                 <textarea value={input} placeholder={teacherMode ? `Ask your Class ${teacherClass} ${teacherSubject} teacher...` : characterMode !== "normal" ? `Message ${currentCharacter.name}...` : "Message Koyal..."} rows={1} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
                 <div className={styles.voiceButton}><VoiceMode subscriptionPlan={selectedPlan}/></div>
-                <button type="submit" className={styles.sendButton} disabled={loading || (!input.trim() && !selectedFile)} title="Send message" aria-label="Send message"><Icon name="send" size={22}/></button>
+                <button type="submit" className={styles.sendButton} disabled={loading || (!input.trim() && !selectedFile && !(urlReaderEnabled && urlInput.trim()))} title="Send message" aria-label="Send message"><Icon name="send" size={22}/></button>
               </div>
             </form>
           </div>}
