@@ -400,7 +400,19 @@ function KoyalApp() {
     }
     setSelectedFile(file);
   }
+  function isSignedIn() {
+    try {
+      const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+      return Boolean(auth?.access_token && auth?.user?.id);
+    } catch { return false; }
+  }
+  function requireSignIn(feature: string) {
+    if (isSignedIn()) return true;
+    window.alert(`Please log in or create a KOYAL account to ${feature}.`);
+    return false;
+  }
   function openProfile() {
+    if (!requireSignIn("create or edit your profile")) return;
     setDraftProfile({ ...profile });
     setProfileError("");
     setEditingProfile(false);
@@ -463,6 +475,7 @@ function KoyalApp() {
     }
   }
   async function saveProfile() {
+    if (!requireSignIn("save your profile")) return;
     const name = draftProfile.name.trim();
     const digits = draftProfile.phone.replace(/\D/g, "");
     if (!name) { setProfileError("Please enter your name."); return; }
@@ -527,12 +540,14 @@ function KoyalApp() {
     event.target.value = "";
   }
   function openFeatherShop() {
+    if (!requireSignIn("buy feathers")) return;
     setPurchaseNotice("");
     setCouponNotice("");
     setFeatherShopOpen(true);
     setMobileNav(false);
   }
   function requestFeatherPurchase(amount: number, rupees: number) {
+    if (!requireSignIn("buy feathers")) return;
     if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100000 || !Number.isFinite(rupees) || rupees < 0) {
       setPurchaseNotice("Choose a valid whole-number feather amount.");
       return;
@@ -593,6 +608,7 @@ function KoyalApp() {
     setCouponCode("");
   }
   function selectPlan(plan: PlanName) {
+    if (!requireSignIn("select a subscription plan")) return;
     setSelectedPlan(plan);
     localStorage.setItem("koyal-ai-subscription-plan", plan);
     setSubscriptionOpen(false);
