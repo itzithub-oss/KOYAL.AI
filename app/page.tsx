@@ -23,7 +23,7 @@ type CharacterMode =
   | "school-female-friend" | "business-partner" | "enemy";
 type ThinkingEffort =
   | "just" | "let-it" | "care" | "high" | "ultra-high" | "elite" | "supreme";
-type ChatApiResponse = { reply?: string; error?: string; sources?: { title: string; url: string }[] };
+type ChatApiResponse = { reply?: string; error?: string; debug?: { requestKind?: string; errorName?: string; status?: unknown; message?: string }; sources?: { title: string; url: string }[] };
 type Profile = { name: string; gender: string; phone: string; dob: string; photo: string };
 type ChatSession = { id: string; title: string; messages: Message[]; createdAt: string; updatedAt: string };
 const EMPTY_PROFILE: Profile = { name: "", gender: "", phone: "", dob: "", photo: "" };
@@ -730,6 +730,7 @@ function KoyalApp() {
         body: requestBody,
       });
       const data: ChatApiResponse = await response.json();
+      if (data.debug) console.error("[KOYAL API DEBUG]", data.debug);
       if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(ERROR_REPLY);
       setMessages((old) => [...old, { role: "assistant", content: data.reply || ERROR_REPLY, time: timestamp(), sources: Array.isArray(data.sources) ? data.sources : [] }]);
       setPendingMemorySuggestion(suggestMemoryFromMessage(text, memories));
