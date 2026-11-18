@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { extractWebSources, type KoyalWebSource } from "../../../lib/koyal-web-sources.mjs";
 import { extractUrlContextSources, normalizeKoyalUrl } from "../../../lib/koyal-url-context.mjs";
-import { PDFParse } from "pdf-parse";
 import { hasPdfHeader, MAX_PDF_BYTES, MAX_PDF_PAGES, normalizePdfText } from "../../../lib/koyal-pdf.mjs";
 import { detectImageMime, MAX_IMAGE_BYTES } from "../../../lib/koyal-image.mjs";
 
@@ -385,6 +384,9 @@ async function extractPdfDocument(file: File): Promise<{ text: string; name: str
     throw new InputError("That file does not appear to be a valid PDF.");
   }
 
+  // Load the PDF.js stack only for PDF uploads. Its canvas polyfills are
+  // native Node dependencies and must not be initialized for ordinary chat.
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: bytes });
   try {
     const info = await parser.getInfo();
