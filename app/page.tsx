@@ -309,17 +309,16 @@ export default function Home() {
     const file = event.target.files?.[0] || null;
     setFileError("");
     if (!file) { setSelectedFile(null); return; }
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-      setSelectedFile(null);
-      setFileError("Please choose a PDF file.");
-      event.target.value = "";
-      return;
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage = ["image/png", "image/jpeg", "image/webp"].includes(file.type);
+    if (!isPdf && !isImage) {
+      setSelectedFile(null); setFileError("Choose a PDF, PNG, JPG or WebP file."); event.target.value = ""; return;
     }
-    if (file.size <= 0 || file.size > 8 * 1024 * 1024) {
+    const maxBytes = isPdf ? 8 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size <= 0 || file.size > maxBytes) {
       setSelectedFile(null);
-      setFileError("PDF files must be between 1 byte and 8 MB.");
-      event.target.value = "";
-      return;
+      setFileError(isPdf ? "PDF files must be between 1 byte and 8 MB." : "Images must be between 1 byte and 10 MB.");
+      event.target.value = ""; return;
     }
     setSelectedFile(file);
   }
@@ -336,6 +335,23 @@ export default function Home() {
     setMemoryOpen(true);
     setMemoryError("");
     setMobileNav(false);
+  }
+  function openTasks() {
+    setProfileOpen(false); setMemoryOpen(false); setTasksOpen(true); setTaskError(""); setMobileNav(false);
+  }
+  function saveTask() {
+    try {
+      setTasks(addTask(localStorage, tasks, taskTitle, { notes: taskNotes, dueDate: taskDueDate }));
+      setTaskTitle(""); setTaskNotes(""); setTaskDueDate(""); setTaskError("");
+    } catch (error) { setTaskError(error instanceof Error ? error.message : "Could not save this task."); }
+  }
+  function toggleTask(task: KoyalTask) {
+    try { setTasks(updateTask(localStorage, tasks, task.id, { done: !task.done })); }
+    catch (error) { setTaskError(error instanceof Error ? error.message : "Could not update this task."); }
+  }
+  function removeTask(id: string) {
+    try { setTasks(deleteTask(localStorage, tasks, id)); setTaskError(""); }
+    catch (error) { setTaskError(error instanceof Error ? error.message : "Could not delete this task."); }
   }
   function saveLocalMemory() {
     try {
