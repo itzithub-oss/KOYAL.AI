@@ -580,7 +580,7 @@ function KoyalApp() {
   const closeSidebar = () => setMobileNav(false);
 
   return (
-    <main className={`${styles.app} ${lightMode ? styles.light : ""}`}
+    <main className={`${styles.app} ${lightMode ? styles.light : ""}`}>
       {booting && <BootScreen />}
       <div className={styles.layout}>
         <button type="button" aria-label="Open navigation" className={styles.mobileMenuButton} onClick={() => setMobileNav(true)}><Icon name="menu"/></button>
