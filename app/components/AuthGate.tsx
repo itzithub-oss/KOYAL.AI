@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import type { CSSProperties, FormEvent, ReactNode } from "react";
 import { validateKoyalCredentials } from "../../lib/koyal-auth.mjs";
 
 type AuthSession = {
@@ -179,5 +180,5 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   );
 }
 
-const fieldStyle: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "12px 13px", borderRadius: 11, border: "1px solid #51404b", outline: "none", background: "#100e16", color: "#fff", font: "inherit" };
-const linkStyle: React.CSSProperties = { border: 0, background: "transparent", color: "#ff7e98", cursor: "pointer", padding: 4, font: "inherit" };
+const fieldStyle: CSSProperties = { width: "100%", boxSizing: "border-box", padding: "12px 13px", borderRadius: 11, border: "1px solid #51404b", outline: "none", background: "#100e16", color: "#fff", font: "inherit" };
+const linkStyle: CSSProperties = { border: 0, background: "transparent", color: "#ff7e98", cursor: "pointer", padding: 4, font: "inherit" };
