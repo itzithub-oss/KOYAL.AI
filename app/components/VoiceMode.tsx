@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+type SpeechRecognitionResult = { isFinal: boolean; 0?: { transcript?: string } };
+type SpeechRecognitionResultList = { length: number; [index: number]: SpeechRecognitionResult };
 type SpeechRecognitionResultEvent = Event & {
   resultIndex: number;
   results: SpeechRecognitionResultList;
@@ -232,7 +234,7 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
 
   return (
     <div style={{ position: "relative" }}>
-      <style>{".koyal-voice-face{position:relative;display:inline-block;flex:0 0 auto;overflow:hidden;border-radius:50%;vertical-align:middle;isolation:isolate;background:radial-gradient(circle,rgba(130,12,43,.28),rgba(8,5,12,.96))}.koyal-voice-face img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}.koyal-voice-face .koyal-voice-open{opacity:0}.koyal-voice-face.is-speaking .koyal-voice-face-closed{animation:koyalBeakClosed 280ms steps(1,end) infinite}.koyal-voice-face.is-speaking .koyal-voice-open{animation:koyalBeakOpen 280ms steps(1,end) infinite}.koyal-voice-face.is-speaking{filter:drop-shadow(0 0 22px rgba(255,35,86,.85))}.koyal-voice-face.is-listening{filter:drop-shadow(0 0 18px rgba(80,220,150,.7))}@keyframes koyalBeakClosed{0%,49%{opacity:1}50%,100%{opacity:0}}@keyframes koyalBeakOpen{0%,49%{opacity:0}50%,100%{opacity:1}}"}</style>
+      <style>{".koyal-voice-face{position:relative;display:inline-block;flex:0 0 auto;overflow:hidden;border-radius:50%;vertical-align:middle;isolation:isolate;background:radial-gradient(circle,rgba(130,12,43,.28),rgba(8,5,12,.96))}.koyal-voice-face img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}.koyal-voice-face .koyal-voice-open{opacity:0}.koyal-voice-face.is-speaking .koyal-voice-closed{animation:koyalBeakClosed 280ms steps(1,end) infinite}.koyal-voice-face.is-speaking .koyal-voice-open{animation:koyalBeakOpen 280ms steps(1,end) infinite}.koyal-voice-face.is-speaking{filter:drop-shadow(0 0 22px rgba(255,35,86,.85))}.koyal-voice-face.is-listening{filter:drop-shadow(0 0 18px rgba(80,220,150,.7))}@keyframes koyalBeakClosed{0%,49%{opacity:1}50%,100%{opacity:0}}@keyframes koyalBeakOpen{0%,49%{opacity:0}50%,100%{opacity:1}}"}</style>
       <button type="button" onClick={() => { if (open) stopCall(); else startCall(); }} aria-label={open ? "Close KOYAL voice" : "Open KOYAL voice"} style={{ width: 48, height: 48, padding: 0, display: "grid", placeItems: "center", borderRadius: "50%", border: "1px solid rgba(255,65,105,.55)", background: "rgba(12,7,14,.9)", cursor: "pointer", boxShadow: speaking ? "0 0 22px rgba(255,35,86,.65)" : listening ? "0 0 18px rgba(80,220,150,.55)" : "0 0 12px rgba(255,35,86,.2)" }}>
         <span className={"koyal-voice-face " + (speaking ? "is-speaking" : listening ? "is-listening" : "")} style={{ width: 42, height: 42 }}>
           <img className="koyal-voice-closed" src="/koyal-voice-closed.png" alt="" />
