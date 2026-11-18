@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import VoiceMode from "./components/VoiceMode";
+import AuthGate from "./components/AuthGate";
 import BootScreen from "./components/BootScreen";
 import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
@@ -166,7 +167,7 @@ function timestamp() {
   return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-export default function Home() {
+function KoyalApp() {
   const [booting, setBooting] = useState(true);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
@@ -579,7 +580,7 @@ export default function Home() {
   const closeSidebar = () => setMobileNav(false);
 
   return (
-    <main className={`${styles.app} ${lightMode ? styles.light : ""}`}>
+    <main className={`${styles.app} ${lightMode ? styles.light : ""}`}
       {booting && <BootScreen />}
       <div className={styles.layout}>
         <button type="button" aria-label="Open navigation" className={styles.mobileMenuButton} onClick={() => setMobileNav(true)}><Icon name="menu"/></button>
@@ -829,4 +830,8 @@ export default function Home() {
       {subscriptionOpen && <div className={styles.modalOverlay} onClick={() => setSubscriptionOpen(false)}><div className={styles.modal} role="dialog" aria-modal="true" aria-label="Subscription plans" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>KOYAL Plans</h2><button onClick={() => setSubscriptionOpen(false)} type="button"><Icon name="x"/></button></div><p className={styles.demoNotice}>Demo plan selector only. Selecting Supreme locally shows unlimited feathers and wings, but does not activate a paid subscription. Production subscriptions require server-side payment verification.</p><div className={styles.planGrid}>{plans.map((plan) => <div key={plan.name} className={`${styles.planCard} ${selectedPlan === plan.name ? styles.planCurrent : ""}`}><h3>{plan.name}</h3><div className={styles.price}>₹{plan.price}<small>/mo</small></div><p>{plan.description}</p><button type="button" onClick={() => selectPlan(plan.name)}>{selectedPlan === plan.name ? "Selected" : "Select demo plan"}</button></div>)}</div></div></div>}
     </main>
   );
+}
+
+export default function Home() {
+  return <AuthGate><KoyalApp /></AuthGate>;
 }
