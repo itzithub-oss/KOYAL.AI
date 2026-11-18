@@ -660,6 +660,10 @@ async function readBody(request: NextRequest): Promise<ChatBody> {
       teacherMode: text("teacherMode") === "true",
       teacherClass: text("teacherClass"),
       teacherSubject: text("teacherSubject"),
+      studyMode: text("studyMode") === "true",
+      studyClass: text("studyClass"),
+      studySubject: text("studySubject"),
+      studyFocus: text("studyFocus"),
       profile: {
         name:
           typeof profile?.name === "string"
