@@ -214,6 +214,8 @@ function KoyalApp() {
   const [featherShopOpen, setFeatherShopOpen] = useState(false);
   const [customFeathers, setCustomFeathers] = useState("250");
   const [purchaseNotice, setPurchaseNotice] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponNotice, setCouponNotice] = useState("");
   const profilePhotoInput = useRef<HTMLInputElement>(null);
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -262,7 +264,12 @@ function KoyalApp() {
       }
       historyLoadedRef.current = true;
       const plan = localStorage.getItem("koyal-ai-subscription-plan");
-      if (plans.some((p) => p.name === plan)) setSelectedPlan(plan as PlanName);
+      const planExpiry = Number(localStorage.getItem("koyal-ai-subscription-expires-at") || 0);
+      if (planExpiry && planExpiry <= Date.now()) {
+        localStorage.removeItem("koyal-ai-subscription-expires-at");
+        localStorage.setItem("koyal-ai-subscription-plan", "Just");
+        setSelectedPlan("Just");
+      } else if (plans.some((p) => p.name === plan)) setSelectedPlan(plan as PlanName);
       const featherStore = localStorage.getItem("koyal-ai-feather-balance");
       if (featherStore !== null && Number.isFinite(Number(featherStore))) setFeathers(Number(featherStore));
       const profileJson = localStorage.getItem("koyal-ai-profile-v2");
@@ -482,17 +489,69 @@ function KoyalApp() {
   }
   function openFeatherShop() {
     setPurchaseNotice("");
+    setCouponNotice("");
     setFeatherShopOpen(true);
     setMobileNav(false);
   }
   function requestFeatherPurchase(amount: number, rupees: number) {
-    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100000) {
-      setPurchaseNotice("Choose a whole number between 1 and 100,000 feathers.");
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100000 || !Number.isFinite(rupees) || rupees < 0) {
+      setPurchaseNotice("Choose a valid whole-number feather amount.");
       return;
     }
-    // IMPORTANT: Browser-only accounts cannot securely receive paid credits.
-    // A verified payment gateway, database and authenticated webhook are required.
-    setPurchaseNotice(`₹${rupees.toLocaleString("en-IN")} for ${amount.toLocaleString("en-IN")} feathers. Checkout is not connected yet; no payment was taken and your balance has not changed.`);
+    if (selectedPlan === "Supreme") {
+      setPurchaseNotice("Your Supreme plan already includes unlimited feathers.");
+      return;
+    }
+    setFeathers((current) => {
+      const next = current + amount;
+      localStorage.setItem("koyal-ai-feather-balance", String(next));
+      return next;
+    });
+    setPurchaseNotice(`Demo purchase successful! ${amount.toLocaleString("en-IN")} feathers have been added. ₹${rupees.toLocaleString("en-IN")} was not charged. UPI/GPay checkout will be connected later.`);
+  }
+  function redeemCoupon() {
+    const code = couponCode.trim();
+    const sessionRaw = localStorage.getItem("koyal-ai-auth-session");
+    let email = "";
+    try {
+      const session = sessionRaw ? JSON.parse(sessionRaw) : null;
+      email = typeof session?.user?.email === "string" ? session.user.email.trim().toLowerCase() : "";
+    } catch { /* Invalid or absent session is treated as signed out. */ }
+    if (!email) {
+      setCouponNotice("Please log in with your email to redeem a coupon. You can continue using Koyal without logging in.");
+      return;
+    }
+    const normalized = code.toLowerCase();
+    const rewards: Record<string, "feathers" | "elite" | "supreme"> = {
+      cadet0131: "feathers",
+      cadet0117: "elite",
+      welcomebonus01: "supreme",
+    };
+    const reward = rewards[normalized];
+    if (!reward) { setCouponNotice("That coupon code is not valid."); return; }
+    const redeemedKey = `koyal-ai-redeemed-coupons:${email}`;
+    let redeemed: string[] = [];
+    try { redeemed = JSON.parse(localStorage.getItem(redeemedKey) || "[]"); } catch { redeemed = []; }
+    if (redeemed.includes(normalized)) {
+      setCouponNotice("This coupon has already been redeemed on this device for this email account.");
+      return;
+    }
+    localStorage.setItem(redeemedKey, JSON.stringify([...redeemed, normalized]));
+    if (reward === "feathers") {
+      setFeathers((current) => {
+        const next = current + 180;
+        localStorage.setItem("koyal-ai-feather-balance", String(next));
+        return next;
+      });
+      setCouponNotice("Coupon applied! 180 feathers have been added.");
+    } else {
+      const plan: PlanName = reward === "elite" ? "Elite" : "Supreme";
+      localStorage.setItem("koyal-ai-subscription-plan", plan);
+      localStorage.setItem("koyal-ai-subscription-expires-at", String(Date.now() + 30 * 24 * 60 * 60 * 1000));
+      setSelectedPlan(plan);
+      setCouponNotice(`Coupon applied! ${plan} is active for 1 month.`);
+    }
+    setCouponCode("");
   }
   function selectPlan(plan: PlanName) {
     setSelectedPlan(plan);
@@ -889,15 +948,21 @@ function KoyalApp() {
       {featherShopOpen && <div className={styles.modalOverlay} onClick={() => setFeatherShopOpen(false)}><div className={styles.featherModal} role="dialog" aria-modal="true" aria-label="Feather store" onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}><h2>🪶 Feather Store</h2><button type="button" aria-label="Close feather store" onClick={() => setFeatherShopOpen(false)}><Icon name="x"/></button></div>
         <p className={styles.featherBalanceLine}>Current balance: <strong>{selectedPlan === "Supreme" ? "∞ Unlimited feathers" : `${feathers.toLocaleString("en-IN")} feathers`}</strong></p>
-        <p className={styles.demoNotice}>Prices are shown in INR. Payment checkout is not connected, so these buttons will not take payment or add feathers.</p>
+        <p className={styles.demoNotice}>Demo mode: Buy adds feathers immediately without charging money. UPI / Google Pay payment integration will be added later.</p>
         <div className={styles.packGrid}>{FEATHER_PACKS.map((pack) => <div className={styles.pack} key={pack.quantity}>
           <div className={styles.packCount}>🪶 {pack.quantity.toLocaleString("en-IN")}</div><div className={styles.packPrice}>₹{pack.rupees}</div><small>₹0.50 per feather</small>
-          <button type="button" onClick={() => requestFeatherPurchase(pack.quantity,pack.rupees)}>View purchase</button>
+          <button type="button" onClick={() => requestFeatherPurchase(pack.quantity,pack.rupees)}>Buy</button>
         </div>)}</div>
         <div className={styles.customPack}><div><strong>Custom feather amount</strong><p>₹0.50 per feather</p></div>
           <label>Feathers <input type="number" min="1" max="100000" step="1" value={customFeathers} onChange={(e) => setCustomFeathers(e.target.value)} /></label>
           <div className={styles.customTotal}>₹{(Math.max(0,Number(customFeathers) || 0) * PRICE_PER_FEATHER).toLocaleString("en-IN",{maximumFractionDigits:2})}</div>
-          <button type="button" onClick={() => requestFeatherPurchase(Number(customFeathers), Number(customFeathers) * PRICE_PER_FEATHER)}>View purchase</button>
+          <button type="button" onClick={() => requestFeatherPurchase(Number(customFeathers), Number(customFeathers) * PRICE_PER_FEATHER)}>Buy</button>
+        </div>
+        <div className={styles.customPack} style={{ marginTop: 18 }}>
+          <div><strong>🎟️ Have a coupon?</strong><p>Log in to redeem one coupon per email account.</p></div>
+          <label>Coupon code <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Enter coupon code" autoComplete="off" /></label>
+          <button type="button" onClick={redeemCoupon} disabled={!couponCode.trim()}>Apply Coupon</button>
+          {couponNotice && <p className={styles.purchaseNotice} role="status">{couponNotice}</p>}
         </div>
         {purchaseNotice && <div className={styles.purchaseNotice} role="status">{purchaseNotice}</div>}
       </div></div>}
