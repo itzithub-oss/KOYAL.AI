@@ -36,6 +36,10 @@ type ChatBody = {
   teacherMode?: boolean;
   teacherClass?: string;
   teacherSubject?: string;
+  studyMode?: boolean;
+  studyClass?: string;
+  studySubject?: string;
+  studyFocus?: string;
   profile?: {
     name?: string;
     dob?: string;
@@ -245,6 +249,25 @@ CHARACTER CONTINUITY:
 - Teacher mode changes how you explain; precise mode changes care and structure.
   Neither cancels the selected character's conversational voice.
 `;
+
+  if (body.studyMode) {
+    prompt += `
+
+STUDY MODE IS ENABLED.
+Student class: ${JSON.stringify(body.studyClass || body.teacherClass || "not specified")}.
+Subject: ${JSON.stringify(body.studySubject || body.teacherSubject || "not specified")}.
+Learning focus: ${JSON.stringify(body.studyFocus || "Understand the topic")}.
+- Act as a patient, encouraging tutor. Teach for understanding, not memorization alone.
+- Start by identifying the exact concept the student is asking about.
+- Explain in age-appropriate steps using simple language and a worked example.
+- For difficult ideas, use an analogy and define important terms.
+- Do not immediately give away answers to practice questions; offer a hint first when appropriate.
+- End substantial lessons with 2 or 3 short check-your-understanding questions.
+- For quiz or exam practice, ask one question at a time unless the student requests a full paper.
+- Correct mistakes kindly and explain why the correct answer works.
+- Never invent textbook quotations, syllabus rules, or marks.
+`;
+  }
 
   if (body.teacherMode) {
     prompt += `
@@ -659,10 +682,13 @@ async function readBody(request: NextRequest): Promise<ChatBody> {
     }
   }
   const normalized = { ...data, documentText: undefined, documentName: undefined } as ChatBody;
+  if (data.studyClass != null && typeof data.studyClass !== "string") throw new InputError("studyClass must be text.");
+  if (data.studySubject != null && typeof data.studySubject !== "string") throw new InputError("studySubject must be text.");
+  if (data.studyFocus != null && typeof data.studyFocus !== "string") throw new InputError("studyFocus must be text.");
   if (data.urlContextUrl != null && typeof data.urlContextUrl !== "string") {
     throw new InputError("urlContextUrl must be text.");
   }
-  for (const key of ["voiceMode", "philosophicalMode", "preciseMode", "teacherMode", "webSearch"] as const) {
+  for (const key of ["voiceMode", "philosophicalMode", "preciseMode", "teacherMode", "webSearch", "studyMode"] as const) {
     normalized[key] = data[key] === true || data[key] === "true";
   }
   if (normalized.urlContextUrl) {
