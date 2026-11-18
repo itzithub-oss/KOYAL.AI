@@ -7,7 +7,7 @@
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(ellipse at 50% 48%, rgba(105, 18, 48, .25), transparent 38%),
+    radial-gradient(ellipse at 50% 48%, rgba(105, 18, 48, .22), transparent 38%),
     #08070d;
   color: #fff;
   opacity: 1;
@@ -15,14 +15,14 @@
 .glow {
   position: absolute;
   left: 50%;
-  top: 43%;
-  width: min(64vw, 470px);
+  top: 46%;
+  width: min(58vw, 360px);
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: rgba(231, 34, 86, .13);
-  filter: blur(75px);
-  animation: glowIn 1.6s ease both;
+  background: rgba(231, 34, 86, .12);
+  filter: blur(78px);
+  animation: glowPulse 2.5s ease-in-out both;
 }
 .identity {
   position: relative;
@@ -31,29 +31,62 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  animation: identityIn 1.35s cubic-bezier(.2,.75,.25,1) both;
+  animation: identityIn .75s cubic-bezier(.2,.75,.25,1) both;
+}
+.logoStage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 178px;
+  height: 150px;
 }
 .logo {
-  width: clamp(104px, 17vw, 154px);
-  height: clamp(104px, 17vw, 154px);
+  position: relative;
+  z-index: 2;
+  width: 76px;
+  height: 76px;
   object-fit: contain;
-  filter: drop-shadow(0 8px 24px rgba(255, 42, 98, .28));
+  filter: drop-shadow(0 5px 20px rgba(255, 42, 98, .34));
+  animation: logoSettle .9s cubic-bezier(.2,.75,.25,1) both;
 }
-.wordmark {
-  margin-top: 8px;
-  padding-left: .2em;
-  font: 780 clamp(27px, 4.5vw, 39px)/1.1 Inter, ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: .2em;
-  text-shadow: 0 0 28px rgba(255, 58, 105, .2);
+.orbit {
+  position: absolute;
+  z-index: 1;
+  width: 158px;
+  height: 82px;
+  border: 1px solid transparent;
+  border-top-color: rgba(255, 83, 125, .95);
+  border-right-color: rgba(255, 83, 125, .42);
+  border-radius: 50%;
+  transform: rotate(-24deg);
+  filter: drop-shadow(0 0 5px rgba(255, 52, 103, .55));
+  animation: orbitSpin 2.1s linear infinite;
 }
-.wordmark span { color: #ff527b; }
+.orbitSpark {
+  position: absolute;
+  top: 8px;
+  left: 22px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffd5df;
+  box-shadow: 0 0 9px 2px rgba(255, 65, 115, .8);
+}
 .tagline {
-  margin-top: 12px;
-  color: #c9b8c4;
-  font: 500 10px/1.4 Inter, ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: .25em;
+  margin-top: 7px;
+  color: #e8d9e0;
+  font: 500 12px/1.4 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .32em;
   text-transform: uppercase;
-  animation: taglineIn .7s .55s ease both;
+  animation: taglineIn .65s .35s ease both;
+}
+.ellipsis {
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+  overflow: hidden;
+  vertical-align: bottom;
+  animation: dots 1.05s steps(4, end) infinite;
 }
 .leaving {
   opacity: 0;
@@ -61,18 +94,35 @@
   transition: opacity .35s ease;
 }
 @keyframes identityIn {
-  from { opacity: 0; transform: translateY(10px) scale(.97); }
+  from { opacity: 0; transform: translateY(8px) scale(.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-@keyframes glowIn {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(.8); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+@keyframes logoSettle {
+  from { opacity: 0; transform: scale(.78); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes orbitSpin {
+  from { rotate: 0deg; }
+  to { rotate: 360deg; }
+}
+@keyframes glowPulse {
+  0% { opacity: 0; }
+  35%, 75% { opacity: 1; }
+  100% { opacity: .55; }
 }
 @keyframes taglineIn {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes dots {
+  from { width: 0; }
+  to { width: 1.5em; }
+}
+@media (max-width: 480px) {
+  .logoStage { transform: scale(.9); }
+  .tagline { font-size: 11px; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .identity, .glow, .tagline { animation: none; }
+  .identity, .glow, .logo, .orbit, .tagline, .ellipsis { animation: none; }
   .leaving { transition-duration: .01ms; }
 }
