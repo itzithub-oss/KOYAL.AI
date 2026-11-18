@@ -286,6 +286,23 @@ function KoyalApp() {
       } else {
         const oldName = localStorage.getItem("koyal-ai-profile-name");
         if (oldName) setProfile({ ...EMPTY_PROFILE, name: oldName });
+        else {
+          try {
+            const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+            const synced = auth?.user?.user_metadata?.koyal_profile as Partial<Profile> | undefined;
+            if (synced && typeof synced === "object") {
+              const valid: Profile = {
+                name: typeof synced.name === "string" ? synced.name : "",
+                gender: typeof synced.gender === "string" ? synced.gender : "",
+                phone: typeof synced.phone === "string" ? synced.phone : "",
+                dob: typeof synced.dob === "string" ? synced.dob : "",
+                photo: typeof synced.photo === "string" ? synced.photo : "",
+              };
+              setProfile(valid);
+              localStorage.setItem("koyal-ai-profile-v2", JSON.stringify(valid));
+            }
+          } catch { /* Ignore malformed account profile metadata. */ }
+        }
       }
     } catch {
       // Ignore invalid local data and keep defaults.
@@ -445,7 +462,7 @@ function KoyalApp() {
       setMemoryError(error instanceof Error ? error.message : "Could not delete this memory.");
     }
   }
-  function saveProfile() {
+  async function saveProfile() {
     const name = draftProfile.name.trim();
     const digits = draftProfile.phone.replace(/\D/g, "");
     if (!name) { setProfileError("Please enter your name."); return; }
@@ -466,6 +483,28 @@ function KoyalApp() {
     setDraftProfile(saved);
     setEditingProfile(false);
     setProfileError("");
+    try {
+      const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if (auth?.access_token && supabaseUrl && supabaseKey) {
+        const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseKey,
+            Authorization: `Bearer ${auth.access_token}`,
+          },
+          body: JSON.stringify({ data: { koyal_profile: saved } }),
+        });
+        if (!response.ok) throw new Error("Account profile sync failed.");
+        const updatedUser = await response.json();
+        const updatedSession = { ...auth, user: updatedUser };
+        localStorage.setItem("koyal-ai-auth-session", JSON.stringify(updatedSession));
+      }
+    } catch {
+      setProfileError("Profile saved on this device, but email sync failed. Check your connection and Supabase settings.");
+    }
   }
   function uploadProfilePhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
