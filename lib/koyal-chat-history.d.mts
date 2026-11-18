@@ -1,0 +1,11 @@
+export type KoyalChatMessage = { role: "user" | "assistant"; content: string; fileName?: string; time?: string; sources?: { title: string; url: string }[] };
+export type KoyalChatSession = { id: string; title: string; messages: KoyalChatMessage[]; createdAt: string; updatedAt: string };
+export const CHAT_HISTORY_KEY: string;
+export const ACTIVE_CHAT_KEY: string;
+export const MAX_CHAT_SESSIONS: number;
+export function getChatTitle(messages: KoyalChatMessage[]): string;
+export function createChatSession(messages: KoyalChatMessage[], id: string, now?: string): KoyalChatSession;
+export function readChatHistory(storage: Pick<Storage, "getItem">): KoyalChatSession[];
+export function saveChatHistory(storage: Pick<Storage, "setItem">, sessions: KoyalChatSession[]): boolean;
+export function upsertChatSession(sessions: KoyalChatSession[], session: KoyalChatSession): KoyalChatSession[];
+export function searchChatSessions(sessions: KoyalChatSession[], query: string): KoyalChatSession[];
