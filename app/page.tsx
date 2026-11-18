@@ -6,6 +6,7 @@ import BootScreen from "./components/BootScreen";
 import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
 import { addMemory, buildMemoryContext, deleteMemory, loadMemories, suggestMemoryFromMessage, type KoyalMemory } from "../lib/koyal-memory.mjs";
+import { addTask, deleteTask, loadTasks, updateTask, type KoyalTask } from "../lib/koyal-tasks.mjs";
 
 type Message = {
   role: "user" | "assistant";
@@ -35,7 +36,7 @@ type IconName =
   | "chat" | "user" | "brain" | "masks" | "book" | "message" | "feather"
   | "diamond" | "moon" | "sun" | "search" | "dots" | "plus" | "paperclip"
   | "send" | "chevron" | "x" | "volume" | "stop" | "menu" | "check"
-  | "arrow" | "copy" | "memory";
+  | "arrow" | "copy" | "memory" | "tasks" | "graduation";
 
 const ERROR_REPLY = "sorry,there is a problem in my server please try me later";
 const WELCOME: Message = {
@@ -101,6 +102,8 @@ function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
     arrow: <path d="M5 12h14m-6-6 6 6-6 6"/>,
     copy: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
     memory: <><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
+    tasks: <><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"/></>,
+    graduation: <><path d="m2 9 10-5 10 5-10 5L2 9Z"/><path d="M6 11v5c3 3 9 3 12 0v-5M22 9v6"/></>,
   };
   return <svg {...base}>{paths[name]}</svg>;
 }
@@ -184,6 +187,14 @@ export default function Home() {
   const [draftProfile, setDraftProfile] = useState<Profile>(EMPTY_PROFILE);
   const [profileOpen, setProfileOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(false);
+  const [tasks, setTasks] = useState<KoyalTask[]>([]);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskNotes, setTaskNotes] = useState("");
+  const [taskDueDate, setTaskDueDate] = useState("");
+  const [taskError, setTaskError] = useState("");
+  const [studyMode, setStudyMode] = useState(false);
+  const [studyFocus, setStudyFocus] = useState("Understand the topic");
   const [memories, setMemories] = useState<KoyalMemory[]>([]);
   const [memoryDraft, setMemoryDraft] = useState("");
   const [memoryError, setMemoryError] = useState("");
@@ -220,6 +231,7 @@ export default function Home() {
   useEffect(() => {
     try {
       setMemories(loadMemories(localStorage));
+      setTasks(loadTasks(localStorage));
       const saved = localStorage.getItem("koyal-ai-chat");
       if (saved) {
         const parsed: Message[] = JSON.parse(saved);
@@ -257,18 +269,19 @@ export default function Home() {
   }, [messages]);
   useEffect(() => () => { if (typeof window !== "undefined") window.speechSynthesis?.cancel(); }, []);
   useEffect(() => {
-    if (!profileOpen && !memoryOpen && !subscriptionOpen && !featherShopOpen) return;
+    if (!profileOpen && !memoryOpen && !tasksOpen && !subscriptionOpen && !featherShopOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setProfileOpen(false);
         setMemoryOpen(false);
+        setTasksOpen(false);
         setSubscriptionOpen(false);
         setFeatherShopOpen(false);
       }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [profileOpen, memoryOpen, subscriptionOpen, featherShopOpen]);
+  }, [profileOpen, memoryOpen, tasksOpen, subscriptionOpen, featherShopOpen]);
 
   function resetChat() {
     setMessages([{ ...WELCOME, time: timestamp() }]);
@@ -280,6 +293,7 @@ export default function Home() {
     setMobileNav(false);
     setProfileOpen(false);
     setMemoryOpen(false);
+    setTasksOpen(false);
     setEditingProfile(false);
     window.speechSynthesis?.cancel();
   }
