@@ -505,7 +505,7 @@ export default function Home() {
     const attachment = selectedFile;
     if (!text && !attachment && !(urlReaderEnabled && urlInput.trim())) return;
     if (featherCost > feathers) { openFeatherShop(); return; }
-    const message = text || (attachment ? "Please summarize the attached PDF." : urlReaderEnabled ? "Please summarize this webpage." : "Please help me with this attachment.");
+    const message = text || (attachment ? (attachment.type === "application/pdf" ? "Please summarize the attached PDF." : "Please describe and read the attached image.") : urlReaderEnabled ? "Please summarize this webpage." : "Please help me with this attachment.");
     setMessages((old) => [...old, { role: "user", content: message, fileName: attachment?.name, time: timestamp() }]);
     setInput("");
     setSelectedFile(null);
@@ -517,6 +517,7 @@ export default function Home() {
         "Reply in English by default; use Hindi or another language only when explicitly requested.",
         characterMode !== "normal" ? `Character mode: ${currentCharacter.name}.` : "",
         teacherMode ? `Teacher mode: Class ${teacherClass}, ${teacherSubject}.` : "",
+        studyMode ? `Study Mode: tutor me at Class ${teacherClass} level in ${teacherSubject}. Focus: ${studyFocus}.` : "",
         philosophicalMode ? "Philosophical mode: provide thoughtful reasoning." : "",
         buildMemoryContext(memories),
       ].filter(Boolean).join(" ");
@@ -531,6 +532,10 @@ export default function Home() {
           teacherMode,
           teacherClass,
           teacherSubject,
+          studyMode,
+          studyClass: teacherClass,
+          studySubject: teacherSubject,
+          studyFocus,
           preciseMode,
           philosophicalMode,
           webSearch: webSearchEnabled,
@@ -588,6 +593,7 @@ export default function Home() {
             <button type="button" onClick={resetChat} className={`${styles.navItem} ${styles.navMain}`}><Icon name="chat"/><strong>New Chat</strong></button>
             <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
             <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
+            <button type="button" onClick={openTasks} className={`${styles.navItem} ${tasksOpen ? styles.navOn : ""}`}><Icon name="tasks"/>Tasks<span className={styles.navSmall}>{tasks.filter((task) => !task.done).length}</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
@@ -597,6 +603,12 @@ export default function Home() {
               </div>}
             </div>
             <button type="button" onClick={() => setTeacherMode((v) => !v)} className={`${styles.navItem} ${teacherMode ? styles.navOn : ""}`}><Icon name="book"/>Teacher Mode<span className={styles.navSmall}>{teacherMode ? "On" : ""}</span></button>
+            <button type="button" onClick={() => setStudyMode((v) => !v)} className={`${styles.navItem} ${studyMode ? styles.navOn : ""}`}><Icon name="graduation"/>Study Mode<span className={styles.navSmall}>{studyMode ? "On" : "Off"}</span></button>
+            {studyMode && <div className={styles.teacherSettings}>
+              <label>Study class<select value={teacherClass} onChange={(e) => setTeacherClass(e.target.value)}>{Array.from({length:12},(_,i) => <option key={i} value={String(i+1)}>{i+1}</option>)}</select></label>
+              <label>Subject<select value={teacherSubject} onChange={(e) => setTeacherSubject(e.target.value)}>{teacherSubjects.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+              <label>Learning focus<select value={studyFocus} onChange={(e) => setStudyFocus(e.target.value)}>{["Understand the topic","Homework help","Quiz practice","Exam preparation","Revision and notes"].map((s) => <option key={s}>{s}</option>)}</select></label>
+            </div>}
             {teacherMode && <div className={styles.teacherSettings}>
               <label>Class<select value={teacherClass} onChange={(e) => setTeacherClass(e.target.value)}>{Array.from({length:12},(_,i) => <option key={i} value={String(i+1)}>{i+1}</option>)}</select></label>
               <label>Subject<select value={teacherSubject} onChange={(e) => setTeacherSubject(e.target.value)}>{teacherSubjects.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
