@@ -17,7 +17,9 @@ Do not invent facts, memories, or actions. Be honest about uncertainty.`;
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
-  if (!origin || !host || new URL(origin).host !== host) {
+  let originHost = "";
+  try { originHost = origin ? new URL(origin).host : ""; } catch { /* invalid origin */ }
+  if (!originHost || !host || originHost !== host) {
     return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403, headers: { "Cache-Control": "no-store" } });
   }
 
