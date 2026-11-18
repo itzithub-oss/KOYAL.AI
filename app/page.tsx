@@ -8,6 +8,7 @@ import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
 import { addMemory, buildMemoryContext, deleteMemory, loadMemories, suggestMemoryFromMessage, type KoyalMemory } from "../lib/koyal-memory.mjs";
 import { addTask, deleteTask, loadTasks, updateTask, type KoyalTask } from "../lib/koyal-tasks.mjs";
+import { ACTIVE_CHAT_KEY, createChatSession, readChatHistory, saveChatHistory, searchChatSessions, upsertChatSession } from "../lib/koyal-chat-history.mjs";
 
 type Message = {
   role: "user" | "assistant";
@@ -24,6 +25,7 @@ type ThinkingEffort =
   | "just" | "let-it" | "care" | "high" | "ultra-high" | "elite" | "supreme";
 type ChatApiResponse = { reply?: string; error?: string; sources?: { title: string; url: string }[] };
 type Profile = { name: string; gender: string; phone: string; dob: string; photo: string };
+type ChatSession = { id: string; title: string; messages: Message[]; createdAt: string; updatedAt: string };
 const EMPTY_PROFILE: Profile = { name: "", gender: "", phone: "", dob: "", photo: "" };
 type FeatherPack = { quantity: number; rupees: number };
 const FEATHER_PACKS: FeatherPack[] = [
@@ -170,6 +172,10 @@ function timestamp() {
 function KoyalApp() {
   const [booting, setBooting] = useState(true);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [activeChatId, setActiveChatId] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyQuery, setHistoryQuery] = useState("");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -221,6 +227,8 @@ function KoyalApp() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const loadedRef = useRef(false);
+  const historyLoadedRef = useRef(false);
+  const chatSessionsRef = useRef<ChatSession[]>([]);
   const currentThinking = thinking.find((option) => option.id === thinkingId) || thinking[3];
   const indexThinking = thinking.findIndex((option) => option.id === thinkingId);
   const currentCharacter = characters.find((character) => character.id === characterMode) || characters[0];
@@ -228,16 +236,31 @@ function KoyalApp() {
   const visibleMessages = search.trim()
     ? messages.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
     : messages;
+  const visibleChatSessions = searchChatSessions(chatSessions, historyQuery);
 
   useEffect(() => {
     try {
       setMemories(loadMemories(localStorage));
       setTasks(loadTasks(localStorage));
       const saved = localStorage.getItem("koyal-ai-chat");
+      let legacyMessages: Message[] = [WELCOME];
       if (saved) {
-        const parsed: Message[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length) setMessages(parsed);
+        try { const parsed: Message[] = JSON.parse(saved); if (Array.isArray(parsed) && parsed.length) legacyMessages = parsed; }
+        catch { /* Start with a welcome chat if legacy storage is invalid. */ }
       }
+      const storedSessions = readChatHistory(localStorage) as ChatSession[];
+      if (storedSessions.length) {
+        const requestedId = localStorage.getItem(ACTIVE_CHAT_KEY);
+        const activeSession = storedSessions.find((s) => s.id === requestedId) || storedSessions[0];
+        chatSessionsRef.current = storedSessions; setChatSessions(storedSessions);
+        setActiveChatId(activeSession.id); setMessages(activeSession.messages);
+      } else {
+        const initialSession = createChatSession(legacyMessages, "chat-" + Date.now()) as ChatSession;
+        chatSessionsRef.current = [initialSession]; setChatSessions([initialSession]);
+        setActiveChatId(initialSession.id); setMessages(legacyMessages);
+        saveChatHistory(localStorage, [initialSession]); localStorage.setItem(ACTIVE_CHAT_KEY, initialSession.id);
+      }
+      historyLoadedRef.current = true;
       const plan = localStorage.getItem("koyal-ai-subscription-plan");
       if (plans.some((p) => p.name === plan)) setSelectedPlan(plan as PlanName);
       const featherStore = localStorage.getItem("koyal-ai-feather-balance");
@@ -266,11 +289,18 @@ function KoyalApp() {
   }, []);
   useEffect(() => {
     if (loadedRef.current) localStorage.setItem("koyal-ai-chat", JSON.stringify(messages));
+    if (historyLoadedRef.current && activeChatId) {
+      const existing = chatSessionsRef.current.find((s) => s.id === activeChatId);
+      const session: ChatSession = { id: activeChatId, title: "New chat", messages, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+      const next = upsertChatSession(chatSessionsRef.current, session) as ChatSession[];
+      chatSessionsRef.current = next; setChatSessions(next); saveChatHistory(localStorage, next);
+      localStorage.setItem(ACTIVE_CHAT_KEY, activeChatId);
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages]);
+  }, [messages, activeChatId]);
   useEffect(() => () => { if (typeof window !== "undefined") window.speechSynthesis?.cancel(); }, []);
   useEffect(() => {
-    if (!profileOpen && !memoryOpen && !tasksOpen && !subscriptionOpen && !featherShopOpen) return;
+    if (!profileOpen && !memoryOpen && !tasksOpen && !subscriptionOpen && !featherShopOpen && !historyOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setProfileOpen(false);
@@ -278,14 +308,20 @@ function KoyalApp() {
         setTasksOpen(false);
         setSubscriptionOpen(false);
         setFeatherShopOpen(false);
+        setHistoryOpen(false);
       }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [profileOpen, memoryOpen, tasksOpen, subscriptionOpen, featherShopOpen]);
+  }, [profileOpen, memoryOpen, tasksOpen, subscriptionOpen, featherShopOpen, historyOpen]);
 
   function resetChat() {
-    setMessages([{ ...WELCOME, time: timestamp() }]);
+    const nextMessages = [{ ...WELCOME, time: timestamp() }];
+    const nextSession = createChatSession(nextMessages, "chat-" + Date.now()) as ChatSession;
+    const nextSessions = upsertChatSession(chatSessionsRef.current, nextSession) as ChatSession[];
+    chatSessionsRef.current = nextSessions; setChatSessions(nextSessions); saveChatHistory(localStorage, nextSessions);
+    setActiveChatId(nextSession.id); localStorage.setItem(ACTIVE_CHAT_KEY, nextSession.id);
+    setMessages(nextMessages); setHistoryOpen(false); setHistoryQuery("");
     setPendingMemorySuggestion("");
     setInput("");
     setSelectedFile(null);
@@ -297,6 +333,23 @@ function KoyalApp() {
     setTasksOpen(false);
     setEditingProfile(false);
     window.speechSynthesis?.cancel();
+  }
+  function openChatHistory() {
+    setHistoryQuery(""); setHistoryOpen(true); setMobileNav(false);
+    setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false);
+  }
+  function openChatSession(session: ChatSession) {
+    setActiveChatId(session.id); setMessages(session.messages); setHistoryOpen(false); setHistoryQuery("");
+    setSearch(""); setSearchOpen(false); setMobileNav(false);
+  }
+  function deleteChatSession(sessionId: string) {
+    const remaining = chatSessionsRef.current.filter((s) => s.id !== sessionId);
+    if (sessionId === activeChatId) {
+      const replacement = remaining[0] || (createChatSession([{ ...WELCOME, time: timestamp() }], "chat-" + Date.now()) as ChatSession);
+      const next = remaining.length ? remaining : [replacement];
+      chatSessionsRef.current = next; setChatSessions(next); saveChatHistory(localStorage, next);
+      setActiveChatId(replacement.id); localStorage.setItem(ACTIVE_CHAT_KEY, replacement.id); setMessages(replacement.messages);
+    } else { chatSessionsRef.current = remaining; setChatSessions(remaining); saveChatHistory(localStorage, remaining); }
   }
   function changeThinking(idx: number) {
     const option = thinking[Math.max(0, Math.min(6, idx))];
@@ -594,6 +647,7 @@ function KoyalApp() {
           </div>
           <nav className={styles.nav} aria-label="Koyal features">
             <button type="button" onClick={resetChat} className={`${styles.navItem} ${styles.navMain}`}><Icon name="chat"/><strong>New Chat</strong></button>
+            <button type="button" onClick={openChatHistory} className={`${styles.navItem} ${historyOpen ? styles.navOn : ""}`}><Icon name="chat"/>Chat History<span className={styles.navSmall}>{chatSessions.length}</span></button>
             <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
             <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
             <button type="button" onClick={openTasks} className={`${styles.navItem} ${tasksOpen ? styles.navOn : ""}`}><Icon name="tasks"/>Tasks<span className={styles.navSmall}>{tasks.filter((task) => !task.done).length}</span></button>
@@ -654,6 +708,26 @@ function KoyalApp() {
               </div>
             </div>
           </header>
+
+          {historyOpen && <div className={styles.historyOverlay} role="dialog" aria-modal="true" aria-label="Chat history">
+            <div className={styles.historyPanel}>
+              <div className={styles.historyHeader}><div><h2>Chat History</h2><p>Your saved conversations on this device</p></div>
+                <button type="button" className={styles.historyClose} aria-label="Close chat history" onClick={() => setHistoryOpen(false)}><Icon name="x" size={20}/></button>
+              </div>
+              <label className={styles.historySearch}><Icon name="search" size={17}/><input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} placeholder="Search chats and messages..." aria-label="Search chat history"/></label>
+              <div className={styles.historyList}>
+                {visibleChatSessions.length === 0 && <p className={styles.historyEmpty}>{chatSessions.length ? "No conversations match your search." : "Your conversations will appear here when you start chatting."}</p>}
+                {visibleChatSessions.map((session) => <div className={`${styles.historyItem} ${session.id === activeChatId ? styles.historyItemActive : ""}`} key={session.id}>
+                  <button type="button" className={styles.historyOpen} onClick={() => openChatSession(session)}><strong>{session.title}</strong>
+                    <span>{session.messages.filter((m) => m.role === "user").length} messages · {new Date(session.updatedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
+                    <small>{session.messages.filter((m) => m.role === "user").slice(-1)[0]?.content || "No messages yet"}</small>
+                  </button>
+                  <button type="button" className={styles.historyDelete} aria-label={"Delete " + session.title} title="Delete conversation" onClick={() => deleteChatSession(session.id)}><Icon name="x" size={17}/></button>
+                </div>)}
+              </div>
+              <div className={styles.historyFooter}><span>{chatSessions.length} / 100 saved chats</span><button type="button" onClick={resetChat}>＋ New Chat</button></div>
+            </div>
+          </div>}
 
           <section className={styles.chatSpace} aria-label="Conversation">
             <div className={styles.sceneBackdrop}/>
