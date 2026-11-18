@@ -654,6 +654,35 @@ export default function Home() {
 
           <section className={styles.chatSpace} aria-label="Conversation">
             <div className={styles.sceneBackdrop}/>
+      {tasksOpen && <div className={styles.profileModal} role="region" aria-label="Koyal tasks">
+          <div className={styles.profileHead}>
+            <div><h2>My Tasks</h2><p>Plan your work and track what you finish.</p></div>
+            <button type="button" aria-label="Close tasks" className={styles.profileClose} onClick={() => setTasksOpen(false)}><Icon name="x" size={24}/></button>
+          </div>
+          <div className={styles.profileBody}>
+            <div className={styles.profileFields}>
+              <label><span>Task title</span><input value={taskTitle} maxLength={160} placeholder="e.g. Revise the Mughal Empire" onChange={(e) => setTaskTitle(e.target.value)}/></label>
+              <label><span>Notes (optional)</span><textarea value={taskNotes} maxLength={500} rows={2} placeholder="What needs to be done?" onChange={(e) => setTaskNotes(e.target.value)}/></label>
+              <label><span>Due date (optional)</span><input type="date" value={taskDueDate} onChange={(e) => setTaskDueDate(e.target.value)}/></label>
+              <button type="button" className={styles.saveProfileButton} onClick={saveTask} disabled={!taskTitle.trim()}>Add Task</button>
+              {taskError && <p className={styles.profileError} role="alert">{taskError}</p>}
+              <p className={styles.profilePrivacy}>Tasks are saved only in this browser. They are not sent to the AI provider.</p>
+            </div>
+            <div className={styles.profileFields}>
+              <h3>Task list ({tasks.filter((t) => !t.done).length} pending · {tasks.filter((t) => t.done).length} completed)</h3>
+              {tasks.length === 0 && <p className={styles.profilePrivacy}>No tasks yet. Add your first task above.</p>}
+              {tasks.map((task) => <div key={task.id} className={styles.identityCard} style={{ display:"flex",alignItems:"flex-start",gap:10 }}>
+                <input type="checkbox" checked={task.done} onChange={() => toggleTask(task)} aria-label={task.done ? "Mark task pending" : "Mark task complete"} style={{ marginTop:5 }}/>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <strong style={{ textDecoration:task.done ? "line-through" : "none",opacity:task.done ? 0.6 : 1 }}>{task.title}</strong>
+                  {task.notes && <p style={{ margin:"5px 0",whiteSpace:"pre-wrap" }}>{task.notes}</p>}
+                  {task.dueDate && <small style={{ opacity:.7 }}>Due {task.dueDate}</small>}
+                </div>
+                <button type="button" className={styles.profileClose} aria-label="Delete task" onClick={() => removeTask(task.id)}><Icon name="x" size={18}/></button>
+              </div>)}
+            </div>
+          </div>
+      </div>}
       {memoryOpen && <div className={styles.profileModal} role="region" aria-label="Koyal local memory">
           <div className={styles.profileHead}>
             <div><h2>Koyal Memory</h2><p>Saved only in this browser. You choose what Koyal remembers.</p></div>
@@ -709,7 +738,7 @@ export default function Home() {
             </div>
           </div>
       </div>}
-            {!profileOpen && !memoryOpen && <div className={styles.chatScroll}>
+            {!profileOpen && !memoryOpen && !tasksOpen && <div className={styles.chatScroll}>
               <div className={styles.messages}>
                 {visibleMessages.length === 0 && <div className={styles.noResults}>No matching messages found.</div>}
                 {visibleMessages.map((message, index) => <div key={`${index}-${message.role}`} className={`${styles.messageRow} ${message.role === "user" ? styles.userRow : styles.assistantRow}`}>
@@ -742,7 +771,7 @@ export default function Home() {
             </div>}
           </section>
 
-          {!profileOpen && !memoryOpen && <div className={styles.bottomArea}>
+          {!profileOpen && !memoryOpen && !tasksOpen && <div className={styles.bottomArea}>
             <div className={styles.effortCard}>
               <div className={styles.effortHeading}>Thinking Effort</div>
               <button className={styles.thinkingLabel} type="button" onClick={() => changeThinking((indexThinking + 1) % thinking.length)} title="Click to change thinking level"><span>{selectedPlan === "Supreme" ? "∞" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong><Icon name="chevron" size={14}/></button>
@@ -767,10 +796,10 @@ export default function Home() {
                 <input type="url" aria-label="Webpage URL to read" value={urlInput} onChange={(event) => setUrlInput(event.target.value)} placeholder="https://example.com/article" maxLength={2048} required style={{ width: "100%", minWidth: 0, borderRadius: 12, border: "1px solid var(--border, rgba(150,150,150,.3))", padding: "11px 13px", background: "transparent", color: "inherit", font: "inherit", fontSize: 13 }} />
               </div>}
               {fileError && <p role="alert" style={{ margin: "0 12px 8px", color: "#ff647c", fontSize: 12 }}>{fileError}</p>}
-              {selectedFile && <div className={styles.attachment}><Icon name="paperclip" size={16}/>{selectedFile.name}<small style={{ opacity: .7 }}>Selectable text is extracted locally; scanned pages use Gemini OCR</small><button type="button" aria-label="Remove attachment" onClick={() => {setSelectedFile(null);setFileError("");if(fileInput.current)fileInput.current.value="";}}><Icon name="x" size={14}/></button></div>}
+              {selectedFile && <div className={styles.attachment}><Icon name="paperclip" size={16}/>{selectedFile.name}<small style={{ opacity: .7 }}>PDF text is extracted locally; scanned PDFs and images use Gemini</small><button type="button" aria-label="Remove attachment" onClick={() => {setSelectedFile(null);setFileError("");if(fileInput.current)fileInput.current.value="";}}><Icon name="x" size={14}/></button></div>}
               <div className={styles.composerRow}>
-                <input ref={fileInput} type="file" accept="application/pdf,.pdf" hidden onChange={handleFile}/>
-                <button type="button" className={styles.attachmentButton} title="Attach a PDF (up to 8 MB and 30 pages)" aria-label="Attach a PDF" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
+                <input ref={fileInput} type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp" hidden onChange={handleFile}/>
+                <button type="button" className={styles.attachmentButton} title="Attach a PDF or image" aria-label="Attach a PDF or image" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
                 <textarea value={input} placeholder={teacherMode ? `Ask your Class ${teacherClass} ${teacherSubject} teacher...` : characterMode !== "normal" ? `Message ${currentCharacter.name}...` : "Message Koyal..."} rows={1} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
                 <div className={styles.voiceButton}><VoiceMode subscriptionPlan={selectedPlan}/></div>
                 <button type="submit" className={styles.sendButton} disabled={loading || (!input.trim() && !selectedFile && !(urlReaderEnabled && urlInput.trim()))} title="Send message" aria-label="Send message"><Icon name="send" size={22}/></button>
