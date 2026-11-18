@@ -60,13 +60,7 @@ export default function VoiceMode({
   const [status, setStatus] = useState("Tap the bird to talk");
   const [heardText, setHeardText] = useState("");
   const [aiText, setAiText] = useState("");
-  const [outputLanguage, setOutputLanguage] =
-    useState<OutputLanguage>(ENGLISH_LANGUAGE);
 
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedVoiceURI, setSelectedVoiceURI] = useState("");
-  const [rate, setRate] = useState(0.95);
-  const [pitch, setPitch] = useState(1.05);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const keepListeningRef = useRef(false);
@@ -78,44 +72,22 @@ export default function VoiceMode({
   const speakingRef = useRef(false);
   const speakingStoppedRef = useRef(false);
   const lastSentRef = useRef("");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+  const audioAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    loadVoices();
-
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-      setTimeout(loadVoices, 600);
-    }
-
     return () => {
-      stopEverything();
+      keepListeningRef.current = false;
+      clearSilenceTimer();
+      clearRestartTimer();
+      try { recognitionRef.current?.abort(); } catch { /* ignore */ }
+      audioAbortRef.current?.abort();
+      audioRef.current?.pause();
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function loadVoices() {
-    if (!("speechSynthesis" in window)) return;
-
-    const availableVoices = window.speechSynthesis.getVoices();
-
-    setVoices(availableVoices);
-
-    if (!selectedVoiceURI && availableVoices.length > 0) {
-      const bestVoice =
-        availableVoices.find((voice) =>
-          voice.lang.toLowerCase().startsWith("en-in")
-        ) ||
-        availableVoices.find((voice) =>
-          voice.name.toLowerCase().includes("microsoft")
-        ) ||
-        availableVoices.find((voice) =>
-          voice.lang.toLowerCase().startsWith("en")
-        ) ||
-        availableVoices[0];
-
-      setSelectedVoiceURI(bestVoice.voiceURI);
-    }
-  }
 
   async function askMicPermission() {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -171,54 +143,25 @@ export default function VoiceMode({
     }
   }
 
-  function getSelectedVoice(languageCode: string) {
-    const availableVoices = window.speechSynthesis.getVoices();
-
-    const selected = availableVoices.find(
-      (voice) => voice.voiceURI === selectedVoiceURI
-    );
-
-    const matchingLanguage =
-      availableVoices.find((voice) =>
-        voice.lang.toLowerCase().startsWith(languageCode.toLowerCase())
-      ) ||
-      availableVoices.find((voice) =>
-        voice.lang
-          .toLowerCase()
-          .startsWith(languageCode.split("-")[0].toLowerCase())
-      );
-
-    if (matchingLanguage) return matchingLanguage;
-    if (selected) return selected;
-
-    return (
-      availableVoices.find((voice) =>
-        voice.name.toLowerCase().includes("microsoft")
-      ) ||
-      availableVoices.find((voice) =>
-        voice.lang.toLowerCase().startsWith("en")
-      ) ||
-      availableVoices[0]
-    );
-  }
-
   function splitText(text: string) {
-    return text
-      .replace(/\n+/g, ". ")
-      .split(/(?<=[.!?।])\s+/)
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .slice(0, 10);
+    return text.replace(/\n+/g, ". ").split(/(?<=[.!?।])\s+/).map((part) => part.trim()).filter(Boolean).slice(0, 10);
   }
 
   function stopSpeaking() {
     speakingStoppedRef.current = true;
     speakingRef.current = false;
-
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
+    audioAbortRef.current?.abort();
+    audioAbortRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute("src");
+      audioRef.current.load();
+      audioRef.current = null;
     }
-
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
     setSpeaking(false);
   }
 
@@ -254,8 +197,17 @@ export default function VoiceMode({
     speakingStoppedRef.current = true;
     speakingRef.current = false;
 
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
+    audioAbortRef.current?.abort();
+    audioAbortRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute("src");
+      audioRef.current.load();
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
     }
 
     setListening(false);
@@ -279,96 +231,63 @@ export default function VoiceMode({
     }, 800);
   }
 
-  function speakText(text: string, language: OutputLanguage) {
-    if (!("speechSynthesis" in window)) {
-      alert("Speech output is not supported in this browser.");
-      return;
-    }
-
+  async function speakText(text: string, language: OutputLanguage) {
     pauseMicForAI();
-
-    window.speechSynthesis.cancel();
-
+    stopSpeaking();
     speakingStoppedRef.current = false;
     speakingRef.current = true;
-
-    const parts = splitText(text);
-
-    if (parts.length === 0) {
-      speakingRef.current = false;
-      setSpeaking(false);
-      restartListeningAfterAI();
-      return;
-    }
-
-    let index = 0;
-
-    const speakNext = () => {
-      if (speakingStoppedRef.current) {
-        speakingRef.current = false;
-        setSpeaking(false);
-        restartListeningAfterAI();
-        return;
+    setStatus("Generating natural voice...");
+    const controller = new AbortController();
+    audioAbortRef.current = controller;
+    try {
+      const response = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: splitText(text).join(" "), language: language.code }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(detail.error || "Natural voice generation failed.");
       }
-
-      if (index >= parts.length) {
+      const audioBlob = await response.blob();
+      if (speakingStoppedRef.current || controller.signal.aborted) return;
+      const audioUrl = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = audioUrl;
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      audio.onplay = () => {
+        if (speakingStoppedRef.current) return;
+        setSpeaking(true);
+        setStatus("🐦 Koyal is speaking naturally.");
+      };
+      audio.onended = () => {
+        if (audioUrlRef.current === audioUrl) { URL.revokeObjectURL(audioUrl); audioUrlRef.current = null; }
+        audioRef.current = null;
+        audioAbortRef.current = null;
         speakingRef.current = false;
         setSpeaking(false);
         setStatus("Bird finished. Listening again...");
         restartListeningAfterAI();
-        return;
-      }
-
-      const utterance = new SpeechSynthesisUtterance(parts[index]);
-
-      utterance.lang = language.code;
-      utterance.rate = rate;
-      utterance.pitch = pitch;
-      utterance.volume = 1;
-
-      const voice = getSelectedVoice(language.code);
-
-      if (voice) {
-        utterance.voice = voice;
-      }
-
-      utterance.onstart = () => {
-        speakingRef.current = true;
-        setSpeaking(true);
-        setListening(false);
-        setStatus("🐦 Bird is speaking. Mic paused.");
       };
-
-      utterance.onend = () => {
-        index += 1;
-        setTimeout(speakNext, 180);
+      audio.onerror = () => {
+        if (audioUrlRef.current === audioUrl) { URL.revokeObjectURL(audioUrl); audioUrlRef.current = null; }
+        audioRef.current = null;
+        audioAbortRef.current = null;
+        speakingRef.current = false;
+        setSpeaking(false);
+        setStatus("Audio playback failed. Check your device volume and try again.");
+        restartListeningAfterAI();
       };
-
-      utterance.onerror = () => {
-        index += 1;
-        setTimeout(speakNext, 180);
-      };
-
-      window.speechSynthesis.speak(utterance);
-
-      const keepAlive = setInterval(() => {
-        if (!window.speechSynthesis.speaking || speakingStoppedRef.current) {
-          clearInterval(keepAlive);
-          return;
-        }
-
-        window.speechSynthesis.resume();
-      }, 1000);
-    };
-
-    if (window.speechSynthesis.getVoices().length === 0) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        speakNext();
-      };
-
-      setTimeout(speakNext, 700);
-    } else {
-      speakNext();
+      await audio.play();
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      speakingRef.current = false;
+      setSpeaking(false);
+      const message = error instanceof Error ? error.message : "Natural voice failed.";
+      setStatus(message);
+      setAiText((current) => current ? current + "\n\nVoice error: " + message : "Voice error: " + message);
+      restartListeningAfterAI();
     }
   }
 
@@ -394,7 +313,6 @@ export default function VoiceMode({
 
     const requestedLanguage = detectRequestedOutputLanguage(cleanText);
 
-    setOutputLanguage(requestedLanguage);
     setHeardText(cleanText);
     lastSentRef.current = cleanText;
 
@@ -455,7 +373,7 @@ ${cleanText}
       setAiText(reply);
       setStatus(`Bird replied in ${requestedLanguage.name}.`);
 
-      speakText(reply, requestedLanguage);
+      void speakText(reply, requestedLanguage);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Voice message failed.";
@@ -653,13 +571,6 @@ ${cleanText}
     pendingTranscriptRef.current = "";
     clearSilenceTimer();
     sendVoiceMessage(text);
-  }
-
-  function testBirdVoice() {
-    speakText(
-      "Hello, I am the KOYAL bird. I will reply in Hindi only when you ask for Hindi.",
-      ENGLISH_LANGUAGE
-    );
   }
 
   return (
