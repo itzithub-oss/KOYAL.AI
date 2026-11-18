@@ -1,0 +1,11 @@
+export type KoyalTask = { id: string; title: string; notes: string; dueDate: string; done: boolean; createdAt: number };
+export const TASK_STORAGE_KEY: string;
+export const MAX_TASKS: number;
+export const MAX_TASK_TITLE_LENGTH: number;
+export const MAX_TASK_NOTES_LENGTH: number;
+export function normalizeTasks(value: unknown): KoyalTask[];
+export function loadTasks(storage: Pick<Storage,"getItem">): KoyalTask[];
+export function saveTasks(storage: Pick<Storage,"setItem">, tasks: unknown): boolean;
+export function addTask(storage: Pick<Storage,"setItem">, tasks: unknown, title: string, options?: {id?:string;notes?:string;dueDate?:string;createdAt?:number}): KoyalTask[];
+export function updateTask(storage: Pick<Storage,"setItem">, tasks: unknown, id: string, changes: {done?:boolean;title?:string}): KoyalTask[];
+export function deleteTask(storage: Pick<Storage,"setItem">, tasks: unknown, id: string): KoyalTask[];
