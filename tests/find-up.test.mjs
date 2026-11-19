@@ -37,6 +37,7 @@ test("unrelated searches do not return arbitrary approved businesses",()=>{
 
 test("location-only searches can return approved businesses in that location",()=>{
   assert.equal(rankFindUpBusinesses(listings,"near Jalpaiguri").length,1);
+  assert.equal(rankFindUpBusinesses(listings,"Jalpaiguri").length,1);
 });
 
 test("an explicit price filter excludes listings with unknown prices",()=>{
