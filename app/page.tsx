@@ -246,6 +246,10 @@ function KoyalApp() {
   const [findUpError, setFindUpError] = useState("");
   const [dailyHubOpen, setDailyHubOpen] = useState(false);
   const [dailyThought, setDailyThought] = useState(() => getDailyThought(0));
+  const [chatSummary, setChatSummary] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+  const [summaryChatId, setSummaryChatId] = useState("");
   const [tasks, setTasks] = useState<KoyalTask[]>([]);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskNotes, setTaskNotes] = useState("");
@@ -874,6 +878,58 @@ function KoyalApp() {
     } finally { setLoading(false); }
   }
 
+  async function summarizeCurrentChat() {
+    if (summaryLoading) return;
+    const conversation = messages.filter((entry) =>
+      (entry.role === "user" || entry.role === "assistant") &&
+      typeof entry.content === "string" &&
+      entry.content.trim() &&
+      !(entry.role === "assistant" && entry.content === WELCOME.content)
+    );
+    if (!conversation.some((entry) => entry.role === "user")) {
+      setSummaryError("Start a conversation with Koyal first, then come back to summarise it.");
+      setChatSummary("");
+      setSummaryChatId(activeChatId);
+      return;
+    }
+
+    setSummaryLoading(true);
+    setSummaryError("");
+    setChatSummary("");
+    setSummaryChatId(activeChatId);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "Summarise the conversation provided in the chat history. Write a concise summary in 3–5 short bullet points. Capture the main topics, important information, decisions or preferences, and any agreed next steps. Use only information actually present in the conversation. Do not invent details, do not add a greeting, and do not answer the original questions again.",
+          history: conversation.slice(-80).map((entry) => ({
+            role: entry.role,
+            content: entry.content.slice(0, 5000),
+          })),
+          mode: "Normal",
+          thinkingLevel: "Just",
+          language: "English by default",
+          subscriptionPlan: "Just",
+          characterMode: "normal",
+          teacherMode: false,
+          preciseMode: false,
+          philosophicalMode: false,
+          webSearch: false,
+        }),
+      });
+      const data: ChatApiResponse = await response.json();
+      if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) {
+        throw new Error("Koyal couldn't summarise this chat right now. Please try again.");
+      }
+      setChatSummary(data.reply.trim());
+    } catch (error) {
+      setSummaryError(error instanceof Error ? error.message : "Unable to summarise this chat. Please try again.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  }
+
   const closeSidebar = () => setMobileNav(false);
 
   return (
@@ -1019,7 +1075,15 @@ function KoyalApp() {
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setInput("Give me today's daily knowledge challenge: one surprising fact, one useful vocabulary word with an example, and one short general-knowledge question. Ask me to answer before revealing the answer."); }}>
             <span className={styles.dailyHubGlyph}><Icon name="brain" size={22}/></span><span className={styles.dailyHubTag}>GROW A LITTLE DAILY</span><strong>Daily Knowledge</strong><small>Discover a fact, learn a word and solve a quick challenge.</small><span className={styles.dailyHubAction}>Learn something new ↗</span>
           </button>
+          <button type="button" className={styles.dailyHubCard} onClick={summarizeCurrentChat} disabled={summaryLoading}>
+            <span className={styles.dailyHubGlyph}><Icon name="memory" size={22}/></span><span className={styles.dailyHubTag}>YOUR CONVERSATION, AT A GLANCE</span><strong>Summarise My Chat</strong><small>Turn this conversation into a few clear lines with key points and next steps.</small><span className={styles.dailyHubAction}>{summaryLoading ? "Summarising…" : "Create chat summary ↗"}</span>
+          </button>
         </div>
+        {(summaryLoading || summaryError || (chatSummary && summaryChatId === activeChatId)) && <section className={styles.chatSummaryPanel} aria-live="polite" aria-label="Chat summary">
+          <div className={styles.chatSummaryHeading}><span><Icon name="memory" size={18}/> CHAT SUMMARY</span><small>THIS CONVERSATION</small></div>
+          {summaryLoading ? <p className={styles.chatSummaryStatus}>Koyal is reading your conversation and preparing a short summary…</p> : summaryError ? <p className={styles.chatSummaryError}>{summaryError}</p> : <div className={styles.chatSummaryText}>{renderMessageContent(chatSummary)}</div>}
+          {!summaryLoading && chatSummary && summaryChatId === activeChatId && <button type="button" className={styles.chatSummaryCopy} onClick={() => { void navigator.clipboard?.writeText(chatSummary); }}>Copy summary</button>}
+        </section>}
         <button type="button" className={styles.reviewBack} onClick={() => setDailyHubOpen(false)}>← Back to Chat</button>
       </section>}
       {findUpOpen && <section className={styles.findUpSection} role="region" aria-label="FIND UP business search">
