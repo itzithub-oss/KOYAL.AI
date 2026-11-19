@@ -197,6 +197,7 @@ function KoyalApp() {
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [rateReviewOpen, setRateReviewOpen] = useState(false);
+  const [dailyHubOpen, setDailyHubOpen] = useState(false);
   const [tasks, setTasks] = useState<KoyalTask[]>([]);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskNotes, setTaskNotes] = useState("");
@@ -818,6 +819,7 @@ function KoyalApp() {
             <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
             <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
             <button type="button" onClick={openTasks} className={`${styles.navItem} ${tasksOpen ? styles.navOn : ""}`}><Icon name="tasks"/>Tasks<span className={styles.navSmall}>{tasks.filter((task) => !task.done).length}</span></button>
+            <button type="button" onClick={() => { setDailyHubOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setCodeModeOpen(false); closeSidebar(); }} className={`${styles.navItem} ${dailyHubOpen ? styles.navOn : ""}`}><Icon name="brain"/>Daily AI Hub<span className={styles.navSmall}>5</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
             <button type="button" onClick={() => { setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
             <div className={styles.characterPanel}>
@@ -900,6 +902,30 @@ function KoyalApp() {
 
           <section className={styles.chatSpace} aria-label="Conversation">
             <div className={styles.sceneBackdrop}/>
+      {dailyHubOpen && <section className={styles.dailyHub} role="region" aria-label="Daily AI Hub">
+        <div className={styles.dailyHubHead}>
+          <div><div className={styles.reviewEyebrow}>YOUR EVERYDAY AI COMPANION</div><h2>Daily AI Hub</h2><p>Five tools to help you stay informed, learn and get things done.</p></div>
+          <button type="button" className={styles.profileClose} aria-label="Close Daily AI Hub" onClick={() => setDailyHubOpen(false)}><Icon name="x" size={22}/></button>
+        </div>
+        <div className={styles.dailyHubGrid}>
+          <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setWebSearchEnabled(true); setInput("Give me today's important news and current affairs in a concise, student-friendly briefing. Include dates and reliable sources."); }}>
+            <span className={styles.dailyHubGlyph}>◉</span><strong>Daily News</strong><small>Get today's headlines and current affairs with sources.</small><span className={styles.dailyHubAction}>Explore news ↗</span>
+          </button>
+          <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setStudyMode(true); setInput("Create a practical study plan for me for today. Ask what subjects and available time you need, then make a balanced timetable with breaks."); }}>
+            <span className={styles.dailyHubGlyph}>▤</span><strong>Smart Study Planner</strong><small>Build a focused study timetable with breaks and goals.</small><span className={styles.dailyHubAction}>Plan study ↗</span>
+          </button>
+          <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setInput("Create an interactive-style quiz for me. First ask which subject and topic, then ask one question at a time, check my answers and explain mistakes."); }}>
+            <span className={styles.dailyHubGlyph}>✦</span><strong>AI Quizzes</strong><small>Practise with questions, instant checking and explanations.</small><span className={styles.dailyHubAction}>Start a quiz ↗</span>
+          </button>
+          <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); openMemory(); }}>
+            <span className={styles.dailyHubGlyph}>▣</span><strong>Saved Notes</strong><small>Save useful notes and revisit them whenever you need.</small><span className={styles.dailyHubAction}>Open notes ↗</span>
+          </button>
+          <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); openTasks(); }}>
+            <span className={styles.dailyHubGlyph}>✓</span><strong>Productivity Tracker</strong><small>Track tasks, due dates and completed work.</small><span className={styles.dailyHubAction}>Track progress ↗</span>
+          </button>
+        </div>
+        <button type="button" className={styles.reviewBack} onClick={() => setDailyHubOpen(false)}>← Back to Chat</button>
+      </section>}
       {rateReviewOpen && <div className={styles.reviewSection} role="region" aria-label="Rate and review Koyal">
           <div className={styles.reviewEyebrow}>YOUR FEEDBACK MATTERS</div>
           <div className={styles.reviewIcon} aria-hidden="true">★</div>
