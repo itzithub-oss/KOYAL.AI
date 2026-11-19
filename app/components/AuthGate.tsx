@@ -142,8 +142,21 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     }
   }
 
+  function clearAccountProfileData() {
+    for (const key of [
+      "koyal-ai-profile-v2",
+      "koyal-ai-profile-name",
+      "koyal-ai-profile",
+      "koyal-ai-subscription-plan",
+      "koyal-ai-subscription-expires-at",
+      "koyal-ai-feather-balance",
+    ]) localStorage.removeItem(key);
+    window.dispatchEvent(new Event("koyal-account-signed-out"));
+  }
+
   async function signOut() {
     const current = session;
+    clearAccountProfileData();
     saveSession(null);
     localStorage.setItem("koyal-ai-guest-mode", "true");
     setGuest(true);
