@@ -13,7 +13,7 @@ type Business = {
   operations?: { public_contact_name?: string; business_phone?: string; whatsapp?: string; business_hours?: string };
   professionals?: { name?: string; degree?: string; qualifications?: string[]; specialisation?: string[]; experience_years?: number; registration_authority?: string; registration_number?: string; credentials_verified?: boolean }[];
   online_presence?: { website?: string; logo_url?: string; photo_urls?: string[] };
-  verification_status?: string; submitted_at?: string; _matchReason?: string; branches?: string[]; category_details?: Record<string,unknown>;
+  verification_status?: string; submitted_at?: string; _matchReason?: string; branches?: string[]; category_details?: Record<string,unknown>;\n  owner_information?: { owner_name?: string; owner_phone?: string; owner_email?: string; designation?: string }; verification_notes?: string; private_documents?: unknown[];
 };
 const CATEGORIES = ["Healthcare","Education","Computer & Electronics","Food & Dining","Home & Local Services","Automotive","Beauty & Wellness","Professional Services","Other"];
 const INITIAL_FORM: Record<string,string> = {
@@ -282,7 +282,7 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
       <div className={styles.adminFilters}><label>Application status<select value={adminFilter} onChange={e=>setAdminFilter(e.target.value)}>{["ALL","PENDING","UNDER REVIEW","APPROVED","REJECTED","NEEDS CORRECTION","SUSPENDED"].map(item=><option key={item}>{item}</option>)}</select></label><span>{filteredAdmin.length} application(s)</span></div>
       {adminBusy&&!adminRows.length?<p className={styles.status}>Loading admin records…</p>:filteredAdmin.map(row=><article className={styles.adminCard} key={row.id}>
         <div className={styles.adminHead}><div><strong>{row.display_name||row.business_name}</strong><small>{row.business_id} · {row.category} · {row.location?.city||"No city"}</small></div><span className={styles.statusPill}>{row.status}</span></div>
-        <p>{row.description}</p><small>Submitted {row.submitted_at?new Date(row.submitted_at).toLocaleString():"—"} · Credentials: {row.verification_status||"UNVERIFIED"}</small>
+        <p>{row.description}</p><p className={styles.adminPrivate}>Applicant: {row.owner_information?.owner_name||"—"} · {row.owner_information?.owner_phone||"No phone"} · {row.owner_information?.owner_email||"No email"} · {row.owner_information?.designation||"—"}</p><small>Submitted {row.submitted_at?new Date(row.submitted_at).toLocaleString():"—"} · Credentials: {row.verification_status||"UNVERIFIED"} · Private documents: {row.private_documents?.length||0}</small>
         {editingId===row.id?<div className={styles.editArea}><textarea rows={8} value={editJson} onChange={e=>setEditJson(e.target.value)} /><button type="button" onClick={()=>saveAdminEdit(row)} disabled={adminBusy}>Save edits</button><button type="button" className={styles.secondary} onClick={()=>setEditingId("")}>Cancel</button></div>:<div className={styles.adminActions}>
           <button type="button" onClick={()=>adminAction(row,"UNDER REVIEW")}>Under review</button>
           <button type="button" onClick={()=>adminAction(row,"APPROVED")}>Approve</button>
@@ -290,7 +290,7 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
           <button type="button" onClick={()=>adminAction(row,"REJECTED")}>Reject</button>
           <button type="button" onClick={()=>adminAction(row,row.status==="SUSPENDED"?"APPROVED":"SUSPENDED")}>{row.status==="SUSPENDED"?"Reactivate":"Suspend"}</button>
           <button type="button" onClick={()=>adminAction(row,row.verification_status==="VERIFIED"?"UNVERIFY_CREDENTIALS":"VERIFY_CREDENTIALS")}>{row.verification_status==="VERIFIED"?"Unverify credentials":"Verify credentials"}</button>
-          <button type="button" onClick={()=>{setEditingId(row.id);setEditJson(JSON.stringify({business_name:row.business_name,display_name:row.display_name,category:row.category,subcategory:row.subcategory,description:row.description,services:row.services,keywords:row.keywords,specialisations:row.specialisations,branches:row.branches,category_details:row.category_details,location:row.location,pricing:row.pricing,operations:row.operations,professionals:row.professionals,online_presence:row.online_presence},null,2));}}>Edit JSON</button>
+          <button type="button" onClick={()=>{setEditingId(row.id);setEditJson(JSON.stringify({business_name:row.business_name,display_name:row.display_name,category:row.category,subcategory:row.subcategory,description:row.description,services:row.services,keywords:row.keywords,specialisations:row.specialisations,branches:row.branches,category_details:row.category_details,location:row.location,owner_information:row.owner_information,verification_notes:row.verification_notes,private_documents:row.private_documents,pricing:row.pricing,operations:row.operations,professionals:row.professionals,online_presence:row.online_presence},null,2));}}>Edit JSON</button>
           <button type="button" className={styles.danger} onClick={()=>adminAction(row,"DELETE")}>Delete</button>
         </div>}
       </article>)}
