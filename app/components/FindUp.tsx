@@ -17,7 +17,7 @@ type Business = {
 };
 const CATEGORIES = ["Healthcare","Education","Computer & Electronics","Food & Dining","Home & Local Services","Automotive","Beauty & Wellness","Professional Services","Other"];
 const INITIAL_FORM: Record<string,string> = {
-  business_name:"",display_name:"",category:"Healthcare",subcategory:"",description:"",
+  business_name:"",display_name:"",category:"Healthcare",subcategory:"",description:"",search_synonyms:"",
   owner_name:"",owner_phone:"",owner_email:"",designation:"",
   services:"",keywords:"",specialisations:"",city:"",district:"",state:"West Bengal",pin_code:"",
   full_address:"",maps_url:"",service_areas:"",business_phone:"",whatsapp:"",public_contact_name:"",
@@ -94,7 +94,7 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
       {details:form.other_details};
     try {
       const response=await fetch("/api/find-up",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({business:{
-        ...form,services,keywords:splitLines(form.keywords),specialisations:splitLines(form.specialisations),
+        ...form,services,keywords:splitLines(form.keywords),specialisations:splitLines(form.specialisations),search_synonyms:splitLines(form.search_synonyms),
         service_areas:splitLines(form.service_areas),latitude:form.latitude,longitude:form.longitude,branches:splitLines(form.branches),professionals,
         pricing:{starting_price:form.starting_price,maximum_price:form.max_price,consultation_fee:form.consultation_fee,pricing_type:form.pricing_type,packages:form.packages},
         social_links:splitLines(form.social_links),logo_url:form.logo_url,photo_urls:splitLines(form.photo_urls),operating_person:form.operating_person,
@@ -220,7 +220,7 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
           <label>Operating status<select value={form.operating_status} onChange={e=>updateForm("operating_status",e.target.value)}><option>Operating</option><option>Temporarily closed</option><option>Seasonal</option></select></label>
           <label className={styles.wide}>Services offered * (one per line)<textarea required rows={3} value={form.services} onChange={e=>updateForm("services",e.target.value)} placeholder="Physiotherapy assessment&#10;Sports injury rehabilitation"/></label>
           <label>Search keywords (comma separated)<input value={form.keywords} onChange={e=>updateForm("keywords",e.target.value)} /></label>
-          <label>Specialisations (comma separated)<input value={form.specialisations} onChange={e=>updateForm("specialisations",e.target.value)} /></label>
+          <label>Specialisations (comma separated)<input value={form.specialisations} onChange={e=>updateForm("specialisations",e.target.value)} /></label>\n          <label>Search synonyms (comma separated)<input value={form.search_synonyms} onChange={e=>updateForm("search_synonyms",e.target.value)} /></label>
         </div>
         {form.category==="Healthcare"&&<><h3>Healthcare professional details</h3><p className={styles.note}>Credentials are not shown as verified unless an administrator reviews them.</p><div className={styles.formGrid}>
           <label>Professional name<input value={form.professional_name} onChange={e=>updateForm("professional_name",e.target.value)} /></label>
