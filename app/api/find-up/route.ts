@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rankFindUpBusinesses, validateFindUpApplication } from "../../../../lib/find-up.mjs";
-import { findUpDatabase } from "../../../../lib/find-up-server.mjs";
+import { rankFindUpBusinesses, validateFindUpApplication } from "../../../lib/find-up.mjs";
+import { findUpDatabase } from "../../../lib/find-up-server.mjs";
 
 export const runtime = "nodejs";
 const PUBLIC_FIELDS = "id,business_id,business_name,display_name,category,subcategory,description,establishment_year,operating_status,services,keywords,specialisations,search_synonyms,location,pricing,operations,professionals,online_presence,verification_status,created_at,approved_at";
@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
       category: cleanText(input.category, 100),
       subcategory: cleanText(input.subcategory, 100),
       description: cleanText(input.description, 2500),
+      category_details: jsonObject(input.category_details),
       establishment_year: input.establishment_year ? Number(input.establishment_year) : null,
       operating_status: cleanText(input.operating_status || "Operating", 40),
       services,
