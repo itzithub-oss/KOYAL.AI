@@ -239,6 +239,7 @@ function KoyalApp() {
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [rateReviewOpen, setRateReviewOpen] = useState(false);
+  const [aiDetailsOpen, setAiDetailsOpen] = useState(false);
   const [findUpOpen, setFindUpOpen] = useState(false);
   const [findUpQuery, setFindUpQuery] = useState("");
   const [findUpResults, setFindUpResults] = useState<FindUpBusiness[]>([]);
@@ -978,6 +979,7 @@ function KoyalApp() {
             <button type="button" onClick={() => { setRateReviewOpen(false); openFeatherShop(); }} className={styles.navItem}><Icon name="feather"/>Feather Balance<span className={styles.navSmall}>{selectedPlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</span></button>
             <button type="button" onClick={() => { if (requireSignIn("access subscription plans")) setSubscriptionOpen(true); closeSidebar(); }} className={styles.navItem}><Icon name="diamond"/>Subscription</button>
             <button type="button" onClick={() => { setRateReviewOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${rateReviewOpen ? styles.navOn : ""}`}><Icon name="message"/>Rate &amp; Review<span className={styles.navSmall}>Feedback</span></button>
+            <button type="button" onClick={() => { setAiDetailsOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setFindUpOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${aiDetailsOpen ? styles.navOn : ""}`}><Icon name="message"/>AI Details<span className={styles.navSmall}>Contact</span></button>
           </nav>
           <button type="button" className={styles.sidebarProfile} onClick={openProfile} aria-label="Open your profile">
             <div className={styles.sidebarProfileTop}>
@@ -1036,6 +1038,22 @@ function KoyalApp() {
 
           <section className={styles.chatSpace} aria-label="Conversation">
             <div className={styles.sceneBackdrop}/>
+      {aiDetailsOpen && <section className={styles.aiDetailsSection} role="region" aria-label="KOYAL AI details and contact">
+        <div className={styles.aiDetailsHeader}>
+          <div><div className={styles.aiDetailsEyebrow}>KOYAL AI · HERE TO HELP</div><h2>Contact <span>Us.</span></h2><p>Questions, support, feedback or collaboration ideas? Reach out through any of the channels below.</p></div>
+          <button type="button" className={styles.profileClose} aria-label="Close AI Details" onClick={() => setAiDetailsOpen(false)}><Icon name="x" size={22}/></button>
+        </div>
+        <div className={styles.aiContactGrid}>
+          <article className={styles.aiContactCard}><span className={styles.aiContactIcon}>✉</span><div><small>EMAIL SUPPORT</small><strong>koyalaiindia@gmail.com</strong><a href="mailto:koyalaiindia@gmail.com">Send an email ↗</a></div></article>
+          <article className={styles.aiContactCard}><span className={styles.aiContactIcon}>☎</span><div><small>CALL US · 1</small><strong>+91 9679004664</strong><a href="tel:+919679004664">Call this number ↗</a></div></article>
+          <article className={styles.aiContactCard}><span className={styles.aiContactIcon}>☎</span><div><small>CALL US · 2</small><strong>+91 9155537712</strong><a href="tel:+919155537712">Call this number ↗</a></div></article>
+          <article className={styles.aiContactCard}><span className={styles.aiContactIcon}>𝕏</span><div><small>FOLLOW ON X</small><strong>@koyalaiindia</strong><a href="https://x.com/koyalaiindia" target="_blank" rel="noopener noreferrer">Visit X profile ↗</a></div></article>
+          <article className={styles.aiContactCard}><span className={styles.aiContactIcon}>▶</span><div><small>YOUTUBE</small><strong>@KoyalAiIndia</strong><a href="https://www.youtube.com/@KoyalAiIndia" target="_blank" rel="noopener noreferrer">Visit YouTube channel ↗</a></div></article>
+          <article className={styles.aiContactCard}><span className={styles.aiContactIcon}>◉</span><div><small>DISCORD</small><strong>koyalaiindia</strong><span className={styles.aiContactNote}>Find us on Discord using this username.</span></div></article>
+        </div>
+        <div className={styles.aiSupportHours}><span>◷</span><div><small>SUPPORT HOURS</small><strong>Monday – Saturday · 10:00 AM – 10:00 PM</strong><p>Sunday · Closed</p></div><span className={styles.aiSupportStatus}>SUPPORT WINDOW</span></div>
+        <button type="button" className={styles.reviewBack} onClick={() => setAiDetailsOpen(false)}>← Back to Chat</button>
+      </section>}
       {dailyHubOpen && <section className={styles.dailyHub} role="region" aria-label="Daily AI Hub">
         <div className={styles.dailyHubHead}>
           <div className={styles.dailyHubHeroCopy}>
