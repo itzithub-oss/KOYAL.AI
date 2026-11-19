@@ -33,5 +33,5 @@ test("explicit category and price filters are applied",()=>{
 
 test("application validation requires core business and owner details",()=>{
   const errors=validateFindUpApplication({business_name:"",category:"",description:"short",owner_name:"",owner_phone:"",city:"",state:"",services:[]});
-  assert.equal(errors.length,7);
+  assert.equal(errors.length,8);
 });
