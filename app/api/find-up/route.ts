@@ -3,7 +3,7 @@ import { rankFindUpBusinesses, validateFindUpApplication } from "../../../lib/fi
 import { findUpDatabase } from "../../../lib/find-up-server.mjs";
 
 export const runtime = "nodejs";
-const PUBLIC_FIELDS = "id,business_id,business_name,display_name,category,subcategory,description,establishment_year,operating_status,services,keywords,specialisations,search_synonyms,location,pricing,operations,professionals,online_presence,verification_status,created_at,approved_at";
+const PUBLIC_FIELDS = "id,business_id,business_name,display_name,category,subcategory,description,establishment_year,operating_status,services,keywords,specialisations,search_synonyms,location,pricing,operations,professionals,online_presence,verification_status,category_details,created_at,approved_at";
 
 function cleanText(value: unknown, max = 500) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -25,7 +25,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ businesses: [], total: 0, message: "Enter a service, business type or location to search." });
     }
     const rows = await findUpDatabase(`find_up_businesses?select=${PUBLIC_FIELDS}&status=eq.APPROVED&order=approved_at.desc&limit=1000`);
-    const businesses = rankFindUpBusinesses(rows || [], query, { location, category, maxPrice });
+    const ranked = rankFindUpBusinesses(rows || [], query, { location, category, maxPrice });
+    const businesses = ranked.map((business: any) => ({
+      ...business,
+      professionals: business.verification_status === "VERIFIED"
+        ? (business.professionals || []).filter((person: any) => person?.credentials_verified === true)
+        : [],
+    }));
     return NextResponse.json({ businesses: businesses.slice(0, 50), total: businesses.length });
   } catch (error) {
     console.error("[FIND UP] Search failed", error);
