@@ -11,8 +11,8 @@ function cleanText(value: unknown, max = 500) {
 function cleanList(value: unknown, maxItems = 40) {
   return Array.isArray(value) ? value.slice(0, maxItems).map((item) => cleanText(item, 180)).filter(Boolean) : [];
 }
-function jsonObject(value: unknown) {
-  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+function jsonObject(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
 }
 
 export async function GET(request: NextRequest) {
