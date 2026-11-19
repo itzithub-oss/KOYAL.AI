@@ -50,6 +50,9 @@ export async function PATCH(request: NextRequest) {
       body: JSON.stringify(patch),
     });
     if (!rows?.length) return NextResponse.json({ error: "Business listing not found." }, { status: 404 });
+    try {
+      await findUpDatabase("find_up_audit_logs", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ business_row_id: id, actor_email: auth.user.email, action, details: action === "EDIT" ? { updated_fields: Object.keys(body?.updates || {}) } : {} }) });
+    } catch (auditError) { console.warn("[FIND UP ADMIN] Audit log write failed", auditError); }
     return NextResponse.json({ success: true, business: rows[0] });
   } catch (error) {
     console.error("[FIND UP ADMIN] Update failed", error);
@@ -63,6 +66,8 @@ export async function DELETE(request: NextRequest) {
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
     const id = request.nextUrl.searchParams.get("id") || "";
     if (!id) return NextResponse.json({ error: "Business ID is required." }, { status: 400 });
+    try { await findUpDatabase("find_up_audit_logs", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ business_row_id: id, actor_email: auth.user.email, action: "DELETE", details: {} }) }); }
+    catch (auditError) { console.warn("[FIND UP ADMIN] Delete audit log write failed", auditError); }
     await findUpDatabase(`find_up_businesses?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
     return NextResponse.json({ success: true });
   } catch (error) {
