@@ -180,11 +180,12 @@ function renderMessageContent(content: string): React.ReactNode {
     if (match.index > cursor) parts.push(content.slice(cursor, match.index));
 
     let url = match[2] || match[3];
-    const label = match[1] || url;
+    let label = match[1] || url;
     let trailing = "";
     if (!match[2]) {
       trailing = url.match(/[.,!?;:]+$/)?.[0] || "";
       url = url.slice(0, url.length - trailing.length);
+      label = url;
     }
 
     if (url) {
