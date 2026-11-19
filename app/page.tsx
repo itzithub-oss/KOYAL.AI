@@ -225,6 +225,7 @@ function KoyalApp() {
   const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
   const [feathers, setFeathers] = useState(2480);
   const [thinkingId, setThinkingId] = useState<ThinkingEffort>("high");
+  const [thinkingEffortOpen, setThinkingEffortOpen] = useState(false);
   const [characterMode, setCharacterMode] = useState<CharacterMode>("normal");
   const [characterOpen, setCharacterOpen] = useState(true);
   const [preciseMode, setPreciseMode] = useState(false);
@@ -1275,14 +1276,19 @@ function KoyalApp() {
           </section>
 
           {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && !findUpOpen && <div className={styles.bottomArea}>
-            <div className={styles.effortCard}>
-              <div className={styles.effortHeading}>Thinking Effort</div>
-              <button className={styles.thinkingLabel} type="button" onClick={() => changeThinking((indexThinking + 1) % thinking.length)} title="Click to change thinking level"><span>{selectedPlan === "Supreme" ? "∞" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong><Icon name="chevron" size={14}/></button>
-              <div className={styles.sliderOuter}>
-                <div className={styles.sliderTrack}><div className={styles.sliderFilled} style={{ width: `${indexThinking/6*100}%` }}/>{thinking.map((item,index) => <span key={item.id} className={styles.sliderMark} style={{ left: `${index/6*100}%` }}/>)}</div>
-                <div className={styles.birdThumb} style={{ left: `${indexThinking/6*100}%` }}><img src="/koyal-bird.png" alt=""/></div>
-                <input className={styles.sliderInput} aria-label={`Thinking effort: ${currentThinking.name}`} type="range" min={0} max={6} step={1} value={indexThinking} onChange={(event) => changeThinking(Number(event.target.value))} />
-              </div>
+            <div className={`${styles.effortCard} ${thinkingEffortOpen ? styles.effortCardOpen : ""}`}>
+              <button className={styles.effortToggle} type="button" aria-expanded={thinkingEffortOpen} aria-controls="thinking-effort-controls" onClick={() => setThinkingEffortOpen((open) => !open)}>
+                <span className={styles.effortHeading}>Thinking Effort</span>
+                <span className={styles.effortCurrent}><span>{selectedPlan === "Supreme" ? "∞" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong></span>
+                <Icon name="chevron" size={15}/>
+              </button>
+              {thinkingEffortOpen && <div className={styles.effortControls} id="thinking-effort-controls">
+                <div className={styles.sliderOuter}>
+                  <div className={styles.sliderTrack}><div className={styles.sliderFilled} style={{ width: `${indexThinking/6*100}%` }}/>{thinking.map((item,index) => <span key={item.id} className={styles.sliderMark} style={{ left: `${index/6*100}%` }}/>)}</div>
+                  <div className={styles.birdThumb} style={{ left: `${indexThinking/6*100}%` }}><img src="/koyal-bird.png" alt=""/></div>
+                  <input className={styles.sliderInput} aria-label={`Thinking effort: ${currentThinking.name}`} type="range" min={0} max={6} step={1} value={indexThinking} onChange={(event) => changeThinking(Number(event.target.value))} />
+                </div>
+              </div>}
             </div>
             <form className={styles.composer} onSubmit={sendMessage}>
               <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "0 12px 8px" }}>
