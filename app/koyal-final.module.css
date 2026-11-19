@@ -110,9 +110,9 @@
 .loadingBubble span:nth-child(3) { animation-delay: .4s; margin-right: 7px; }
 @keyframes pulse { to { opacity: .2; transform: translateY(-5px); } }
 .bottomArea { z-index: 2; flex: 0 0 auto; padding: 11px 15px 15px; background: linear-gradient(180deg,rgba(8,6,14,.6), #0b0812); }
-.effortCard { display:flex; flex-direction:column; align-items:stretch; max-width:634px; gap:0; min-height:0; margin:0 0 10px; padding:0 14px; border:1px solid rgba(198,113,173,.32); border-radius:15px; background:linear-gradient(115deg,rgba(34,12,34,.93),rgba(25,14,34,.98)); box-shadow:0 6px 24px rgba(0,0,0,.25); transition:border-color .2s ease,box-shadow .2s ease; }
-.effortCardOpen { border-color:rgba(255,105,157,.52); box-shadow:0 7px 25px rgba(0,0,0,.27),0 0 16px rgba(255,65,125,.07); }
-.effortToggle { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:43px; padding:0; color:inherit; text-align:left; border:0; background:transparent; cursor:pointer; }
+.effortCard { display:flex; flex-direction:column; align-items:stretch; width:fit-content; max-width:min(634px,100%); gap:0; min-height:0; margin:0 0 6px; padding:0 10px; border:1px solid rgba(198,113,173,.32); border-radius:999px; background:linear-gradient(115deg,rgba(34,12,34,.93),rgba(25,14,34,.98)); box-shadow:0 4px 14px rgba(0,0,0,.2); transition:border-color .2s ease,box-shadow .2s ease,border-radius .2s ease; }
+.effortCardOpen { width:min(634px,100%); border-radius:15px; border-color:rgba(255,105,157,.52); box-shadow:0 7px 25px rgba(0,0,0,.27),0 0 16px rgba(255,65,125,.07); }
+.effortToggle { display:flex; align-items:center; justify-content:space-between; gap:9px; width:100%; min-height:32px; padding:0; color:inherit; text-align:left; border:0; background:transparent; cursor:pointer; }
 .effortToggle > svg { flex-shrink:0; color:#cbb9d2; transition:transform .2s ease; transform:rotate(0deg); }
 .effortCardOpen .effortToggle > svg { transform:rotate(180deg); }
 .effortToggle:focus-visible { outline:2px solid #ff7ba4; outline-offset:3px; border-radius:7px; }
