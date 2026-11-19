@@ -29,6 +29,7 @@ export async function PATCH(request: NextRequest) {
     if (action === "VERIFY_CREDENTIALS") {
       patch.verification_status = "VERIFIED";
       patch.verified_at = new Date().toISOString();
+      patch.professionals = Array.isArray(body?.professionals) ? body.professionals : undefined;
     } else if (action === "UNVERIFY_CREDENTIALS") {
       patch.verification_status = "UNVERIFIED";
       patch.verified_at = null;
