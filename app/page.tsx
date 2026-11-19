@@ -367,6 +367,21 @@ function KoyalApp() {
     return () => window.clearTimeout(bootTimer);
   }, []);
   useEffect(() => {
+    const resetAccountProfile = () => {
+      setProfile(EMPTY_PROFILE);
+      setDraftProfile(EMPTY_PROFILE);
+      setEditingProfile(false);
+      setProfileError("");
+      setSelectedPlan("Just");
+      setFeathers(2480);
+      setSubscriptionOpen(false);
+      setFeatherShopOpen(false);
+    };
+    window.addEventListener("koyal-account-signed-out", resetAccountProfile);
+    return () => window.removeEventListener("koyal-account-signed-out", resetAccountProfile);
+  }, []);
+
+  useEffect(() => {
     if (loadedRef.current) localStorage.setItem("koyal-ai-chat", JSON.stringify(messages));
     if (historyLoadedRef.current && activeChatId) {
       const existing = chatSessionsRef.current.find((s) => s.id === activeChatId);
