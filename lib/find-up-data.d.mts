@@ -1,0 +1,20 @@
+export type FindUpBusiness = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  contactName?: string;
+  location: string;
+  startingPrice?: string;
+  operatorName?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  professionalName?: string;
+  qualifications?: string[];
+  experience?: string;
+  services?: string[];
+  serviceHours?: string;
+};
+export const findUpBusinesses: FindUpBusiness[];
+export function searchFindUpBusinesses(businesses: FindUpBusiness[], query: string): FindUpBusiness[];
