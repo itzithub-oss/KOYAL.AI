@@ -90,3 +90,5 @@
 @media(max-width:760px){.resultGrid{grid-template-columns:1fr}.filters{grid-template-columns:1fr 1fr}.filters label:first-child{grid-column:1/-1}.header{padding-top:18px}.hero{margin-top:0}.tabs{overflow-x:auto}.tabs button{white-space:nowrap}.content{padding:16px 12px 28px}}
 @media(max-width:480px){.filters,.formGrid{grid-template-columns:1fr}.formGrid .wide{grid-column:auto}.searchForm{flex-wrap:wrap}.searchForm input{flex-basis:100%;padding:10px}.searchForm button{flex:1}.application{padding:14px}.detailModal{padding:20px 15px}.cardActions a,.cardActions button{flex:1}.adminFilters{align-items:stretch;flex-direction:column}.adminFilters label{min-width:0}}
 @media(prefers-reduced-motion:reduce){.shell *{scroll-behavior:auto!important;transition:none!important}}
+
+.adminPrivate{padding:8px 10px;border-left:2px solid rgba(255,117,157,.45);background:rgba(255,66,117,.055);color:#f0c5d3!important;font-size:10px!important;overflow-wrap:anywhere}
