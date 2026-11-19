@@ -65,6 +65,7 @@ revoke all on public.find_up_audit_logs from anon, authenticated;
 grant select on public.find_up_businesses to service_role;
 grant insert, update, delete on public.find_up_businesses to service_role;
 grant select, insert on public.find_up_audit_logs to service_role;
+grant usage, select on sequence public.find_up_audit_logs_id_seq to service_role;
 
 comment on table public.find_up_businesses is 'KOYAL FIND UP partnership listings. Only APPROVED rows are eligible for public search.';
 comment on column public.find_up_businesses.owner_information is 'Private owner contact and email; never return from public API.';
