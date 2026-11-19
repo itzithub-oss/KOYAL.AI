@@ -3,7 +3,7 @@ import { rankFindUpBusinesses, validateFindUpApplication } from "../../../lib/fi
 import { findUpDatabase } from "../../../lib/find-up-server.mjs";
 
 export const runtime = "nodejs";
-const PUBLIC_FIELDS = "id,business_id,business_name,display_name,category,subcategory,description,establishment_year,operating_status,services,keywords,specialisations,search_synonyms,branches,location,pricing,operations,professionals,online_presence,verification_status,category_details,created_at,approved_at";
+const PUBLIC_FIELDS = "id,business_id,business_name,display_name,category,subcategory,description,status,establishment_year,operating_status,services,keywords,specialisations,search_synonyms,branches,location,pricing,operations,professionals,online_presence,verification_status,category_details,created_at,approved_at";
 
 function cleanText(value: unknown, max = 500) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -13,6 +13,12 @@ function cleanList(value: unknown, maxItems = 40) {
 }
 function jsonObject(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+function cleanCategoryDetails(category: string, value: unknown) {
+  const details = jsonObject(value);
+  if (category === "Education") return { education_levels: cleanList(details.education_levels, 20), subjects: cleanList(details.subjects, 30) };
+  if (category === "Food & Dining") return { cuisine: cleanText(details.cuisine, 160), delivery: cleanText(details.delivery, 160) };
+  return { details: cleanText(details.details, 1000) };
 }
 
 export async function GET(request: NextRequest) {
@@ -50,7 +56,7 @@ export async function POST(request: NextRequest) {
       category: cleanText(input.category, 100),
       subcategory: cleanText(input.subcategory, 100),
       description: cleanText(input.description, 2500),
-      category_details: jsonObject(input.category_details),
+      category_details: cleanCategoryDetails(cleanText(input.category, 100), input.category_details),
       establishment_year: input.establishment_year ? Number(input.establishment_year) : null,
       operating_status: cleanText(input.operating_status || "Operating", 40),
       services,
