@@ -1009,6 +1009,10 @@ function KoyalApp() {
             <div className={styles.findUpLinks}>{business.phone && <a href={`tel:${business.phone}`}>Call {business.phone}</a>}{business.email && <a href={`mailto:${business.email}`}>Email</a>}{business.website && <a href={business.website} target="_blank" rel="noopener noreferrer">Visit website ↗</a>}</div>
           </article>)}
         </div>
+        <div className={styles.findUpPartnership}>
+          <div><strong>Are you a service provider?</strong><p>Join the KOYAL FIND UP Partnership Program and get your business discovered.</p></div>
+          <a className={styles.reviewButton} href="https://forms.gle/fkYk7NmocogpQMLw6" target="_blank" rel="noopener noreferrer"><Icon name="plus" size={18}/> Sign up for Partnership Program</a>
+        </div>
         <button type="button" className={styles.reviewBack} onClick={() => setFindUpOpen(false)}>← Back to Chat</button>
       </section>}
       {rateReviewOpen && <div className={styles.reviewSection} role="region" aria-label="Rate and review Koyal">
