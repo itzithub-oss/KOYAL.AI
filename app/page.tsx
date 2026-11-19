@@ -172,7 +172,7 @@ function timestamp() {
 
 function renderMessageContent(content: string): React.ReactNode {
   const parts: React.ReactNode[] = [];
-  const linkPattern = /\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)|(https?:\\/\\/[^\\s<>"']+)/g;
+  const linkPattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"']+)/g;
   let cursor = 0;
   let match: RegExpExecArray | null;
 
