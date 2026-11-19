@@ -3,7 +3,7 @@ import { rankFindUpBusinesses, validateFindUpApplication } from "../../../lib/fi
 import { findUpDatabase } from "../../../lib/find-up-server.mjs";
 
 export const runtime = "nodejs";
-const PUBLIC_FIELDS = "id,business_id,business_name,display_name,category,subcategory,description,establishment_year,operating_status,services,keywords,specialisations,search_synonyms,location,pricing,operations,professionals,online_presence,verification_status,category_details,created_at,approved_at";
+const PUBLIC_FIELDS = "id,business_id,business_name,display_name,category,subcategory,description,establishment_year,operating_status,services,keywords,specialisations,search_synonyms,branches,location,pricing,operations,professionals,online_presence,verification_status,category_details,created_at,approved_at";
 
 function cleanText(value: unknown, max = 500) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       establishment_year: input.establishment_year ? Number(input.establishment_year) : null,
       operating_status: cleanText(input.operating_status || "Operating", 40),
       services,
+      branches: cleanList(input.branches, 30),
       keywords: cleanList(input.keywords),
       specialisations: cleanList(input.specialisations),
       search_synonyms: cleanList(input.search_synonyms),
