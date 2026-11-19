@@ -245,7 +245,7 @@ function KoyalApp() {
   const [findUpSearched, setFindUpSearched] = useState(false);
   const [findUpError, setFindUpError] = useState("");
   const [dailyHubOpen, setDailyHubOpen] = useState(false);
-  const [dailyThought, setDailyThought] = useState(() => getDailyThought(Date.now()));
+  const [dailyThought, setDailyThought] = useState(() => getDailyThought(0));
   const [tasks, setTasks] = useState<KoyalTask[]>([]);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskNotes, setTaskNotes] = useState("");
