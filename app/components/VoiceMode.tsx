@@ -44,6 +44,7 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
   const activeRef = useRef(false);
   const busyRef = useRef(false);
   const restartRef = useRef(false);
+  const mutedRef = useRef(false);
 
   function stopListening() {
     restartRef.current = false;
@@ -65,6 +66,7 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
     setListening(false);
     setSpeaking(false);
     setConnecting(false);
+    mutedRef.current = false;
     setMuted(false);
     setStatus("Voice session ended");
   }
@@ -97,11 +99,12 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
     setSpeaking(true);
     setStatus("Koyal is speaking...");
     try {
-      await audio.play();
-      await new Promise<void>((resolve, reject) => {
+      const playbackFinished = new Promise<void>((resolve, reject) => {
         audio.onended = () => resolve();
         audio.onerror = () => reject(new Error("Koyal's audio could not be played."));
       });
+      await audio.play();
+      await playbackFinished;
     } finally {
       URL.revokeObjectURL(url);
       if (audioRef.current === audio) audioRef.current = null;
@@ -142,14 +145,16 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
     } finally {
       busyRef.current = false;
       setConnecting(false);
-      if (activeRef.current && !muted) {
-        window.setTimeout(() => startListening(), 450);
+      if (activeRef.current && !mutedRef.current) {
+        window.setTimeout(() => {
+          if (activeRef.current && !busyRef.current && !mutedRef.current) startListening();
+        }, 500);
       }
     }
   }
 
   function startListening() {
-    if (!activeRef.current || busyRef.current || muted) return;
+    if (!activeRef.current || busyRef.current || mutedRef.current) return;
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
       setStatus("Speech recognition is unavailable in this browser. Try Chrome.");
@@ -190,7 +195,7 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
       recognition.onend = () => {
         if (recognitionRef.current === recognition) recognitionRef.current = null;
         setListening(false);
-        if (restartRef.current && activeRef.current && !busyRef.current && !muted) {
+        if (restartRef.current && activeRef.current && !busyRef.current && !mutedRef.current) {
           restartRef.current = false;
           window.setTimeout(() => startListening(), 350);
         }
@@ -206,6 +211,8 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
     setOpen(true);
     setHeardText("");
     setAiText("");
+    mutedRef.current = false;
+    setMuted(false);
     setStatus("Starting Koyal's voice...");
     setConnecting(true);
     activeRef.current = true;
@@ -221,11 +228,13 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
   }
 
   function toggleMute() {
-    if (!muted) {
+    if (!mutedRef.current) {
+      mutedRef.current = true;
       setMuted(true);
       stopListening();
       setStatus("Microphone paused");
     } else {
+      mutedRef.current = false;
       setMuted(false);
       setStatus("Microphone on");
       window.setTimeout(() => startListening(), 150);
