@@ -31,6 +31,19 @@ test("explicit category and price filters are applied",()=>{
   assert.equal(result.length,0);
 });
 
+test("unrelated searches do not return arbitrary approved businesses",()=>{
+  assert.equal(rankFindUpBusinesses(listings,"unrelated space tourism").length,0);
+});
+
+test("location-only searches can return approved businesses in that location",()=>{
+  assert.equal(rankFindUpBusinesses(listings,"near Jalpaiguri").length,1);
+});
+
+test("an explicit price filter excludes listings with unknown prices",()=>{
+  const unknownPrice={...listings[0],id:"4",business_id:"FU-4",pricing:{}};
+  assert.equal(rankFindUpBusinesses([unknownPrice],"physiotherapy",{maxPrice:"1000"}).length,0);
+});
+
 test("application validation requires core business and owner details",()=>{
   const errors=validateFindUpApplication({business_name:"",category:"",description:"short",owner_name:"",owner_phone:"",city:"",state:"",services:[]});
   assert.equal(errors.length,8);
