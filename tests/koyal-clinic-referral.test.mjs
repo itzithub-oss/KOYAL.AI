@@ -35,3 +35,14 @@ test("respects a user's refusal and avoids repeated recommendations", () => {
 test("does not trigger on ambiguous unrelated keyword use", () => {
   assert.equal(getClinicReferralContext("I am writing a story about a stroke of luck."), null);
 });
+
+test("keeps the recommended clinic in context for a follow-up cost question", () => {
+  const result = getClinicReferralContext("What are the costs?", [
+    { role: "user", content: "My knee hurts when I walk." },
+    { role: "assistant", content: "You could consider The Body Mechanics in Jalpaiguri." },
+  ]);
+  assert.equal(result?.kind, "clinic_followup");
+  assert.match(result.instruction, /do not ask which clinic/i);
+  assert.match(result.instruction, /pain management ₹250\/45 min/);
+  assert.match(result.instruction, /PEMF pricing has a source conflict/i);
+});
