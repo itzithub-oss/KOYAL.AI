@@ -390,6 +390,7 @@ function KoyalApp() {
   }, [profileOpen, memoryOpen, tasksOpen, subscriptionOpen, featherShopOpen, historyOpen]);
 
   function resetChat() {
+    setFindUpOpen(false);
     setCodeModeOpen(false);
     const nextMessages = [{ ...WELCOME, time: timestamp() }];
     const nextSession = createChatSession(nextMessages, "chat-" + Date.now()) as ChatSession;
@@ -871,7 +872,7 @@ function KoyalApp() {
             <button type="button" onClick={() => { setFindUpOpen(true); setDailyHubOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${findUpOpen ? styles.navOn : ""}`}><Icon name="search"/>FIND UP<span className={styles.navSmall}>Discover</span></button>
             <button type="button" onClick={() => { setDailyHubOpen(true); setFindUpOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setCodeModeOpen(false); closeSidebar(); }} className={`${styles.navItem} ${dailyHubOpen ? styles.navOn : ""}`}><Icon name="brain"/>Daily AI Hub<span className={styles.navSmall}>5</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
-            <button type="button" onClick={() => { setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
+            <button type="button" onClick={() => { setCodeModeOpen(true); setFindUpOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
               {characterOpen && <div className={styles.characterList}>
@@ -893,7 +894,7 @@ function KoyalApp() {
             <button type="button" onClick={() => setPhilosophicalMode((v) => !v)} className={`${styles.navItem} ${philosophicalMode ? styles.navOn : ""}`}><Icon name="message"/>Philosophical Mode<span className={styles.navSmall}>{philosophicalMode ? "On" : ""}</span></button>
             <button type="button" onClick={() => { setRateReviewOpen(false); openFeatherShop(); }} className={styles.navItem}><Icon name="feather"/>Feather Balance<span className={styles.navSmall}>{selectedPlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</span></button>
             <button type="button" onClick={() => { if (requireSignIn("access subscription plans")) setSubscriptionOpen(true); closeSidebar(); }} className={styles.navItem}><Icon name="diamond"/>Subscription</button>
-            <button type="button" onClick={() => { setRateReviewOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${rateReviewOpen ? styles.navOn : ""}`}><Icon name="message"/>Rate &amp; Review<span className={styles.navSmall}>Feedback</span></button>
+            <button type="button" onClick={() => { setRateReviewOpen(true); setFindUpOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${rateReviewOpen ? styles.navOn : ""}`}><Icon name="message"/>Rate &amp; Review<span className={styles.navSmall}>Feedback</span></button>
           </nav>
           <button type="button" className={styles.sidebarProfile} onClick={openProfile} aria-label="Open your profile">
             <div className={styles.sidebarProfileTop}>
