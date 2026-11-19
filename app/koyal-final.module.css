@@ -506,3 +506,28 @@
 .findUpPartnership p { margin:5px 0 0; color:#bcb0c5; font-size:12px; line-height:1.6; }
 .findUpPartnership .reviewButton { min-width:0; gap:9px; padding:12px 16px; font-size:12px; }
 @media(max-width:600px) { .findUpPartnership { align-items:stretch; padding:15px; } .findUpPartnership .reviewButton { width:100%; } }
+
+
+/* KOYAL AI details and contact page */
+.aiDetailsSection { position:relative; z-index:2; display:flex; flex-direction:column; width:min(980px,calc(100% - 36px)); max-height:calc(100% - 34px); overflow-y:auto; margin:17px auto; padding:clamp(20px,4vw,38px); border:1px solid rgba(255,76,125,.32); border-radius:24px; color:#fff; background:radial-gradient(circle at 85% 0%,rgba(174,31,83,.2),transparent 38%),linear-gradient(145deg,rgba(25,14,29,.98),rgba(9,9,17,.98)); box-shadow:0 22px 65px rgba(0,0,0,.38); }
+.aiDetailsHeader { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:25px; }
+.aiDetailsEyebrow { color:#ff8eae; font-size:10px; font-weight:800; letter-spacing:.2em; }
+.aiDetailsHeader h2 { margin:12px 0 8px; font-size:clamp(32px,4vw,46px); letter-spacing:-.045em; }
+.aiDetailsHeader h2 span { color:#ff5b8d; }
+.aiDetailsHeader p { max-width:600px; margin:0; color:#bcb0c5; font-size:13px; line-height:1.7; }
+.aiContactGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+.aiContactCard { display:flex; align-items:flex-start; gap:14px; min-width:0; padding:18px; border:1px solid rgba(255,125,166,.22); border-radius:16px; background:linear-gradient(145deg,rgba(48,24,44,.7),rgba(17,13,25,.88)); }
+.aiContactIcon { display:grid; place-items:center; flex:0 0 38px; width:38px; height:38px; border:1px solid rgba(255,119,160,.36); border-radius:12px; color:#ffd9e5; background:rgba(202,39,94,.2); font-size:19px; }
+.aiContactCard > div { display:grid; gap:6px; min-width:0; }
+.aiContactCard small,.aiSupportHours small { color:#ff91b1; font-size:9px; font-weight:850; letter-spacing:.14em; }
+.aiContactCard strong { color:#fff3f7; font-size:13px; overflow-wrap:anywhere; }
+.aiContactCard a { width:fit-content; color:#ffabc2; font-size:11px; text-decoration:none; }
+.aiContactCard a:hover { text-decoration:underline; text-underline-offset:3px; }
+.aiContactNote { color:#bcb0c5; font-size:11px; line-height:1.5; }
+.aiSupportHours { display:flex; align-items:center; gap:14px; margin-top:16px; padding:18px; border:1px solid rgba(255,125,166,.25); border-radius:16px; background:linear-gradient(110deg,rgba(137,24,65,.18),rgba(255,255,255,.025)); }
+.aiSupportHours > span:first-child { color:#ff9bb8; font-size:25px; }
+.aiSupportHours > div { display:grid; gap:5px; min-width:0; }
+.aiSupportHours strong { color:#fff3f7; font-size:13px; }
+.aiSupportHours p { margin:0; color:#bcb0c5; font-size:11px; }
+.aiSupportStatus { margin-left:auto; padding:6px 9px; border:1px solid rgba(255,125,166,.25); border-radius:99px; color:#ffabc2; font-size:8px; font-weight:800; letter-spacing:.1em; white-space:nowrap; }
+@media(max-width:600px) { .aiDetailsSection { width:calc(100% - 14px); max-height:calc(100% - 12px); margin:6px auto; padding:17px 13px; border-radius:17px; } .aiContactGrid { grid-template-columns:minmax(0,1fr); gap:10px; } .aiContactCard { padding:15px; } .aiSupportHours { align-items:flex-start; padding:15px; } .aiSupportStatus { display:none; } }
