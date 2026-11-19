@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import VoiceMode from "./components/VoiceMode";
 import AuthGate from "./components/AuthGate";
 import BootScreen from "./components/BootScreen";
@@ -206,7 +206,7 @@ function renderMessageContent(content: string): React.ReactNode {
   }
 
   if (cursor < content.length) parts.push(content.slice(cursor));
-  return <>{parts.map((part, index) => <React.Fragment key={index}>{part}</React.Fragment>)}</>;
+  return <>{parts.map((part, index) => <Fragment key={index}>{part}</Fragment>)}</>;
 }
 
 function KoyalApp() {
