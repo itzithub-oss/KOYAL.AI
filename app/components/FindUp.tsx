@@ -40,6 +40,7 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
   const [category,setCategory] = useState("");
   const [maxPrice,setMaxPrice] = useState("");
   const [results,setResults] = useState<Business[]>([]);
+  const [visibleCount,setVisibleCount] = useState(12);
   const [searched,setSearched] = useState(false);
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState("");
@@ -62,7 +63,7 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
   async function searchBusinesses(event?:FormEvent) {
     event?.preventDefault();
     if(!query.trim() && !location.trim() && !category) { setError("Enter a service, business type or location to search."); return; }
-    setBusy(true); setError(""); setSearched(true); setSelected(null);
+    setBusy(true); setError(""); setSearched(true); setSelected(null); setVisibleCount(12);
     try {
       const params = new URLSearchParams({q:query,location,category,maxPrice});
       const response = await fetch("/api/find-up?"+params.toString(),{cache:"no-store"});
@@ -201,8 +202,8 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
       {error&&<p className={styles.error} role="alert">{error}</p>}
       {busy&&<p className={styles.status}>Searching approved partnership listings…</p>}
       {!busy&&searched&&<div className={styles.results}><div className={styles.resultsHead}><h2>Search results</h2><span>{results.length} matching business{results.length===1?"":"es"}</span></div>
-        {results.length? <div className={styles.resultGrid}>{results.map(renderCard)}</div>:<div className={styles.empty}><strong>No matching registered business was found.</strong><p>Try another service or location. Find Up only lists businesses approved for the KOYAL Partnership Program.</p></div>}
-      </div>}
+        {results.length? <div className={styles.resultGrid}>{results.slice(0,visibleCount).map(renderCard)}</div>:<div className={styles.empty}><strong>No matching registered business was found.</strong><p>Try another service or location. Find Up only lists businesses approved for the KOYAL Partnership Program.</p></div>}
+      {results.length>visibleCount&&<button type="button" className={styles.secondary} onClick={()=>setVisibleCount((count)=>Math.min(count+12,50))}>Load more results</button>}</div>}
       {!searched&&<div className={styles.emptyHint}>Search only the approved KOYAL Partnership Program directory. No sponsored or invented listings.</div>}
     </div>}
 
