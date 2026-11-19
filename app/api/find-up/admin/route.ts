@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findUpDatabase, requireFindUpAdmin } from "../../../../../lib/find-up-server.mjs";
+import { findUpDatabase, requireFindUpAdmin } from "../../../../lib/find-up-server.mjs";
 
 export const runtime = "nodejs";
 const STATUSES = new Set(["PENDING", "UNDER REVIEW", "APPROVED", "REJECTED", "NEEDS CORRECTION", "SUSPENDED"]);
@@ -29,7 +29,8 @@ export async function PATCH(request: NextRequest) {
     if (action === "VERIFY_CREDENTIALS") {
       patch.verification_status = "VERIFIED";
       patch.verified_at = new Date().toISOString();
-      patch.professionals = Array.isArray(body?.professionals) ? body.professionals : undefined;
+      const existing = await findUpDatabase(`find_up_businesses?id=eq.${encodeURIComponent(id)}&select=professionals`);
+      patch.professionals = (Array.isArray(existing?.[0]?.professionals) ? existing[0].professionals : []).map((person: Record<string, unknown>) => ({ ...person, credentials_verified: true }));
     } else if (action === "UNVERIFY_CREDENTIALS") {
       patch.verification_status = "UNVERIFIED";
       patch.verified_at = null;
