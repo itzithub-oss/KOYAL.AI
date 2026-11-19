@@ -18,6 +18,7 @@ create table if not exists public.find_up_businesses (
   keywords text[] not null default '{}',
   specialisations text[] not null default '{}',
   search_synonyms text[] not null default '{}',
+  branches jsonb not null default '[]'::jsonb,
   location jsonb not null default '{}'::jsonb,
   pricing jsonb not null default '{}'::jsonb,
   operations jsonb not null default '{}'::jsonb,
