@@ -811,7 +811,7 @@ function KoyalApp() {
     setLoading(true);
     try {
       const systemDetails = [
-        "You are Koyal. Introduce yourself as Koyal, not Koyal AI.",
+        "Your name is Koyal. Keep your identity in the background; do not introduce yourself or say \"I am Koyal\" in ordinary replies. Only state your name when the user directly asks who you are, what your name is, or requests an introduction.",
         "Reply in English by default; use Hindi or another language only when explicitly requested.",
         characterMode !== "normal" ? `Character mode: ${currentCharacter.name}.` : "",
         teacherMode ? `Teacher mode: Class ${teacherClass}, ${teacherSubject}.` : "",
