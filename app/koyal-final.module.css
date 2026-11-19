@@ -359,3 +359,17 @@
   .historyList { padding-left: 10px; padding-right: 10px; }
   .historyFooter { padding: 11px 13px; }
 }
+
+
+/* RATE & REVIEW DASHBOARD SECTION */
+.reviewSection { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; width: min(680px,calc(100% - 36px)); min-height: min(520px,calc(100% - 48px)); margin: 24px auto; padding: 48px 34px; text-align: center; border: 1px solid rgba(255,76,125,.32); border-radius: 26px; background: radial-gradient(circle at 50% 0%,rgba(185,29,79,.18),transparent 48%),linear-gradient(145deg,rgba(27,15,31,.96),rgba(10,9,18,.97)); box-shadow: 0 22px 65px rgba(0,0,0,.35),0 0 35px rgba(255,50,108,.08); }
+.reviewEyebrow { color: #ff91b1; font-size: 10px; font-weight: 750; letter-spacing: .22em; }
+.reviewIcon { display: grid; place-items: center; width: 76px; height: 76px; margin: 22px 0 18px; border: 1px solid rgba(255,116,158,.55); border-radius: 23px; color: #ffd0df; font-size: 38px; background: linear-gradient(145deg,rgba(163,24,72,.45),rgba(56,15,51,.6)); box-shadow: 0 0 28px rgba(255,56,112,.17); }
+.reviewSection h2 { margin: 0; color: #fff; font-size: clamp(24px,4vw,34px); letter-spacing: -.035em; }
+.reviewSection p { max-width: 470px; margin: 13px 0 26px; color: #bcb0c5; font-size: 14px; line-height: 1.8; }
+.reviewButton { display: inline-flex; align-items: center; justify-content: center; gap: 13px; min-width: 190px; padding: 14px 23px; border: 1px solid rgba(255,151,180,.65); border-radius: 13px; color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; background: linear-gradient(110deg,#8d173e,#c32b60); box-shadow: 0 9px 27px rgba(180,24,76,.24); transition: transform .18s ease,box-shadow .18s ease; }
+.reviewButton:hover { transform: translateY(-2px); box-shadow: 0 13px 32px rgba(180,24,76,.34); }
+.reviewButton span { font-size: 17px; }
+.reviewBack { margin-top: 17px; padding: 9px 13px; border: 0; color: #b9aabd; background: transparent; font-size: 12px; cursor: pointer; }
+.reviewBack:hover { color: #fff; }
+@media(max-width:600px) { .reviewSection { width: calc(100% - 20px); min-height: 390px; margin: 10px auto; padding: 32px 19px; border-radius: 20px; } .reviewSection p { font-size: 13px; } }
