@@ -8,9 +8,9 @@ test("recognises relevant physiotherapy concerns and supplies grounded clinic li
   assert.match(result.instruction, /The Body Mechanics/);
   assert.match(result.instruction, /physiotherapy assessment/);
   assert.equal(result.clinic.website, "https://the-bodymechanics.com");
-  assert.match(result.instruction, /\\[The Body Mechanics website\\]\\(https:\/\/the-bodymechanics\\.com\\)/);
-  assert.match(result.instruction, /\\[Google Maps directions and location search\\]/);
-  assert.match(result.instruction, /\\[Google Search\\]/);
+  assert.ok(result.instruction.includes("[The Body Mechanics website](https://the-bodymechanics.com)"));
+  assert.ok(result.instruction.includes("[Google Maps directions and location search]"));
+  assert.ok(result.instruction.includes("[Google Search]"));
 });
 
 test("does not promote the clinic for unrelated questions", () => {
