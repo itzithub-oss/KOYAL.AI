@@ -13,7 +13,8 @@ type Business = {
   operations?: { public_contact_name?: string; business_phone?: string; whatsapp?: string; business_hours?: string };
   professionals?: { name?: string; degree?: string; qualifications?: string[]; specialisation?: string[]; experience_years?: number; registration_authority?: string; registration_number?: string; credentials_verified?: boolean }[];
   online_presence?: { website?: string; logo_url?: string; photo_urls?: string[] };
-  verification_status?: string; submitted_at?: string; _matchReason?: string; branches?: string[]; category_details?: Record<string,unknown>;\n  owner_information?: { owner_name?: string; owner_phone?: string; owner_email?: string; designation?: string }; verification_notes?: string; private_documents?: unknown[];
+  verification_status?: string; submitted_at?: string; _matchReason?: string; branches?: string[]; category_details?: Record<string,unknown>;
+  owner_information?: { owner_name?: string; owner_phone?: string; owner_email?: string; designation?: string }; verification_notes?: string; private_documents?: unknown[];
 };
 const CATEGORIES = ["Healthcare","Education","Computer & Electronics","Food & Dining","Home & Local Services","Automotive","Beauty & Wellness","Professional Services","Other"];
 const INITIAL_FORM: Record<string,string> = {
