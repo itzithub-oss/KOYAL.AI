@@ -170,6 +170,44 @@ function timestamp() {
   return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+function renderMessageContent(content: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  const linkPattern = /\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)|(https?:\\/\\/[^\\s<>"']+)/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = linkPattern.exec(content)) !== null) {
+    if (match.index > cursor) parts.push(content.slice(cursor, match.index));
+
+    let url = match[2] || match[3];
+    const label = match[1] || url;
+    let trailing = "";
+    if (!match[2]) {
+      trailing = url.match(/[.,!?;:]+$/)?.[0] || "";
+      url = url.slice(0, url.length - trailing.length);
+    }
+
+    if (url) {
+      parts.push(
+        <a
+          key={`message-link-${match.index}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#ff6685", textDecoration: "underline", textUnderlineOffset: 3, overflowWrap: "anywhere" }}
+        >
+          {label}
+        </a>
+      );
+    }
+    if (trailing) parts.push(trailing);
+    cursor = match.index + match[0].length;
+  }
+
+  if (cursor < content.length) parts.push(content.slice(cursor));
+  return <>{parts.map((part, index) => <React.Fragment key={index}>{part}</React.Fragment>)}</>;
+}
+
 function KoyalApp() {
   const [booting, setBooting] = useState(true);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
@@ -1063,7 +1101,7 @@ function KoyalApp() {
                   <div className={styles.messageGroup}>
                     <div className={`${styles.bubble} ${message.role === "user" ? styles.userBubble : styles.assistantBubble}`}>
                       {message.fileName && <div className={styles.fileLabel}><Icon name="paperclip" size={14}/>{message.fileName}</div>}
-                      <span>{message.content}</span>
+                      <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{renderMessageContent(message.content)}</span>
                       <div className={styles.bubbleFooter}><time>{message.time || ""}</time></div>
                     </div>
                     {message.role === "assistant" && Boolean(message.sources?.length) && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "8px 4px 4px" }} aria-label="Web sources">
