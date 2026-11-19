@@ -44,5 +44,5 @@ test("keeps the recommended clinic in context for a follow-up cost question", ()
   assert.equal(result?.kind, "clinic_followup");
   assert.match(result.instruction, /do not ask which clinic/i);
   assert.match(result.instruction, /pain management ₹250\/45 min/);
-  assert.match(result.instruction, /PEMF pricing has a source conflict/i);
+  assert.match(result.instruction, /PEMF is listed as/i);
 });
