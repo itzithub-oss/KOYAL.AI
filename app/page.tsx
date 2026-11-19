@@ -25,7 +25,7 @@ type ThinkingEffort =
   | "just" | "let-it" | "care" | "high" | "ultra-high" | "elite" | "supreme";
 type ChatApiResponse = { reply?: string; error?: string; debug?: { requestKind?: string; errorName?: string; status?: unknown; message?: string }; sources?: { title: string; url: string }[] };
 type Profile = { name: string; gender: string; phone: string; dob: string; photo: string };
-type FindUpBusiness = { id: string; name: string; category: string; description: string; contactName?: string; location: string; startingPrice?: string; operatorName?: string; phone?: string; email?: string; website?: string; professionalName?: string; qualifications?: string[]; experience?: string; services?: string[]; };
+type FindUpBusiness = { id: string; name: string; category: string; description: string; contactName?: string; location: string; startingPrice?: string; operatorName?: string; phone?: string; email?: string; website?: string; professionalName?: string; qualifications?: string[]; experience?: string; services?: string[]; serviceHours?: string; };
 type ChatSession = { id: string; title: string; messages: Message[]; createdAt: string; updatedAt: string };
 const EMPTY_PROFILE: Profile = { name: "", gender: "", phone: "", dob: "", photo: "" };
 type FeatherPack = { quantity: number; rupees: number };
@@ -1003,7 +1003,7 @@ function KoyalApp() {
               <div><small>Operator name</small><strong>{business.operatorName || "Not provided"}</strong></div>
               {business.professionalName && <div><small>Healthcare professional</small><strong>{business.professionalName}</strong></div>}
               {business.qualifications?.length ? <div><small>Qualifications</small><strong>{business.qualifications.join(", ")}</strong></div> : null}
-              {business.experience && <div><small>Experience</small><strong>{business.experience}</strong></div>}
+              {business.experience && <div><small>Experience</small><strong>{business.experience}</strong></div>}{business.serviceHours && <div><small>Service hours</small><strong>{business.serviceHours}</strong></div>}
               {business.services?.length ? <div className={styles.findUpServices}><small>Services</small><strong>{business.services.join(" · ")}</strong></div> : null}
             </div>
             <div className={styles.findUpLinks}>{business.phone && <a href={`tel:${business.phone}`}>Call {business.phone}</a>}{business.email && <a href={`mailto:${business.email}`}>Email</a>}{business.website && <a href={business.website} target="_blank" rel="noopener noreferrer">Visit website ↗</a>}</div>
