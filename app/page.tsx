@@ -923,10 +923,10 @@ function KoyalApp() {
             <span className={styles.dailyHubGlyph}><Icon name="brain" size={22}/></span><span className={styles.dailyHubTag}>TEST YOURSELF</span><strong>AI Quizzes</strong><small>Practise with questions, instant checking and explanations.</small><span className={styles.dailyHubAction}>Start a quiz ↗</span>
           </button>
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); openMemory(); }}>
-            <span className={styles.dailyHubGlyph}><Icon name="notebook-pen" size={22}/></span><span className={styles.dailyHubTag}>KEEP THE GOOD IDEAS</span><strong>Saved Notes</strong><small>Save useful notes and revisit them whenever you need.</small><span className={styles.dailyHubAction}>Open notes ↗</span>
+            <span className={styles.dailyHubGlyph}><Icon name="book" size={22}/></span><span className={styles.dailyHubTag}>KEEP THE GOOD IDEAS</span><strong>Saved Notes</strong><small>Save useful notes and revisit them whenever you need.</small><span className={styles.dailyHubAction}>Open notes ↗</span>
           </button>
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); openTasks(); }}>
-            <span className={styles.dailyHubGlyph}><Icon name="chart-no-axes-combined" size={22}/></span><span className={styles.dailyHubTag}>MAKE PROGRESS</span><strong>Productivity Tracker</strong><small>Track tasks, due dates and completed work.</small><span className={styles.dailyHubAction}>Track progress ↗</span>
+            <span className={styles.dailyHubGlyph}><Icon name="tasks" size={22}/></span><span className={styles.dailyHubTag}>MAKE PROGRESS</span><strong>Productivity Tracker</strong><small>Track tasks, due dates and completed work.</small><span className={styles.dailyHubAction}>Track progress ↗</span>
           </button>
         </div>
         <button type="button" className={styles.reviewBack} onClick={() => setDailyHubOpen(false)}>← Back to Chat</button>
