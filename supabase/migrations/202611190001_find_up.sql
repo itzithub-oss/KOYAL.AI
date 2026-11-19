@@ -11,6 +11,7 @@ create table if not exists public.find_up_businesses (
   category text not null,
   subcategory text,
   description text not null,
+  category_details jsonb not null default '{}'::jsonb,
   establishment_year integer,
   operating_status text not null default 'Operating',
   services jsonb not null default '[]'::jsonb,
