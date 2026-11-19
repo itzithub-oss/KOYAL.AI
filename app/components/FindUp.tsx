@@ -83,18 +83,21 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
     let additionalProfessionals: any[] = [];
     try { additionalProfessionals = form.additional_professionals_json.trim() ? JSON.parse(form.additional_professionals_json) : []; if (!Array.isArray(additionalProfessionals)) throw new Error("Additional professionals must be a JSON array."); }
     catch { setFormError("Additional professional details must be a valid JSON array."); setFormBusy(false); return; }
-    const professionals=form.category==="Healthcare" && form.professional_name.trim()?[{
+    const primaryProfessional=form.category==="Healthcare" && form.professional_name.trim()?{
       name:form.professional_name,degree:form.degree,qualifications:splitLines(form.qualifications),
       specialisation:splitLines(form.professional_specialisation),experience_years:form.experience_years?Number(form.experience_years):null,
       registration_authority:form.registration_authority,registration_number:form.registration_number,
-    }]:[];
+    }:null;
+    const professionals=form.category==="Healthcare"?[...(primaryProfessional?[primaryProfessional]:[]),...additionalProfessionals.slice(0,19)]:[];
     const categoryDetails=form.category==="Education"?{education_levels:splitLines(form.education_levels),subjects:splitLines(form.subjects)}:
       form.category==="Food & Dining"?{cuisine:form.restaurant_cuisine,delivery:form.delivery}:
       {details:form.other_details};
     try {
       const response=await fetch("/api/find-up",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({business:{
         ...form,services,keywords:splitLines(form.keywords),specialisations:splitLines(form.specialisations),
-        service_areas:splitLines(form.service_areas),latitude:form.latitude,longitude:form.longitude,branches:splitLines(form.branches),professionals,\n        pricing:{starting_price:form.starting_price,maximum_price:form.max_price,consultation_fee:form.consultation_fee,pricing_type:form.pricing_type,packages:form.packages},\n        social_links:splitLines(form.social_links),logo_url:form.logo_url,photo_urls:splitLines(form.photo_urls),operating_person:form.operating_person,
+        service_areas:splitLines(form.service_areas),latitude:form.latitude,longitude:form.longitude,branches:splitLines(form.branches),professionals,
+        pricing:{starting_price:form.starting_price,maximum_price:form.max_price,consultation_fee:form.consultation_fee,pricing_type:form.pricing_type,packages:form.packages},
+        social_links:splitLines(form.social_links),logo_url:form.logo_url,photo_urls:splitLines(form.photo_urls),operating_person:form.operating_person,
         category_details:categoryDetails,
       }})});
       const data=await response.json();
@@ -227,6 +230,7 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
           <label>Years of experience<input type="number" min="0" max="80" value={form.experience_years} onChange={e=>updateForm("experience_years",e.target.value)} /></label>
           <label>Registration authority<input value={form.registration_authority} onChange={e=>updateForm("registration_authority",e.target.value)} /></label>
           <label>Registration number<input value={form.registration_number} onChange={e=>updateForm("registration_number",e.target.value)} /></label>
+          <label className={styles.wide}>Additional professionals (JSON array, optional)<textarea rows={3} value={form.additional_professionals_json} onChange={e=>updateForm("additional_professionals_json",e.target.value)} placeholder={JSON.stringify([{name:"Professional name",degree:"Degree",specialisation:["Speciality"]}])} /></label>
         </div></>}
         {form.category==="Education"&&<><h3>Education details</h3><div className={styles.formGrid}><label>Classes / levels<input value={form.education_levels} onChange={e=>updateForm("education_levels",e.target.value)} placeholder="e.g. Class 6–10"/></label><label>Subjects<input value={form.subjects} onChange={e=>updateForm("subjects",e.target.value)} /></label></div></>}
         {form.category==="Food & Dining"&&<><h3>Restaurant details</h3><div className={styles.formGrid}><label>Cuisine / food type<input value={form.restaurant_cuisine} onChange={e=>updateForm("restaurant_cuisine",e.target.value)} /></label><label>Delivery availability<input value={form.delivery} onChange={e=>updateForm("delivery",e.target.value)} placeholder="e.g. Home delivery / takeaway"/></label></div></>}
@@ -237,17 +241,25 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
           <label>District<input value={form.district} onChange={e=>updateForm("district",e.target.value)} /></label>
           <label>State *<input required value={form.state} onChange={e=>updateForm("state",e.target.value)} /></label>
           <label>PIN code<input value={form.pin_code} onChange={e=>updateForm("pin_code",e.target.value)} /></label>
-          <label>Service areas<input value={form.service_areas} onChange={e=>updateForm("service_areas",e.target.value)} /></label>\n          <label className={styles.wide}>Branch addresses (one per line)<textarea rows={2} value={form.branches} onChange={e=>updateForm("branches",e.target.value)} /></label>\n          <label>Latitude<input value={form.latitude} onChange={e=>updateForm("latitude",e.target.value)} /></label><label>Longitude<input value={form.longitude} onChange={e=>updateForm("longitude",e.target.value)} /></label>
+          <label>Service areas<input value={form.service_areas} onChange={e=>updateForm("service_areas",e.target.value)} /></label>
+          <label className={styles.wide}>Branch addresses (one per line)<textarea rows={2} value={form.branches} onChange={e=>updateForm("branches",e.target.value)} /></label>
+          <label>Latitude<input value={form.latitude} onChange={e=>updateForm("latitude",e.target.value)} /></label><label>Longitude<input value={form.longitude} onChange={e=>updateForm("longitude",e.target.value)} /></label>
           <label>Business contact number<input type="tel" value={form.business_phone} onChange={e=>updateForm("business_phone",e.target.value)} /></label>
           <label>WhatsApp number<input type="tel" value={form.whatsapp} onChange={e=>updateForm("whatsapp",e.target.value)} /></label>
           <label>Public contact person's name<input value={form.public_contact_name} onChange={e=>updateForm("public_contact_name",e.target.value)} /></label>
-          <label>Operating person<input value={form.operating_person} onChange={e=>updateForm("operating_person",e.target.value)} /></label>\n          <label>Business hours<input value={form.business_hours} onChange={e=>updateForm("business_hours",e.target.value)} /></label>
+          <label>Operating person<input value={form.operating_person} onChange={e=>updateForm("operating_person",e.target.value)} /></label>
+          <label>Business hours<input value={form.business_hours} onChange={e=>updateForm("business_hours",e.target.value)} /></label>
           <label>Google Maps URL<input type="url" value={form.maps_url} onChange={e=>updateForm("maps_url",e.target.value)} /></label>
-          <label>Website URL<input type="url" value={form.website} onChange={e=>updateForm("website",e.target.value)} /></label>\n          <label>Logo URL<input type="url" value={form.logo_url} onChange={e=>updateForm("logo_url",e.target.value)} /></label>\n          <label>Social media links (one per line)<textarea rows={2} value={form.social_links} onChange={e=>updateForm("social_links",e.target.value)} /></label>\n          <label>Business photo URLs (one per line)<textarea rows={2} value={form.photo_urls} onChange={e=>updateForm("photo_urls",e.target.value)} /></label>
+          <label>Website URL<input type="url" value={form.website} onChange={e=>updateForm("website",e.target.value)} /></label>
+          <label>Logo URL<input type="url" value={form.logo_url} onChange={e=>updateForm("logo_url",e.target.value)} /></label>
+          <label>Social media links (one per line)<textarea rows={2} value={form.social_links} onChange={e=>updateForm("social_links",e.target.value)} /></label>
+          <label>Business photo URLs (one per line)<textarea rows={2} value={form.photo_urls} onChange={e=>updateForm("photo_urls",e.target.value)} /></label>
         </div>
         <h3>Pricing</h3><div className={styles.formGrid}>
           <label>Starting price (₹)<input type="number" min="0" value={form.starting_price} onChange={e=>updateForm("starting_price",e.target.value)} /></label>
-          <label>Maximum price (₹)<input type="number" min="0" value={form.max_price} onChange={e=>updateForm("max_price",e.target.value)} /></label>\n          <label>Consultation fee (₹)<input type="number" min="0" value={form.consultation_fee} onChange={e=>updateForm("consultation_fee",e.target.value)} /></label>\n          <label className={styles.wide}>Packages / pricing notes<textarea rows={2} value={form.packages} onChange={e=>updateForm("packages",e.target.value)} /></label>
+          <label>Maximum price (₹)<input type="number" min="0" value={form.max_price} onChange={e=>updateForm("max_price",e.target.value)} /></label>
+          <label>Consultation fee (₹)<input type="number" min="0" value={form.consultation_fee} onChange={e=>updateForm("consultation_fee",e.target.value)} /></label>
+          <label className={styles.wide}>Packages / pricing notes<textarea rows={2} value={form.packages} onChange={e=>updateForm("packages",e.target.value)} /></label>
           <label>Pricing type<select value={form.pricing_type} onChange={e=>updateForm("pricing_type",e.target.value)}><option>Fixed / Starting from</option><option>Hourly</option><option>Per session</option><option>Quote required</option></select></label>
         </div>
         <h3>Owner / applicant (private)</h3><div className={styles.formGrid}>
@@ -291,7 +303,8 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
       <h3>Services</h3><ul>{(selected.services||[]).map((service,index)=><li key={index}>{typeof service==="string"?service:service.name}{typeof service==="object"&&service.description?" — "+service.description:""}</li>)}</ul>
       <h3>Pricing</h3><p>{selected.pricing?.starting_price?"Starting from ₹"+selected.pricing.starting_price:"Starting price not provided"}{selected.pricing?.consultation_fee?" · Consultation ₹"+selected.pricing.consultation_fee:""}{selected.pricing?.pricing_type?" · "+selected.pricing.pricing_type:""}</p>
       {selected.category==="Healthcare"&&<><h3>Professional details</h3>{(selected.professionals||[]).filter(person=>person.credentials_verified&&selected.verification_status==="VERIFIED").map((person,index)=><p key={index}><strong>{person.name}</strong>{person.degree?" · "+person.degree:""}{person.specialisation?.length?" · "+person.specialisation.join(", "):""}{person.experience_years!=null?" · "+person.experience_years+" years' experience":""}{person.registration_authority?" · "+person.registration_authority:""}</p>)}{!(selected.professionals||[]).some(person=>person.credentials_verified&&selected.verification_status==="VERIFIED")&&<p>Professional credentials have not been verified for public display.</p>}</>}
-      <h3>Location</h3><p>{[selected.location?.full_address,selected.location?.city,selected.location?.district,selected.location?.state,selected.location?.pin_code].filter(Boolean).join(", ")||"Location not provided"}</p>{selected.branches?.length?<ul>{selected.branches.map((branch,index)=><li key={index}>{branch}</li>)}</ul>:null}\n      {selected.category_details&&Object.keys(selected.category_details).length>0&&<><h3>Additional service information</h3><p>{JSON.stringify(selected.category_details)}</p></>}
+      <h3>Location</h3><p>{[selected.location?.full_address,selected.location?.city,selected.location?.district,selected.location?.state,selected.location?.pin_code].filter(Boolean).join(", ")||"Location not provided"}</p>{selected.branches?.length?<ul>{selected.branches.map((branch,index)=><li key={index}>{branch}</li>)}</ul>:null}
+      {selected.category_details&&Object.keys(selected.category_details).length>0&&<><h3>Additional service information</h3><p>{JSON.stringify(selected.category_details)}</p></>}
       <h3>Contact and hours</h3><p>{selected.operations?.public_contact_name||""}{selected.operations?.business_phone?" · "+selected.operations.business_phone:""}{selected.operations?.business_hours?" · "+selected.operations.business_hours:""}</p>
       <div className={styles.cardActions}>{publicPhone(selected)&&<a href={"tel:"+publicPhone(selected)}>Call Now</a>}{publicWhatsapp(selected)&&<a href={"https://wa.me/"+publicWhatsapp(selected)} target="_blank" rel="noopener noreferrer">WhatsApp</a>}{mapsUrl(selected)&&<a href={mapsUrl(selected)} target="_blank" rel="noopener noreferrer">View Location</a>}{safeUrl(selected.online_presence?.website||"")&&<a href={safeUrl(selected.online_presence?.website||"")} target="_blank" rel="noopener noreferrer">Visit Website</a>}</div>
     </section></div>}
