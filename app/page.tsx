@@ -25,6 +25,7 @@ type ThinkingEffort =
   | "just" | "let-it" | "care" | "high" | "ultra-high" | "elite" | "supreme";
 type ChatApiResponse = { reply?: string; error?: string; debug?: { requestKind?: string; errorName?: string; status?: unknown; message?: string }; sources?: { title: string; url: string }[] };
 type Profile = { name: string; gender: string; phone: string; dob: string; photo: string };
+type FindUpBusiness = { id: string; name: string; category: string; description: string; contactName?: string; location: string; startingPrice?: string; operatorName?: string; phone?: string; email?: string; website?: string; professionalName?: string; qualifications?: string[]; experience?: string; services?: string[]; };
 type ChatSession = { id: string; title: string; messages: Message[]; createdAt: string; updatedAt: string };
 const EMPTY_PROFILE: Profile = { name: "", gender: "", phone: "", dob: "", photo: "" };
 type FeatherPack = { quantity: number; rupees: number };
@@ -236,6 +237,12 @@ function KoyalApp() {
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [rateReviewOpen, setRateReviewOpen] = useState(false);
+  const [findUpOpen, setFindUpOpen] = useState(false);
+  const [findUpQuery, setFindUpQuery] = useState("");
+  const [findUpResults, setFindUpResults] = useState<FindUpBusiness[]>([]);
+  const [findUpLoading, setFindUpLoading] = useState(false);
+  const [findUpSearched, setFindUpSearched] = useState(false);
+  const [findUpError, setFindUpError] = useState("");
   const [dailyHubOpen, setDailyHubOpen] = useState(false);
   const [tasks, setTasks] = useState<KoyalTask[]>([]);
   const [taskTitle, setTaskTitle] = useState("");
@@ -864,6 +871,7 @@ function KoyalApp() {
             <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
             <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
             <button type="button" onClick={openTasks} className={`${styles.navItem} ${tasksOpen ? styles.navOn : ""}`}><Icon name="tasks"/>Tasks<span className={styles.navSmall}>{tasks.filter((task) => !task.done).length}</span></button>
+            <button type="button" onClick={() => { setFindUpOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${findUpOpen ? styles.navOn : ""}`}><Icon name="search"/>FIND UP<span className={styles.navSmall}>Discover</span></button>
             <button type="button" onClick={() => { setDailyHubOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setCodeModeOpen(false); closeSidebar(); }} className={`${styles.navItem} ${dailyHubOpen ? styles.navOn : ""}`}><Icon name="brain"/>Daily AI Hub<span className={styles.navSmall}>5</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
             <button type="button" onClick={() => { setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
@@ -975,6 +983,33 @@ function KoyalApp() {
           </button>
         </div>
         <button type="button" className={styles.reviewBack} onClick={() => setDailyHubOpen(false)}>← Back to Chat</button>
+      </section>}
+      {findUpOpen && <section className={styles.findUpSection} role="region" aria-label="FIND UP business search">
+        <div className={styles.findUpHeader}><div><div className={styles.findUpEyebrow}>KOYAL DIRECTORY</div><h2>Find the right <span>service.</span></h2><p>Describe what you need. FIND UP searches verified business listings added to KOYAL.</p></div><button type="button" className={styles.profileClose} aria-label="Close FIND UP" onClick={() => setFindUpOpen(false)}><Icon name="x" size={22}/></button></div>
+        <form className={styles.findUpSearch} onSubmit={async (event) => { event.preventDefault(); const query = findUpQuery.trim(); if (!query) return; setFindUpLoading(true); setFindUpError(""); setFindUpSearched(true); try { const response = await fetch(`/api/find-up?q=${encodeURIComponent(query)}`, { cache: "no-store" }); const data = await response.json(); if (!response.ok) throw new Error(data.error || "Search could not be completed."); setFindUpResults(Array.isArray(data.results) ? data.results : []); } catch (error) { setFindUpResults([]); setFindUpError(error instanceof Error ? error.message : "Search could not be completed."); } finally { setFindUpLoading(false); } }}>
+          <Icon name="search" size={20}/><input value={findUpQuery} onChange={(event) => setFindUpQuery(event.target.value)} placeholder="What service are you looking for?" aria-label="Describe the service you need" maxLength={180}/><button type="submit" disabled={findUpLoading || !findUpQuery.trim()}>{findUpLoading ? "Searching…" : "Search"}</button>
+        </form>
+        <div className={styles.findUpResults} aria-live="polite">
+          {!findUpSearched && <div className={styles.findUpEmpty}><span>✦</span><strong>What are you looking for?</strong><p>Try “physiotherapy in Jalpaiguri” or “a clinic for back pain”.</p></div>}
+          {findUpLoading && <div className={styles.findUpEmpty}>Searching business listings…</div>}
+          {findUpError && <div className={styles.findUpEmpty} role="alert">{findUpError}</div>}
+          {findUpSearched && !findUpLoading && !findUpError && findUpResults.length === 0 && <div className={styles.findUpEmpty}><strong>No matching business listing found.</strong><p>Try a different service or location.</p></div>}
+          {findUpResults.map((business) => <article className={styles.findUpCard} key={business.id}>
+            <div className={styles.findUpCardTop}><div><span className={styles.findUpCategory}>{business.category}</span><h3>{business.name}</h3><p>{business.description}</p></div><span className={styles.findUpVerified}>DATABASE LISTING</span></div>
+            <div className={styles.findUpDetails}>
+              <div><small>Location</small><strong>{business.location}</strong></div>
+              <div><small>Starting price</small><strong>{business.startingPrice || "Not provided"}</strong></div>
+              <div><small>Contact name</small><strong>{business.contactName || "Not provided"}</strong></div>
+              <div><small>Operator name</small><strong>{business.operatorName || "Not provided"}</strong></div>
+              {business.professionalName && <div><small>Healthcare professional</small><strong>{business.professionalName}</strong></div>}
+              {business.qualifications?.length ? <div><small>Qualifications</small><strong>{business.qualifications.join(", ")}</strong></div> : null}
+              {business.experience && <div><small>Experience</small><strong>{business.experience}</strong></div>}
+              {business.services?.length ? <div className={styles.findUpServices}><small>Services</small><strong>{business.services.join(" · ")}</strong></div> : null}
+            </div>
+            <div className={styles.findUpLinks}>{business.phone && <a href={`tel:${business.phone}`}>Call {business.phone}</a>}{business.email && <a href={`mailto:${business.email}`}>Email</a>}{business.website && <a href={business.website} target="_blank" rel="noopener noreferrer">Visit website ↗</a>}</div>
+          </article>)}
+        </div>
+        <button type="button" className={styles.reviewBack} onClick={() => setFindUpOpen(false)}>← Back to Chat</button>
       </section>}
       {rateReviewOpen && <div className={styles.reviewSection} role="region" aria-label="Rate and review Koyal">
           <div className={styles.reviewEyebrow}>YOUR FEEDBACK MATTERS</div>
@@ -1100,7 +1135,7 @@ function KoyalApp() {
               </div>
               <p style={{ margin:0, fontSize:11, opacity:.6 }}>Code is generated by AI and is not executed or security-tested inside this workspace. Review it before running.</p>
             </div>}
-            {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && !rateReviewOpen && <div className={styles.chatScroll}>
+            {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && !rateReviewOpen && !findUpOpen && <div className={styles.chatScroll}>
               <div className={styles.messages}>
                 {visibleMessages.length === 0 && <div className={styles.noResults}>No matching messages found.</div>}
                 {visibleMessages.map((message, index) => <div key={`${index}-${message.role}`} className={`${styles.messageRow} ${message.role === "user" ? styles.userRow : styles.assistantRow}`}>
@@ -1133,7 +1168,7 @@ function KoyalApp() {
             </div>}
           </section>
 
-          {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && <div className={styles.bottomArea}>
+          {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && !findUpOpen && <div className={styles.bottomArea}>
             <div className={styles.effortCard}>
               <div className={styles.effortHeading}>Thinking Effort</div>
               <button className={styles.thinkingLabel} type="button" onClick={() => changeThinking((indexThinking + 1) % thinking.length)} title="Click to change thinking level"><span>{selectedPlan === "Supreme" ? "∞" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong><Icon name="chevron" size={14}/></button>
