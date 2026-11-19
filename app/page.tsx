@@ -904,24 +904,29 @@ function KoyalApp() {
             <div className={styles.sceneBackdrop}/>
       {dailyHubOpen && <section className={styles.dailyHub} role="region" aria-label="Daily AI Hub">
         <div className={styles.dailyHubHead}>
-          <div><div className={styles.reviewEyebrow}>YOUR EVERYDAY AI COMPANION</div><h2>Daily AI Hub</h2><p>Five tools to help you stay informed, learn and get things done.</p></div>
+          <div className={styles.dailyHubHeroCopy}>
+            <div className={styles.dailyHubEyebrow}><span/> YOUR PERSONAL COMMAND CENTRE</div>
+            <h2>Make today <span>count.</span></h2>
+            <p>One hub. Five powerful ways to learn, focus and move forward.</p>
+            <div className={styles.dailyHubMeta}><span><Icon name="sparkles" size={14}/> MADE FOR YOUR EVERYDAY</span><span>✦ &nbsp;LEARN · PLAN · GROW</span></div>
+          </div>
           <button type="button" className={styles.profileClose} aria-label="Close Daily AI Hub" onClick={() => setDailyHubOpen(false)}><Icon name="x" size={22}/></button>
         </div>
         <div className={styles.dailyHubGrid}>
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setWebSearchEnabled(true); setInput("Give me today's important news and current affairs in a concise, student-friendly briefing. Include dates and reliable sources."); }}>
-            <span className={styles.dailyHubGlyph}>◉</span><strong>Daily News</strong><small>Get today's headlines and current affairs with sources.</small><span className={styles.dailyHubAction}>Explore news ↗</span>
+            <span className={styles.dailyHubGlyph}><Icon name="newspaper" size={22}/></span><span className={styles.dailyHubTag}>STAY INFORMED</span><strong>Daily News</strong><small>Get today's headlines and current affairs with sources.</small><span className={styles.dailyHubAction}>Explore news ↗</span>
           </button>
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setStudyMode(true); setInput("Create a practical study plan for me for today. Ask what subjects and available time you need, then make a balanced timetable with breaks."); }}>
-            <span className={styles.dailyHubGlyph}>▤</span><strong>Smart Study Planner</strong><small>Build a focused study timetable with breaks and goals.</small><span className={styles.dailyHubAction}>Plan study ↗</span>
+            <span className={styles.dailyHubGlyph}><Icon name="calendar-check" size={22}/></span><span className={styles.dailyHubTag}>LEARN SMARTER</span><strong>Smart Study Planner</strong><small>Build a focused study timetable with breaks and goals.</small><span className={styles.dailyHubAction}>Plan study ↗</span>
           </button>
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setInput("Create an interactive-style quiz for me. First ask which subject and topic, then ask one question at a time, check my answers and explain mistakes."); }}>
-            <span className={styles.dailyHubGlyph}>✦</span><strong>AI Quizzes</strong><small>Practise with questions, instant checking and explanations.</small><span className={styles.dailyHubAction}>Start a quiz ↗</span>
+            <span className={styles.dailyHubGlyph}><Icon name="brain" size={22}/></span><span className={styles.dailyHubTag}>TEST YOURSELF</span><strong>AI Quizzes</strong><small>Practise with questions, instant checking and explanations.</small><span className={styles.dailyHubAction}>Start a quiz ↗</span>
           </button>
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); openMemory(); }}>
-            <span className={styles.dailyHubGlyph}>▣</span><strong>Saved Notes</strong><small>Save useful notes and revisit them whenever you need.</small><span className={styles.dailyHubAction}>Open notes ↗</span>
+            <span className={styles.dailyHubGlyph}><Icon name="notebook-pen" size={22}/></span><span className={styles.dailyHubTag}>KEEP THE GOOD IDEAS</span><strong>Saved Notes</strong><small>Save useful notes and revisit them whenever you need.</small><span className={styles.dailyHubAction}>Open notes ↗</span>
           </button>
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); openTasks(); }}>
-            <span className={styles.dailyHubGlyph}>✓</span><strong>Productivity Tracker</strong><small>Track tasks, due dates and completed work.</small><span className={styles.dailyHubAction}>Track progress ↗</span>
+            <span className={styles.dailyHubGlyph}><Icon name="chart-no-axes-combined" size={22}/></span><span className={styles.dailyHubTag}>MAKE PROGRESS</span><strong>Productivity Tracker</strong><small>Track tasks, due dates and completed work.</small><span className={styles.dailyHubAction}>Track progress ↗</span>
           </button>
         </div>
         <button type="button" className={styles.reviewBack} onClick={() => setDailyHubOpen(false)}>← Back to Chat</button>
