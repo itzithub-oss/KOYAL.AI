@@ -8,6 +8,7 @@ import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
 import { addMemory, buildMemoryContext, deleteMemory, loadMemories, suggestMemoryFromMessage, type KoyalMemory } from "../lib/koyal-memory.mjs";
 import { addTask, deleteTask, loadTasks, updateTask, type KoyalTask } from "../lib/koyal-tasks.mjs";
+import { getDailyThought } from "../lib/daily-thoughts.mjs";
 import { ACTIVE_CHAT_KEY, createChatSession, readChatHistory, saveChatHistory, searchChatSessions, upsertChatSession } from "../lib/koyal-chat-history.mjs";
 
 type Message = {
@@ -244,6 +245,7 @@ function KoyalApp() {
   const [findUpSearched, setFindUpSearched] = useState(false);
   const [findUpError, setFindUpError] = useState("");
   const [dailyHubOpen, setDailyHubOpen] = useState(false);
+  const [dailyThought, setDailyThought] = useState(() => getDailyThought(Date.now()));
   const [tasks, setTasks] = useState<KoyalTask[]>([]);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskNotes, setTaskNotes] = useState("");
@@ -294,6 +296,13 @@ function KoyalApp() {
     ? messages.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
     : messages;
   const visibleChatSessions = searchChatSessions(chatSessions, historyQuery);
+
+  useEffect(() => {
+    const refreshThought = () => setDailyThought(getDailyThought(Date.now()));
+    refreshThought();
+    const thoughtTimer = window.setInterval(refreshThought, 60_000);
+    return () => window.clearInterval(thoughtTimer);
+  }, []);
 
   useEffect(() => {
     try {
@@ -980,6 +989,11 @@ function KoyalApp() {
           </div>
           <button type="button" className={styles.profileClose} aria-label="Close Daily AI Hub" onClick={() => setDailyHubOpen(false)}><Icon name="x" size={22}/></button>
         </div>
+        <div className={styles.dailyThought} aria-live="polite">
+          <div className={styles.dailyThoughtLabel}><span>✦</span> A THOUGHT TO CARRY WITH YOU <small>NEW THOUGHT EVERY 3 HOURS</small></div>
+          <blockquote>“{dailyThought.text}”</blockquote>
+          <div className={styles.dailyThoughtFooter}>— {dailyThought.author}</div>
+        </div>
         <div className={styles.dailyHubGrid}>
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setWebSearchEnabled(true); setInput("Give me today's important news and current affairs in a concise, student-friendly briefing. Include dates and reliable sources."); }}>
             <span className={styles.dailyHubGlyph}><Icon name="book" size={22}/></span><span className={styles.dailyHubTag}>STAY INFORMED</span><strong>Daily News</strong><small>Get today's headlines and current affairs with sources.</small><span className={styles.dailyHubAction}>Explore news ↗</span>
@@ -995,6 +1009,15 @@ function KoyalApp() {
           </button>
           <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); openTasks(); }}>
             <span className={styles.dailyHubGlyph}><Icon name="tasks" size={22}/></span><span className={styles.dailyHubTag}>MAKE PROGRESS</span><strong>Productivity Tracker</strong><small>Track tasks, due dates and completed work.</small><span className={styles.dailyHubAction}>Track progress ↗</span>
+          </button>
+          <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setInput("Be my daily habit coach. Help me choose up to five realistic habits, make a simple daily check-in table, and review my consistency whenever I report my progress."); }}>
+            <span className={styles.dailyHubGlyph}><Icon name="check" size={22}/></span><span className={styles.dailyHubTag}>BUILD CONSISTENCY</span><strong>Habit Coach</strong><small>Choose healthy routines and check in on your progress with Koyal.</small><span className={styles.dailyHubAction}>Build better habits ↗</span>
+          </button>
+          <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setInput("Act as my personal budget assistant. Help me record expenses I share, group them by category, calculate totals, and suggest a sensible budget. Never invent transactions."); }}>
+            <span className={styles.dailyHubGlyph}><Icon name="diamond" size={22}/></span><span className={styles.dailyHubTag}>SPEND MINDFULLY</span><strong>Expense Assistant</strong><small>Organise expenses, understand spending and plan a budget.</small><span className={styles.dailyHubAction}>Plan my budget ↗</span>
+          </button>
+          <button type="button" className={styles.dailyHubCard} onClick={() => { setDailyHubOpen(false); setInput("Give me today's daily knowledge challenge: one surprising fact, one useful vocabulary word with an example, and one short general-knowledge question. Ask me to answer before revealing the answer."); }}>
+            <span className={styles.dailyHubGlyph}><Icon name="brain" size={22}/></span><span className={styles.dailyHubTag}>GROW A LITTLE DAILY</span><strong>Daily Knowledge</strong><small>Discover a fact, learn a word and solve a quick challenge.</small><span className={styles.dailyHubAction}>Learn something new ↗</span>
           </button>
         </div>
         <button type="button" className={styles.reviewBack} onClick={() => setDailyHubOpen(false)}>← Back to Chat</button>
