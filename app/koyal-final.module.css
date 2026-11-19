@@ -426,3 +426,37 @@
   .dailyHubMeta { gap:9px; font-size:8px; }
 }
 @media(prefers-reduced-motion:reduce) { .dailyHubCard,.dailyHubCard:before { transition:none; } .dailyHubCard:hover { transform:none; } .dailyHubEyebrow span { animation:none; } }
+
+
+/* FIND UP business directory */
+.findUpSection { position:relative; z-index:2; display:flex; flex-direction:column; width:min(980px,calc(100% - 36px)); max-height:calc(100% - 34px); overflow-y:auto; margin:17px auto; padding:clamp(20px,4vw,38px); border:1px solid rgba(255,76,125,.32); border-radius:24px; color:#fff; background:radial-gradient(circle at 85% 0%,rgba(174,31,83,.2),transparent 38%),linear-gradient(145deg,rgba(25,14,29,.98),rgba(9,9,17,.98)); box-shadow:0 22px 65px rgba(0,0,0,.38); }
+.findUpHeader { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+.findUpEyebrow { color:#ff8eae; font-size:10px; font-weight:800; letter-spacing:.2em; }
+.findUpHeader h2 { margin:12px 0 8px; font-size:clamp(29px,4vw,43px); letter-spacing:-.045em; }
+.findUpHeader h2 span { color:#ff5b8d; }
+.findUpHeader p { max-width:600px; margin:0; color:#bcb0c5; font-size:13px; line-height:1.7; }
+.findUpSearch { display:flex; align-items:center; gap:11px; margin:25px 0 18px; padding:8px 9px 8px 15px; border:1px solid rgba(255,105,151,.38); border-radius:15px; background:rgba(255,255,255,.045); color:#ff91b1; }
+.findUpSearch input { flex:1; min-width:0; padding:11px 0; border:0; outline:0; color:#fff; background:transparent; font:inherit; font-size:14px; }
+.findUpSearch input::placeholder { color:#8f8297; }
+.findUpSearch button { padding:11px 19px; border:1px solid rgba(255,151,180,.65); border-radius:11px; color:#fff; background:linear-gradient(110deg,#8d173e,#c32b60); font-weight:700; }
+.findUpSearch button:disabled { opacity:.5; cursor:not-allowed; }
+.findUpResults { display:grid; gap:13px; }
+.findUpEmpty { display:grid; justify-items:center; gap:8px; min-height:160px; align-content:center; padding:25px; text-align:center; color:#c7bacd; border:1px dashed rgba(255,125,166,.24); border-radius:16px; background:rgba(255,255,255,.018); }
+.findUpEmpty span { color:#ff7fa5; font-size:25px; }
+.findUpEmpty strong { color:#fff; font-size:16px; }
+.findUpEmpty p { margin:0; font-size:12px; }
+.findUpCard { padding:20px; border:1px solid rgba(255,125,166,.24); border-radius:17px; background:linear-gradient(145deg,rgba(48,24,44,.7),rgba(17,13,25,.88)); }
+.findUpCardTop { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.findUpCategory { color:#ff91b1; font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.findUpCard h3 { margin:6px 0; font-size:21px; }
+.findUpCardTop p { margin:0; color:#bcb0c5; font-size:12px; line-height:1.6; }
+.findUpVerified { flex:0 0 auto; padding:6px 8px; border:1px solid rgba(102,205,155,.3); border-radius:99px; color:#9ce0ba; font-size:8px; font-weight:800; letter-spacing:.08em; }
+.findUpDetails { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px 20px; margin-top:19px; padding-top:16px; border-top:1px solid rgba(255,255,255,.08); }
+.findUpDetails div { display:grid; gap:4px; min-width:0; }
+.findUpDetails small { color:#9e91a8; font-size:10px; }
+.findUpDetails strong { color:#f6edf5; font-size:12px; font-weight:620; overflow-wrap:anywhere; }
+.findUpDetails .findUpServices { grid-column:1/-1; }
+.findUpLinks { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
+.findUpLinks a { padding:9px 12px; border:1px solid rgba(255,111,153,.34); border-radius:10px; color:#ffabc2; font-size:11px; text-decoration:none; }
+.findUpLinks a:hover { background:rgba(255,71,125,.12); }
+@media(max-width:600px) { .findUpSection { width:calc(100% - 14px); max-height:calc(100% - 12px); margin:6px auto; padding:17px 13px; border-radius:17px; } .findUpSearch { gap:7px; padding-left:10px; } .findUpSearch input { font-size:13px; } .findUpSearch button { padding:10px 12px; } .findUpCard { padding:15px; } .findUpVerified { font-size:7px; } .findUpDetails { gap:12px; } }
