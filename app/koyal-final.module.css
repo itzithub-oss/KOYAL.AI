@@ -460,3 +460,11 @@
 .findUpLinks a { padding:9px 12px; border:1px solid rgba(255,111,153,.34); border-radius:10px; color:#ffabc2; font-size:11px; text-decoration:none; }
 .findUpLinks a:hover { background:rgba(255,71,125,.12); }
 @media(max-width:600px) { .findUpSection { width:calc(100% - 14px); max-height:calc(100% - 12px); margin:6px auto; padding:17px 13px; border-radius:17px; } .findUpSearch { gap:7px; padding-left:10px; } .findUpSearch input { font-size:13px; } .findUpSearch button { padding:10px 12px; } .findUpCard { padding:15px; } .findUpVerified { font-size:7px; } .findUpDetails { gap:12px; } }
+
+/* FIND UP partnership signup */
+.findUpPartnership { display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-top:20px; padding:18px 20px; border:1px solid rgba(255,111,153,.28); border-radius:16px; background:linear-gradient(110deg,rgba(137,24,65,.16),rgba(255,255,255,.025)); }
+.findUpPartnership > div { flex:1; min-width:220px; }
+.findUpPartnership strong { color:#fff; font-size:14px; }
+.findUpPartnership p { margin:5px 0 0; color:#bcb0c5; font-size:12px; line-height:1.6; }
+.findUpPartnership .reviewButton { min-width:0; gap:9px; padding:12px 16px; font-size:12px; }
+@media(max-width:600px) { .findUpPartnership { align-items:stretch; padding:15px; } .findUpPartnership .reviewButton { width:100%; } }
