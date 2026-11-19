@@ -3,7 +3,7 @@ import { findUpDatabase, requireFindUpAdmin } from "../../../../lib/find-up-serv
 
 export const runtime = "nodejs";
 const STATUSES = new Set(["PENDING", "UNDER REVIEW", "APPROVED", "REJECTED", "NEEDS CORRECTION", "SUSPENDED"]);
-const EDITABLE = new Set(["business_name","display_name","category","subcategory","description","establishment_year","operating_status","services","keywords","specialisations","search_synonyms","branches","category_details","location","pricing","operations","professionals","online_presence","verification_notes"]);
+const EDITABLE = new Set(["business_name","display_name","category","subcategory","description","establishment_year","operating_status","services","keywords","specialisations","search_synonyms","branches","category_details","location","pricing","operations","professionals","online_presence","owner_information","private_documents","verification_notes"]);
 
 export async function GET(request: NextRequest) {
   try {
