@@ -785,6 +785,10 @@ function KoyalApp() {
       ].filter(Boolean).join(" ");
       const requestPayload = {
           message: `${message}\n\n${systemDetails}`,
+          // Send this chat's earlier turns so the model can resolve follow-ups.
+          history: messages
+            .filter((entry) => (entry.role === "user" || entry.role === "assistant") && typeof entry.content === "string")
+            .map((entry) => ({ role: entry.role, content: entry.content })),
           mode: teacherMode ? "Teacher" : philosophicalMode ? "Philosophical" : preciseMode ? "Precise" : "Normal",
           thinkingLevel: currentThinking.name,
           language: "English by default",
@@ -808,7 +812,9 @@ function KoyalApp() {
       if (attachment) {
         const formData = new FormData();
         for (const [key, value] of Object.entries(requestPayload)) {
-          if (value !== undefined && value !== null) formData.append(key, String(value));
+          if (value !== undefined && value !== null) {
+            formData.append(key, key === "history" ? JSON.stringify(value) : String(value));
+          }
         }
         formData.append("file", attachment);
         requestBody = formData;
