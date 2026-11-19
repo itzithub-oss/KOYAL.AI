@@ -220,7 +220,8 @@ export default function FindUp({ onClose }: { onClose: () => void }) {
           <label>Operating status<select value={form.operating_status} onChange={e=>updateForm("operating_status",e.target.value)}><option>Operating</option><option>Temporarily closed</option><option>Seasonal</option></select></label>
           <label className={styles.wide}>Services offered * (one per line)<textarea required rows={3} value={form.services} onChange={e=>updateForm("services",e.target.value)} placeholder="Physiotherapy assessment&#10;Sports injury rehabilitation"/></label>
           <label>Search keywords (comma separated)<input value={form.keywords} onChange={e=>updateForm("keywords",e.target.value)} /></label>
-          <label>Specialisations (comma separated)<input value={form.specialisations} onChange={e=>updateForm("specialisations",e.target.value)} /></label>\n          <label>Search synonyms (comma separated)<input value={form.search_synonyms} onChange={e=>updateForm("search_synonyms",e.target.value)} /></label>
+          <label>Specialisations (comma separated)<input value={form.specialisations} onChange={e=>updateForm("specialisations",e.target.value)} /></label>
+          <label>Search synonyms (comma separated)<input value={form.search_synonyms} onChange={e=>updateForm("search_synonyms",e.target.value)} /></label>
         </div>
         {form.category==="Healthcare"&&<><h3>Healthcare professional details</h3><p className={styles.note}>Credentials are not shown as verified unless an administrator reviews them.</p><div className={styles.formGrid}>
           <label>Professional name<input value={form.professional_name} onChange={e=>updateForm("professional_name",e.target.value)} /></label>
