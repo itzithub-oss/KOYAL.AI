@@ -373,3 +373,19 @@
 .reviewBack { margin-top: 17px; padding: 9px 13px; border: 0; color: #b9aabd; background: transparent; font-size: 12px; cursor: pointer; }
 .reviewBack:hover { color: #fff; }
 @media(max-width:600px) { .reviewSection { width: calc(100% - 20px); min-height: 390px; margin: 10px auto; padding: 32px 19px; border-radius: 20px; } .reviewSection p { font-size: 13px; } }
+
+
+/* DAILY AI HUB */
+.dailyHub { position:relative; z-index:2; width:min(980px,calc(100% - 36px)); max-height:calc(100% - 40px); overflow-y:auto; margin:20px auto; padding:30px; border:1px solid rgba(255,76,125,.3); border-radius:24px; background:radial-gradient(circle at 10% 0%,rgba(185,29,79,.16),transparent 38%),linear-gradient(145deg,rgba(27,15,31,.97),rgba(10,9,18,.98)); box-shadow:0 22px 65px rgba(0,0,0,.35); color:#fff; }
+.dailyHubHead { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:23px; }
+.dailyHubHead h2 { margin:8px 0 5px; font-size:clamp(25px,4vw,34px); letter-spacing:-.035em; }
+.dailyHubHead p { margin:0; color:#bcb0c5; font-size:13px; line-height:1.6; }
+.dailyHubGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+.dailyHubCard { min-width:0; min-height:180px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; padding:20px; text-align:left; border:1px solid rgba(255,104,151,.2); border-radius:17px; color:#fff; background:linear-gradient(145deg,rgba(42,20,39,.78),rgba(16,13,25,.94)); transition:transform .18s ease,border-color .18s ease,background .18s ease; cursor:pointer; }
+.dailyHubCard:hover { transform:translateY(-2px); border-color:rgba(255,104,151,.65); background:linear-gradient(145deg,rgba(75,22,49,.72),rgba(18,13,27,.98)); }
+.dailyHubGlyph { display:grid; place-items:center; width:39px; height:39px; border-radius:12px; color:#ffd4e2; font-size:21px; border:1px solid rgba(255,119,160,.35); background:rgba(169,31,79,.22); }
+.dailyHubCard strong { font-size:15px; }
+.dailyHubCard small { color:#bcb0c5; font-size:12px; line-height:1.6; }
+.dailyHubAction { margin-top:auto; color:#ff91b1; font-size:12px; font-weight:700; }
+@media(max-width:600px) { .dailyHub { width:calc(100% - 16px); max-height:calc(100% - 18px); margin:9px auto; padding:17px; border-radius:18px; } .dailyHubGrid { grid-template-columns:1fr; gap:9px; } .dailyHubCard { min-height:145px; padding:16px; } }
+@media(prefers-reduced-motion:reduce) { .dailyHubCard { transition:none; } .dailyHubCard:hover { transform:none; } }
