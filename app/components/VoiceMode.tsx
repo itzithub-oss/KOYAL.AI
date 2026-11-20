@@ -40,7 +40,6 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
   const [muted, setMuted] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const activeRef = useRef(false);
   const busyRef = useRef(false);
   const restartRef = useRef(false);
@@ -57,11 +56,7 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
     activeRef.current = false;
     busyRef.current = false;
     stopListening();
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-    }
+    window.speechSynthesis?.cancel();
     setOpen(false);
     setListening(false);
     setSpeaking(false);
@@ -75,42 +70,33 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
     activeRef.current = false;
     restartRef.current = false;
     try { recognitionRef.current?.abort(); } catch { /* ignore */ }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-    }
+    window.speechSynthesis?.cancel();
   }, []);
 
-  async function speakWithElevenLabs(text: string) {
-    const response = await fetch("/api/voice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, language: "en-IN" }),
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || "ElevenLabs could not generate Koyal's voice.");
-    }
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audioRef.current = audio;
+  async function speakWithBrowser(text: string) {
+    if (!("speechSynthesis" in window)) throw new Error("Voice playback is unavailable in this browser. Try Chrome or Edge.");
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const female = /female|woman|ava|samantha|victoria|kathy|susan|zira|aria|jenny|natasha|sara/i;
+    const english = voices.filter(v => v.lang.toLowerCase().startsWith("en"));
+    const voice = english.find(v => v.lang.toLowerCase() === "en-in" && female.test(v.name))
+      || english.find(v => female.test(v.name))
+      || english.find(v => v.lang.toLowerCase() === "en-in")
+      || english[0];
+    if (voice) utterance.voice = voice;
+    utterance.lang = voice?.lang || "en-IN";
+    utterance.rate = 0.92;
+    utterance.pitch = 1.08;
     setSpeaking(true);
     setStatus("Koyal is speaking...");
     try {
-      const playbackFinished = new Promise<void>((resolve, reject) => {
-        audio.onended = () => resolve();
-        audio.onerror = () => reject(new Error("Koyal's audio could not be played."));
+      await new Promise<void>((resolve, reject) => {
+        utterance.onend = () => resolve();
+        utterance.onerror = e => e.error === "canceled" || e.error === "interrupted" ? resolve() : reject(new Error("Koyal's voice could not be played."));
+        window.speechSynthesis.speak(utterance);
       });
-      await audio.play();
-      await playbackFinished;
-    } finally {
-      URL.revokeObjectURL(url);
-      if (audioRef.current === audio) audioRef.current = null;
-      setSpeaking(false);
-    }
+    } finally { setSpeaking(false); }
   }
 
   async function answerUser(message: string) {
@@ -139,7 +125,7 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
       const reply = data.reply.trim();
       setAiText(reply);
       setConnecting(false);
-      await speakWithElevenLabs(reply);
+      await speakWithBrowser(reply);
       setStatus("Your turn — speak when ready");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Voice response failed.");
@@ -273,7 +259,7 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
           <button type="button" disabled={!open || speaking || connecting} onClick={toggleMute} style={{ flex: 1, minHeight: 42, borderRadius: 14, border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.08)", color: "#fff", cursor: "pointer" }}>{muted ? "Resume mic" : "Pause mic"}</button>
           <button type="button" onClick={stopCall} style={{ flex: 1, minHeight: 42, borderRadius: 14, border: "1px solid rgba(255,75,100,.6)", background: "#9e173a", color: "#fff", fontWeight: 700, cursor: "pointer" }}>End call</button>
         </div>
-        <div style={{ width: "100%", color: "rgba(255,255,255,.55)", fontSize: 10, textAlign: "center" }}>Powered by ElevenLabs Avani · {subscriptionPlan} plan</div>
+        <div style={{ width: "100%", color: "rgba(255,255,255,.55)", fontSize: 10, textAlign: "center" }}>Browser voice · {subscriptionPlan} plan</div>
       </div>}
     </div>
   );
