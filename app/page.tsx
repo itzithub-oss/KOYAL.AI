@@ -876,10 +876,10 @@ function KoyalApp() {
               const { value, done } = await reader.read();
               if (done) break;
               buffer += decoder.decode(value, { stream: true });
-              const events = buffer.split("\\n\\n");
+              const events = buffer.split("\n\n");
               buffer = events.pop() || "";
               for (const event of events) {
-                const line = event.split("\\n").find((item) => item.startsWith("data: "));
+                const line = event.split("\n").find((item) => item.startsWith("data: "));
                 if (!line) continue;
                 const payload = JSON.parse(line.slice(6)) as { type: string; text?: string; reply?: string; sources?: { title: string; url: string }[]; message?: string };
                 if (payload.type === "delta" && payload.text) {
