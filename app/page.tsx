@@ -244,6 +244,19 @@ function KoyalApp() {
   const [rateReviewOpen, setRateReviewOpen] = useState(false);
   const [aiDetailsOpen, setAiDetailsOpen] = useState(false);
   const [findUpOpen, setFindUpOpen] = useState(false);
+  const [travelOpen, setTravelOpen] = useState(false);
+  const [travelTab, setTravelTab] = useState<"planner" | "agencies">("planner");
+  const [tripDestination, setTripDestination] = useState("");
+  const [tripStartDate, setTripStartDate] = useState("");
+  const [tripEndDate, setTripEndDate] = useState("");
+  const [tripTravellers, setTripTravellers] = useState("2");
+  const [tripBudget, setTripBudget] = useState("");
+  const [tripStyle, setTripStyle] = useState("Balanced");
+  const [travelAgencyQuery, setTravelAgencyQuery] = useState("");
+  const [travelAgencyResults, setTravelAgencyResults] = useState<FindUpBusiness[]>([]);
+  const [travelAgencyLoading, setTravelAgencyLoading] = useState(false);
+  const [travelAgencySearched, setTravelAgencySearched] = useState(false);
+  const [travelAgencyError, setTravelAgencyError] = useState("");
   const [findUpQuery, setFindUpQuery] = useState("");
   const [findUpResults, setFindUpResults] = useState<FindUpBusiness[]>([]);
   const [findUpLoading, setFindUpLoading] = useState(false);
@@ -974,7 +987,8 @@ function KoyalApp() {
             <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
             <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
             <button type="button" onClick={openTasks} className={`${styles.navItem} ${tasksOpen ? styles.navOn : ""}`}><Icon name="tasks"/>Tasks<span className={styles.navSmall}>{tasks.filter((task) => !task.done).length}</span></button>
-            <button type="button" onClick={() => { setFindUpOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${findUpOpen ? styles.navOn : ""}`}><Icon name="search"/>FIND UP<span className={styles.navSmall}>Discover</span></button>
+            <button type="button" onClick={() => { setFindUpOpen(true); setTravelOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${findUpOpen ? styles.navOn : ""}`}><Icon name="search"/>FIND UP<span className={styles.navSmall}>Discover</span></button>
+            <button type="button" onClick={() => { setTravelOpen(true); setTravelTab("planner"); setFindUpOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); setAiDetailsOpen(false); closeSidebar(); }} className={`${styles.navItem} ${travelOpen ? styles.navOn : ""}`}><Icon name="arrow"/>Tours &amp; Travels<span className={styles.navSmall}>Explore</span></button>
             <button type="button" onClick={() => { setDailyHubOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setCodeModeOpen(false); closeSidebar(); }} className={`${styles.navItem} ${dailyHubOpen ? styles.navOn : ""}`}><Icon name="brain"/>Daily AI Hub<span className={styles.navSmall}>5</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
             <button type="button" onClick={() => { setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
@@ -1157,6 +1171,24 @@ function KoyalApp() {
         </div>
         <button type="button" className={styles.reviewBack} onClick={() => setFindUpOpen(false)}>← Back to Chat</button>
       </section>}
+      {travelOpen && <section className={styles.travelSection} role="region" aria-label="Tours and travels">
+        <div className={styles.travelHeader}><div><div className={styles.findUpEyebrow}>KOYAL TRAVEL DESK</div><h2>Travel more. <span>Worry less.</span></h2><p>Plan a trip with Koyal or discover travel agencies listed in the KOYAL directory.</p></div><button type="button" className={styles.profileClose} aria-label="Close Tours and Travels" onClick={() => setTravelOpen(false)}><Icon name="x" size={22}/></button></div>
+        <div className={styles.travelTabs} role="tablist" aria-label="Travel tools"><button type="button" role="tab" aria-selected={travelTab === "planner"} className={travelTab === "planner" ? styles.travelTabActive : ""} onClick={() => setTravelTab("planner")}>✦ AI Trip Planner</button><button type="button" role="tab" aria-selected={travelTab === "agencies"} className={travelTab === "agencies" ? styles.travelTabActive : ""} onClick={() => setTravelTab("agencies")}>⌖ Travel Agencies</button></div>
+        {travelTab === "planner" ? <form className={styles.travelForm} onSubmit={(event) => { event.preventDefault(); const prompt = `Act as my travel planner. Create a practical trip plan for ${tripDestination.trim()}. Travel dates: ${tripStartDate || "not decided"} to ${tripEndDate || "not decided"}. Travellers: ${tripTravellers}. Total budget: ${tripBudget.trim() || "suggest a reasonable budget"}. Travel style: ${tripStyle}. Give me a day-by-day itinerary, estimated costs with currency, transport options, accommodation areas, attractions, food suggestions, safety tips, and booking checklist. Clearly label estimates and ask follow-up questions if essential details are missing. Do not invent live prices or availability.`; setInput(prompt); setTravelOpen(false); setFindUpOpen(false); }}>
+          <div className={styles.travelIntro}><span>✈</span><div><strong>Build your next journey</strong><small>Tell Koyal the basics. Your trip plan will open in the chat so you can refine it.</small></div></div>
+          <label className={styles.travelField}>Where do you want to go?<input required value={tripDestination} onChange={(event) => setTripDestination(event.target.value)} placeholder="e.g. Darjeeling, Japan, Goa"/></label>
+          <div className={styles.travelFieldGrid}><label className={styles.travelField}>Start date<input type="date" value={tripStartDate} onChange={(event) => setTripStartDate(event.target.value)}/></label><label className={styles.travelField}>End date<input type="date" min={tripStartDate || undefined} value={tripEndDate} onChange={(event) => setTripEndDate(event.target.value)}/></label></div>
+          <div className={styles.travelFieldGrid}><label className={styles.travelField}>Travellers<select value={tripTravellers} onChange={(event) => setTripTravellers(event.target.value)}>{["1","2","3","4","5","6","7","8","9","10+"].map((count) => <option key={count} value={count}>{count}</option>)}</select></label><label className={styles.travelField}>Total budget<input value={tripBudget} onChange={(event) => setTripBudget(event.target.value)} placeholder="e.g. ₹25,000"/></label></div>
+          <label className={styles.travelField}>Travel style<select value={tripStyle} onChange={(event) => setTripStyle(event.target.value)}>{["Budget","Balanced","Comfort","Luxury","Adventure","Family-friendly"].map((style) => <option key={style}>{style}</option>)}</select></label>
+          <button type="submit" className={styles.travelSubmit}>Create my trip plan <Icon name="arrow" size={17}/></button>
+        </form> : <div className={styles.travelAgencyPanel}>
+          <p>Search travel agencies and tour operators that have been added to the KOYAL directory. Listings show only information supplied to KOYAL.</p>
+          <form className={styles.findUpSearch} onSubmit={async (event) => { event.preventDefault(); const query = travelAgencyQuery.trim(); if (!query) return; setTravelAgencyLoading(true); setTravelAgencyError(""); setTravelAgencySearched(true); try { const response = await fetch(`/api/find-up?q=${encodeURIComponent(query + " travel agency tour operator")}`, { cache: "no-store" }); const data = await response.json(); if (!response.ok) throw new Error(data.error || "Search could not be completed."); setTravelAgencyResults(Array.isArray(data.results) ? data.results : []); } catch (error) { setTravelAgencyResults([]); setTravelAgencyError(error instanceof Error ? error.message : "Search could not be completed."); } finally { setTravelAgencyLoading(false); } }}><Icon name="search" size={20}/><input value={travelAgencyQuery} onChange={(event) => setTravelAgencyQuery(event.target.value)} placeholder="Search by destination or agency location" aria-label="Search travel agencies" maxLength={150}/><button type="submit" disabled={travelAgencyLoading || !travelAgencyQuery.trim()}>{travelAgencyLoading ? "Searching…" : "Search"}</button></form>
+          <div className={styles.findUpResults} aria-live="polite">{travelAgencyLoading && <div className={styles.findUpEmpty}>Searching listed travel providers…</div>}{travelAgencyError && <div className={styles.findUpEmpty} role="alert">{travelAgencyError}</div>}{travelAgencySearched && !travelAgencyLoading && !travelAgencyError && travelAgencyResults.length === 0 && <div className={styles.findUpEmpty}><span>✦</span><strong>No travel agency is listed yet.</strong><p>Try another location, or check back after travel partners join the KOYAL directory. Koyal will not display made-up agency details.</p></div>}{travelAgencyResults.map((business) => <article className={styles.findUpCard} key={business.id}><div className={styles.findUpCardTop}><div><span className={styles.findUpCategory}>{business.category}</span><h3>{business.name}</h3><p>{business.description}</p></div><span className={styles.findUpVerified}>DATABASE LISTING</span></div><div className={styles.findUpDetails}><div><small>Location</small><strong>{business.location}</strong></div><div><small>Starting price</small><strong>{business.startingPrice || "Not provided"}</strong></div><div><small>Contact</small><strong>{business.contactName || business.operatorName || "Not provided"}</strong></div></div><div className={styles.findUpLinks}>{business.phone && <a href={`tel:${business.phone}`}>Call {business.phone}</a>}{business.email && <a href={`mailto:${business.email}`}>Email</a>}{business.website && <a href={business.website} target="_blank" rel="noopener noreferrer">Visit website ↗</a>}</div></article>)}</div>
+          <div className={styles.travelAgencyNote}><strong>Are you a travel agency?</strong><span>Join the KOYAL FIND UP partnership programme to be discoverable here.</span><a href="https://forms.gle/fkYk7NmocogpQMLw6" target="_blank" rel="noopener noreferrer">Apply to partner ↗</a></div>
+        </div>}
+        <button type="button" className={styles.reviewBack} onClick={() => setTravelOpen(false)}>← Back to Chat</button>
+      </section>}
       {rateReviewOpen && <div className={styles.reviewSection} role="region" aria-label="Rate and review Koyal">
           <div className={styles.reviewEyebrow}>YOUR FEEDBACK MATTERS</div>
           <div className={styles.reviewIcon} aria-hidden="true">★</div>
@@ -1281,7 +1313,7 @@ function KoyalApp() {
               </div>
               <p style={{ margin:0, fontSize:11, opacity:.6 }}>Code is generated by AI and is not executed or security-tested inside this workspace. Review it before running.</p>
             </div>}
-            {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && !rateReviewOpen && !findUpOpen && <div className={styles.chatScroll}>
+            {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && !rateReviewOpen && !findUpOpen && !travelOpen && <div className={styles.chatScroll}>
               <div className={styles.messages}>
                 {visibleMessages.length === 0 && <div className={styles.noResults}>No matching messages found.</div>}
                 {visibleMessages.map((message, index) => <div key={`${index}-${message.role}`} className={`${styles.messageRow} ${message.role === "user" ? styles.userRow : styles.assistantRow}`}>
@@ -1315,7 +1347,7 @@ function KoyalApp() {
             </div>}
           </section>
 
-          {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && !findUpOpen && <div className={styles.bottomArea}>
+          {!codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && !findUpOpen && !travelOpen && <div className={styles.bottomArea}>
             <div className={`${styles.effortCard} ${thinkingEffortOpen ? styles.effortCardOpen : ""}`}>
               <button className={styles.effortToggle} type="button" aria-expanded={thinkingEffortOpen} aria-controls="thinking-effort-controls" onClick={() => setThinkingEffortOpen((open) => !open)}>
                 <span className={styles.effortHeading}>Thinking Effort</span>
