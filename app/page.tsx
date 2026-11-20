@@ -296,7 +296,8 @@ function KoyalApp() {
   const fileInput = useRef<HTMLInputElement>(null);
   const loadedRef = useRef(false);
   const historyLoadedRef = useRef(false);
-  const chatQueueRef = useRef<ChatQueueJob[]>([]);\n  const processingQueueRef = useRef(false);\n  const conversationContextRef = useRef<Message[]>([WELCOME]);
+  const chatQueueRef = useRef<ChatQueueJob[]>([]);
+  const processingQueueRef = useRef(false);\n  const conversationContextRef = useRef<Message[]>([WELCOME]);
   const chatSessionsRef = useRef<ChatSession[]>([]);
   const currentThinking = thinking.find((option) => option.id === thinkingId) || thinking[3];
   const indexThinking = thinking.findIndex((option) => option.id === thinkingId);
@@ -889,7 +890,6 @@ function KoyalApp() {
       teacherMode, teacherClass, teacherSubject, studyMode, studyFocus, preciseMode, philosophicalMode,
       webSearch: webSearchEnabled, featherCost,
     };
-    setMessages((old) => [...old, { role: "user", content: message, fileName: attachment?.name, time: timestamp() }]);
     chatQueueRef.current.push(job);
     setQueuedCount(chatQueueRef.current.length);
     setQueuedQuestions(chatQueueRef.current.map((queued) => queued.message));
