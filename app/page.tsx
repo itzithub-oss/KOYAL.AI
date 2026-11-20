@@ -25,6 +25,7 @@ type CharacterMode =
 type ThinkingEffort =
   | "just" | "let-it" | "care" | "high" | "ultra-high" | "elite" | "supreme";
 type ChatApiResponse = { reply?: string; error?: string; debug?: { requestKind?: string; errorName?: string; status?: unknown; message?: string }; sources?: { title: string; url: string }[] };
+type ChatQueueJob = { message: string; originalText: string; attachment: File | null; urlContextUrl?: string; systemDetails: string; mode: string; thinkingLevel: string; subscriptionPlan: string; name: string; characterMode: string; teacherMode: boolean; teacherClass: string; teacherSubject: string; studyMode: boolean; studyFocus: string; preciseMode: boolean; philosophicalMode: boolean; webSearch: boolean; featherCost: number };
 type Profile = { name: string; gender: string; phone: string; dob: string; photo: string };
 type FindUpBusiness = { id: string; name: string; category: string; description: string; contactName?: string; location: string; startingPrice?: string; operatorName?: string; phone?: string; email?: string; website?: string; professionalName?: string; qualifications?: string[]; experience?: string; services?: string[]; serviceHours?: string; };
 type ChatSession = { id: string; title: string; messages: Message[]; createdAt: string; updatedAt: string };
@@ -219,7 +220,7 @@ function KoyalApp() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);\n  const [queuedCount, setQueuedCount] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
@@ -292,7 +293,7 @@ function KoyalApp() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const loadedRef = useRef(false);
-  const historyLoadedRef = useRef(false);
+  const historyLoadedRef = useRef(false);\n  const chatQueueRef = useRef<ChatQueueJob[]>([]);\n  const processingQueueRef = useRef(false);\n  const conversationContextRef = useRef<Message[]>([WELCOME]);
   const chatSessionsRef = useRef<ChatSession[]>([]);
   const currentThinking = thinking.find((option) => option.id === thinkingId) || thinking[3];
   const indexThinking = thinking.findIndex((option) => option.id === thinkingId);
@@ -797,87 +798,98 @@ function KoyalApp() {
     }
   }
 
+  async function processChatQueue() {
+    if (processingQueueRef.current) return;
+    processingQueueRef.current = true;
+    setLoading(true);
+    try {
+      while (chatQueueRef.current.length > 0) {
+        const job = chatQueueRef.current.shift()!;
+        setQueuedCount(chatQueueRef.current.length);
+        const history = conversationContextRef.current
+          .filter((entry) => (entry.role === "user" || entry.role === "assistant") && typeof entry.content === "string")
+          .map((entry) => ({ role: entry.role, content: entry.content }));
+        conversationContextRef.current = [...conversationContextRef.current, { role: "user", content: job.message }];
+        const requestPayload = {
+          message: `${job.message}\n\n${job.systemDetails}`, history, mode: job.mode,
+          thinkingLevel: job.thinkingLevel, language: "English by default", subscriptionPlan: job.subscriptionPlan,
+          name: job.name, characterMode: job.characterMode, teacherMode: job.teacherMode,
+          teacherClass: job.teacherClass, teacherSubject: job.teacherSubject, studyMode: job.studyMode,
+          studyClass: job.teacherClass, studySubject: job.teacherSubject, studyFocus: job.studyFocus,
+          preciseMode: job.preciseMode, philosophicalMode: job.philosophicalMode,
+          webSearch: job.webSearch, urlContextUrl: job.urlContextUrl,
+        };
+        try {
+          let requestBody: BodyInit;
+          let requestHeaders: HeadersInit | undefined;
+          if (job.attachment) {
+            const formData = new FormData();
+            for (const [key, value] of Object.entries(requestPayload)) {
+              if (value !== undefined && value !== null) formData.append(key, key === "history" ? JSON.stringify(value) : String(value));
+            }
+            formData.append("file", job.attachment);
+            requestBody = formData;
+          } else {
+            requestHeaders = { "Content-Type": "application/json" };
+            requestBody = JSON.stringify(requestPayload);
+          }
+          const response = await fetch("/api/chat", { method: "POST", headers: requestHeaders, body: requestBody });
+          const data: ChatApiResponse = await response.json();
+          if (data.debug) console.error("[KOYAL API DEBUG]", data.debug);
+          if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(ERROR_REPLY);
+          const assistantMessage: Message = { role: "assistant", content: data.reply, time: timestamp(), sources: Array.isArray(data.sources) ? data.sources : [] };
+          conversationContextRef.current = [...conversationContextRef.current, assistantMessage];
+          setMessages((old) => [...old, assistantMessage]);
+          setPendingMemorySuggestion(suggestMemoryFromMessage(job.originalText, memories));
+          if (job.featherCost > 0) setFeathers((old) => {
+            const value = Math.max(0, old - job.featherCost);
+            localStorage.setItem("koyal-ai-feather-balance", String(value));
+            return value;
+          });
+        } catch {
+          const errorMessage: Message = { role: "assistant", content: ERROR_REPLY, time: timestamp() };
+          conversationContextRef.current = [...conversationContextRef.current, errorMessage];
+          setPendingMemorySuggestion("");
+          setMessages((old) => [...old, errorMessage]);
+        }
+      }
+    } finally {
+      processingQueueRef.current = false;
+      setLoading(false);
+      setQueuedCount(0);
+    }
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (loading) return;
     const text = input.trim();
     const attachment = selectedFile;
     if (!text && !attachment && !(urlReaderEnabled && urlInput.trim())) return;
     if (featherCost > feathers) { openFeatherShop(); return; }
     const message = text || (attachment ? (attachment.type === "application/pdf" ? "Please summarize the attached PDF." : "Please describe and read the attached image.") : urlReaderEnabled ? "Please summarize this webpage." : "Please help me with this attachment.");
+    const systemDetails = [
+      "Your name is Koyal. Keep your identity in the background; do not introduce yourself or say \"I am Koyal\" in ordinary replies. Only state your name when the user directly asks who you are, what your name is, or requests an introduction.",
+      "Reply in English by default; use Hindi or another language only when explicitly requested.",
+      characterMode !== "normal" ? `Character mode: ${currentCharacter.name}.` : "",
+      teacherMode ? `Teacher mode: Class ${teacherClass}, ${teacherSubject}.` : "",
+      studyMode ? `Study Mode: tutor me at Class ${teacherClass} level in ${teacherSubject}. Focus: ${studyFocus}.` : "",
+      philosophicalMode ? "Philosophical mode: provide thoughtful reasoning." : "",
+      buildMemoryContext(memories),
+    ].filter(Boolean).join(" ");
+    const job: ChatQueueJob = {
+      message, originalText: text, attachment, urlContextUrl: urlReaderEnabled ? urlInput.trim() : undefined,
+      systemDetails, mode: teacherMode ? "Teacher" : philosophicalMode ? "Philosophical" : preciseMode ? "Precise" : "Normal",
+      thinkingLevel: currentThinking.name, subscriptionPlan: selectedPlan, name: profile.name, characterMode,
+      teacherMode, teacherClass, teacherSubject, studyMode, studyFocus, preciseMode, philosophicalMode,
+      webSearch: webSearchEnabled, featherCost,
+    };
     setMessages((old) => [...old, { role: "user", content: message, fileName: attachment?.name, time: timestamp() }]);
+    chatQueueRef.current.push(job);
+    setQueuedCount(chatQueueRef.current.length);
     setInput("");
     setSelectedFile(null);
     if (fileInput.current) fileInput.current.value = "";
-    setLoading(true);
-    try {
-      const systemDetails = [
-        "Your name is Koyal. Keep your identity in the background; do not introduce yourself or say \"I am Koyal\" in ordinary replies. Only state your name when the user directly asks who you are, what your name is, or requests an introduction.",
-        "Reply in English by default; use Hindi or another language only when explicitly requested.",
-        characterMode !== "normal" ? `Character mode: ${currentCharacter.name}.` : "",
-        teacherMode ? `Teacher mode: Class ${teacherClass}, ${teacherSubject}.` : "",
-        studyMode ? `Study Mode: tutor me at Class ${teacherClass} level in ${teacherSubject}. Focus: ${studyFocus}.` : "",
-        philosophicalMode ? "Philosophical mode: provide thoughtful reasoning." : "",
-        buildMemoryContext(memories),
-      ].filter(Boolean).join(" ");
-      const requestPayload = {
-          message: `${message}\n\n${systemDetails}`,
-          // Send this chat's earlier turns so the model can resolve follow-ups.
-          history: messages
-            .filter((entry) => (entry.role === "user" || entry.role === "assistant") && typeof entry.content === "string")
-            .map((entry) => ({ role: entry.role, content: entry.content })),
-          mode: teacherMode ? "Teacher" : philosophicalMode ? "Philosophical" : preciseMode ? "Precise" : "Normal",
-          thinkingLevel: currentThinking.name,
-          language: "English by default",
-          subscriptionPlan: selectedPlan,
-          name: profile.name,
-          characterMode,
-          teacherMode,
-          teacherClass,
-          teacherSubject,
-          studyMode,
-          studyClass: teacherClass,
-          studySubject: teacherSubject,
-          studyFocus,
-          preciseMode,
-          philosophicalMode,
-          webSearch: webSearchEnabled,
-          urlContextUrl: urlReaderEnabled ? urlInput.trim() : undefined,
-        };
-      let requestBody: BodyInit;
-      let requestHeaders: HeadersInit | undefined;
-      if (attachment) {
-        const formData = new FormData();
-        for (const [key, value] of Object.entries(requestPayload)) {
-          if (value !== undefined && value !== null) {
-            formData.append(key, key === "history" ? JSON.stringify(value) : String(value));
-          }
-        }
-        formData.append("file", attachment);
-        requestBody = formData;
-      } else {
-        requestHeaders = { "Content-Type": "application/json" };
-        requestBody = JSON.stringify(requestPayload);
-      }
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: requestHeaders,
-        body: requestBody,
-      });
-      const data: ChatApiResponse = await response.json();
-      if (data.debug) console.error("[KOYAL API DEBUG]", data.debug);
-      if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(ERROR_REPLY);
-      setMessages((old) => [...old, { role: "assistant", content: data.reply || ERROR_REPLY, time: timestamp(), sources: Array.isArray(data.sources) ? data.sources : [] }]);
-      setPendingMemorySuggestion(suggestMemoryFromMessage(text, memories));
-      if (featherCost > 0) setFeathers((old) => {
-        const value = Math.max(0, old - featherCost);
-        localStorage.setItem("koyal-ai-feather-balance", String(value));
-        return value;
-      });
-    } catch {
-      setPendingMemorySuggestion("");
-      setMessages((old) => [...old, { role: "assistant", content: ERROR_REPLY, time: timestamp() }]);
-    } finally { setLoading(false); }
+    if (!processingQueueRef.current) void processChatQueue();
   }
 
   async function summarizeCurrentChat() {
@@ -1278,7 +1290,7 @@ function KoyalApp() {
                   </div>
                   {message.role === "user" && <span className={`${styles.messageAvatar} ${styles.userAvatar}`}><Icon name="user" size={23}/></span>}
                 </div>)}
-                {loading && <div className={styles.messageRow}><span className={styles.messageAvatar}><img src="/koyal-bird.png" alt=""/></span><div className={styles.loadingBubble}><span/><span/><span/> Koyal is thinking...</div></div>}
+                {loading && <div className={styles.messageRow}><span className={styles.messageAvatar}><img src="/koyal-bird.png" alt=""/></span><div className={styles.loadingBubble}><span/><span/><span/> Koyal is thinking...</div></div>}\n              {loading && queuedCount > 0 && <div role="status" style={{ margin: "0 42px 12px", color: "var(--muted, #aaa)", fontSize: 12 }}>{queuedCount} {queuedCount === 1 ? "question" : "questions"} waiting — Koyal will answer in order.</div>}
                 {pendingMemorySuggestion && !loading && <div role="status" aria-live="polite" style={{ margin: "12px 42px 16px", padding: "14px 16px", border: "1px solid rgba(255,71,109,.38)", borderRadius: 16, background: "rgba(255,71,109,.08)", maxWidth: 520 }}>
                   <strong style={{ display: "block", marginBottom: 6 }}>Should I remember this?</strong>
                   <p style={{ margin: "0 0 12px", overflowWrap: "anywhere" }}>{pendingMemorySuggestion}</p>
@@ -1329,7 +1341,7 @@ function KoyalApp() {
                 <button type="button" className={styles.attachmentButton} title="Attach a PDF or image" aria-label="Attach a PDF or image" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
                 <textarea value={input} placeholder={teacherMode ? `Ask your Class ${teacherClass} ${teacherSubject} teacher...` : characterMode !== "normal" ? `Message ${currentCharacter.name}...` : "Message Koyal..."} rows={1} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
                 <div className={styles.voiceButton}><VoiceMode subscriptionPlan={selectedPlan}/></div>
-                <button type="submit" className={styles.sendButton} disabled={loading || (!input.trim() && !selectedFile && !(urlReaderEnabled && urlInput.trim()))} title="Send message" aria-label="Send message"><Icon name="send" size={22}/></button>
+                <button type="submit" className={styles.sendButton} disabled={!input.trim() && !selectedFile && !(urlReaderEnabled && urlInput.trim())} title={loading ? "Send another question to the queue" : "Send message"} aria-label="Send message"><Icon name="send" size={22}/></button>
               </div>
             </form>
           </div>}
