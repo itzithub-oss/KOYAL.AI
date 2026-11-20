@@ -243,6 +243,7 @@ function KoyalApp() {
   const [tasksOpen, setTasksOpen] = useState(false);
   const [rateReviewOpen, setRateReviewOpen] = useState(false);
   const [aiDetailsOpen, setAiDetailsOpen] = useState(false);
+  const [downloadAppOpen, setDownloadAppOpen] = useState(false);
   const [findUpOpen, setFindUpOpen] = useState(false);
   const [travelOpen, setTravelOpen] = useState(false);
   const [travelTab, setTravelTab] = useState<"planner" | "agencies">("planner");
@@ -1018,7 +1019,8 @@ function KoyalApp() {
             <button type="button" onClick={() => { setRateReviewOpen(false); openFeatherShop(); }} className={styles.navItem}><Icon name="feather"/>Feather Balance<span className={styles.navSmall}>{selectedPlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</span></button>
             <button type="button" onClick={() => { if (requireSignIn("access subscription plans")) setSubscriptionOpen(true); closeSidebar(); }} className={styles.navItem}><Icon name="diamond"/>Subscription</button>
             <button type="button" onClick={() => { setRateReviewOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${rateReviewOpen ? styles.navOn : ""}`}><Icon name="message"/>Rate &amp; Review<span className={styles.navSmall}>Feedback</span></button>
-            <button type="button" onClick={() => { setAiDetailsOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setFindUpOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${aiDetailsOpen ? styles.navOn : ""}`}><Icon name="message"/>AI Details<span className={styles.navSmall}>Contact</span></button>
+            <button type="button" onClick={() => { setAiDetailsOpen(true); setDownloadAppOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setFindUpOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${aiDetailsOpen ? styles.navOn : ""}`}><Icon name="message"/>AI Details<span className={styles.navSmall}>Contact</span></button>
+            <button type="button" onClick={() => { setDownloadAppOpen(true); setAiDetailsOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setFindUpOpen(false); setTravelOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${downloadAppOpen ? styles.navOn : ""}`}><Icon name="arrow"/>Download App<span className={styles.navSmall}>Android</span></button>
           </nav>
           <button type="button" className={styles.sidebarProfile} onClick={openProfile} aria-label="Open your profile">
             <div className={styles.sidebarProfileTop}>
@@ -1077,6 +1079,12 @@ function KoyalApp() {
 
           <section className={styles.chatSpace} aria-label="Conversation">
             <div className={styles.sceneBackdrop}/>
+      {downloadAppOpen && <section className={styles.downloadAppSection} role="region" aria-label="Download KOYAL AI Android app">
+        <div className={styles.downloadAppHeader}><div><div className={styles.aiDetailsEyebrow}>KOYAL AI · ANDROID</div><h2>Take Koyal <span>with you.</span></h2><p>Get the KOYAL AI Android app and access your AI assistant from your phone.</p></div><button type="button" className={styles.profileClose} aria-label="Close Download App" onClick={() => setDownloadAppOpen(false)}><Icon name="x" size={22}/></button></div>
+        <div className={styles.downloadAppCard}><div className={styles.downloadAppLogo}><img src="/koyal-bird.png" alt="KOYAL AI"/></div><div className={styles.downloadAppCopy}><span>ANDROID APPLICATION</span><h3>KOYAL AI</h3><p>Version 1.0.0 · Android APK</p><a className={styles.downloadAppButton} href="https://drive.google.com/uc?export=download&id=1mdRyyW67at6n6K4rA9u704ylH7X7sg7t" target="_blank" rel="noopener noreferrer" download>↓ Download for Android</a><small>If prompted, allow your browser to download the APK. Android may ask you to permit installation from this source.</small></div></div>
+        <div className={styles.downloadAppSteps}><strong>How to install</strong><ol><li>Download the APK to your Android phone.</li><li>Open the downloaded file.</li><li>If Android asks, allow installation from your browser or file manager.</li><li>Tap Install, then open KOYAL AI.</li></ol><p>Only install the APK if you trust its source. Keep Android Play Protect enabled.</p></div>
+        <button type="button" className={styles.reviewBack} onClick={() => setDownloadAppOpen(false)}>← Back to Chat</button>
+      </section>}
       {aiDetailsOpen && <section className={styles.aiDetailsSection} role="region" aria-label="KOYAL AI details and contact">
         <div className={styles.aiDetailsHeader}>
           <div><div className={styles.aiDetailsEyebrow}>KOYAL AI · HERE TO HELP</div><h2>Contact <span>Us.</span></h2><p>Questions, support, feedback or collaboration ideas? Reach out through any of the channels below.</p></div>
