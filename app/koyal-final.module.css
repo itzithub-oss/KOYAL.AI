@@ -560,3 +560,17 @@
 .travelAgencyNote a { width:fit-content; margin-top:3px; color:#ffabc2; font-size:12px; text-decoration:none; }
 .travelAgencyNote a:hover { text-decoration:underline; text-underline-offset:3px; }
 @media(max-width:600px) { .travelSection { padding:17px 13px max(18px,env(safe-area-inset-bottom)); } .travelHeader h2 { font-size:32px; } .travelTabs button { font-size:11px; } .travelForm,.travelAgencyPanel { padding:15px 12px; gap:13px; } .travelFieldGrid { grid-template-columns:minmax(0,1fr); gap:13px; } }
+
+
+/* Generated trip plan stays inside the travel page */
+.travelPlanResult { display:flex; flex-direction:column; gap:18px; width:100%; max-width:850px; margin:0 auto; padding:clamp(17px,3vw,27px); border:1px solid rgba(255,125,166,.28); border-radius:19px; background:linear-gradient(145deg,rgba(48,24,44,.72),rgba(17,13,25,.92)); }
+.travelPlanTop { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding-bottom:15px; border-bottom:1px solid rgba(255,255,255,.09); }
+.travelPlanTop > div > span { color:#ff91b1; font-size:9px; font-weight:850; letter-spacing:.16em; }
+.travelPlanTop h3 { margin:8px 0 5px; color:#fff; font-size:clamp(22px,3vw,30px); letter-spacing:-.03em; }
+.travelPlanTop p { margin:0; color:#bcb0c5; font-size:11px; line-height:1.6; }
+.travelEditButton { flex:0 0 auto; padding:10px 13px; border:1px solid rgba(255,151,180,.5); border-radius:10px; color:#ffe5ed; background:rgba(180,37,87,.2); font-size:11px; font-weight:750; cursor:pointer; }
+.travelEditButton:hover { background:rgba(180,37,87,.36); }
+.travelPlanBody { color:#f4eaf2; font-size:13px; line-height:1.85; white-space:pre-wrap; overflow-wrap:anywhere; }
+.travelPlanError { margin:0; color:#ff9bad; font-size:12px; line-height:1.6; }
+.travelSubmit:disabled { opacity:.65; cursor:wait; }
+@media(max-width:600px) { .travelPlanResult { padding:15px 12px; gap:14px; } .travelPlanTop { flex-direction:column; } .travelEditButton { width:100%; } .travelPlanBody { font-size:12px; line-height:1.75; } }
