@@ -220,7 +220,8 @@ function KoyalApp() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);\n  const [queuedCount, setQueuedCount] = useState(0);\n  const [queuedQuestions, setQueuedQuestions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [queuedCount, setQueuedCount] = useState(0);\n  const [queuedQuestions, setQueuedQuestions] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
@@ -293,7 +294,8 @@ function KoyalApp() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const loadedRef = useRef(false);
-  const historyLoadedRef = useRef(false);\n  const chatQueueRef = useRef<ChatQueueJob[]>([]);\n  const processingQueueRef = useRef(false);\n  const conversationContextRef = useRef<Message[]>([WELCOME]);
+  const historyLoadedRef = useRef(false);
+  const chatQueueRef = useRef<ChatQueueJob[]>([]);\n  const processingQueueRef = useRef(false);\n  const conversationContextRef = useRef<Message[]>([WELCOME]);
   const chatSessionsRef = useRef<ChatSession[]>([]);
   const currentThinking = thinking.find((option) => option.id === thinkingId) || thinking[3];
   const indexThinking = thinking.findIndex((option) => option.id === thinkingId);
@@ -1290,7 +1292,8 @@ function KoyalApp() {
                   </div>
                   {message.role === "user" && <span className={`${styles.messageAvatar} ${styles.userAvatar}`}><Icon name="user" size={23}/></span>}
                 </div>)}
-                {loading && <div className={styles.messageRow}><span className={styles.messageAvatar}><img src="/koyal-bird.png" alt=""/></span><div className={styles.loadingBubble}><span/><span/><span/> Koyal is thinking...</div></div>}\n              {loading && queuedCount > 0 && <div role="status" style={{ margin: "0 42px 12px", color: "var(--muted, #aaa)", fontSize: 12 }}><strong>{queuedCount} {queuedCount === 1 ? "question" : "questions"} waiting:</strong>{queuedQuestions.map((question, index) => <div key={`${index}-${question}`} style={{ marginTop: 5, color: "var(--text, inherit)", overflowWrap: "anywhere" }}>{index + 1}. {question}</div>)}<span>Koyal will answer in order.</span></div>}
+                {loading && <div className={styles.messageRow}><span className={styles.messageAvatar}><img src="/koyal-bird.png" alt=""/></span><div className={styles.loadingBubble}><span/><span/><span/> Koyal is thinking...</div></div>}
+              {loading && queuedCount > 0 && <div role="status" style={{ margin: "0 42px 12px", color: "var(--muted, #aaa)", fontSize: 12 }}><strong>{queuedCount} {queuedCount === 1 ? "question" : "questions"} waiting:</strong>{queuedQuestions.map((question, index) => <div key={`${index}-${question}`} style={{ marginTop: 5, color: "var(--text, inherit)", overflowWrap: "anywhere" }}>{index + 1}. {question}</div>)}<span>Koyal will answer in order.</span></div>}
                 {pendingMemorySuggestion && !loading && <div role="status" aria-live="polite" style={{ margin: "12px 42px 16px", padding: "14px 16px", border: "1px solid rgba(255,71,109,.38)", borderRadius: 16, background: "rgba(255,71,109,.08)", maxWidth: 520 }}>
                   <strong style={{ display: "block", marginBottom: 6 }}>Should I remember this?</strong>
                   <p style={{ margin: "0 0 12px", overflowWrap: "anywhere" }}>{pendingMemorySuggestion}</p>
