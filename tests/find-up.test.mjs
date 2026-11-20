@@ -5,6 +5,9 @@ import { findUpBusinesses, searchFindUpBusinesses } from "../lib/find-up-data.mj
 test("FIND UP includes The Body Mechanics as its initial business", () => {
   assert.equal(findUpBusinesses.length, 1);
   assert.equal(findUpBusinesses[0].name, "The Body Mechanics");
+  assert.equal(findUpBusinesses[0].operatorName, "Dr Prahelika Acharjee");
+  assert.equal(findUpBusinesses[0].startingPrice, "₹250");
+  assert.equal(findUpBusinesses[0].phone, "+91 9679004664");
   assert.deepEqual(findUpBusinesses[0].qualifications, ["BPT", "MPT (Musculoskeletal & Sports)"]);
 });
 
