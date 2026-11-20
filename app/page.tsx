@@ -221,7 +221,8 @@ function KoyalApp() {
   const [historyQuery, setHistoryQuery] = useState("");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [queuedCount, setQueuedCount] = useState(0);\n  const [queuedQuestions, setQueuedQuestions] = useState<string[]>([]);
+  const [queuedCount, setQueuedCount] = useState(0);
+  const [queuedQuestions, setQueuedQuestions] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
@@ -808,9 +809,11 @@ function KoyalApp() {
       while (chatQueueRef.current.length > 0) {
         const job = chatQueueRef.current.shift()!;
         setQueuedCount(chatQueueRef.current.length);
+        setQueuedQuestions(chatQueueRef.current.map((queued) => queued.message));
+        setMessages((old) => [...old, { role: "user", content: job.message, fileName: job.attachment?.name, time: timestamp() }]);
         const history = conversationContextRef.current
           .filter((entry) => (entry.role === "user" || entry.role === "assistant") && typeof entry.content === "string")
-          .map((entry) => ({ role: entry.role, content: entry.content }));
+          .map((entry) => ({ role: entry.role, content: entry.content })).slice(-20);
         conversationContextRef.current = [...conversationContextRef.current, { role: "user", content: job.message }];
         const requestPayload = {
           message: `${job.message}\n\n${job.systemDetails}`, history, mode: job.mode,
@@ -859,6 +862,7 @@ function KoyalApp() {
       processingQueueRef.current = false;
       setLoading(false);
       setQueuedCount(0);
+      setQueuedQuestions([]);
     }
   }
 
@@ -888,6 +892,7 @@ function KoyalApp() {
     setMessages((old) => [...old, { role: "user", content: message, fileName: attachment?.name, time: timestamp() }]);
     chatQueueRef.current.push(job);
     setQueuedCount(chatQueueRef.current.length);
+    setQueuedQuestions(chatQueueRef.current.map((queued) => queued.message));
     setInput("");
     setSelectedFile(null);
     if (fileInput.current) fileInput.current.value = "";
