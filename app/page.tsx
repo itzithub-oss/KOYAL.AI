@@ -402,6 +402,7 @@ function KoyalApp() {
   }, []);
 
   useEffect(() => {
+    if (!processingQueueRef.current && chatQueueRef.current.length === 0) conversationContextRef.current = messages;
     if (loadedRef.current) localStorage.setItem("koyal-ai-chat", JSON.stringify(messages));
     if (historyLoadedRef.current && activeChatId) {
       const existing = chatSessionsRef.current.find((s) => s.id === activeChatId);
