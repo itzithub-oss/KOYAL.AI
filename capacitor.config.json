@@ -1,0 +1,15 @@
+{
+  "appId": "com.koyalai.india",
+  "appName": "KOYAL AI",
+  "webDir": "www",
+  "server": {
+    "url": "https://koyal-ai-india.vercel.app",
+    "cleartext": false,
+    "allowNavigation": [
+      "koyal-ai-india.vercel.app"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
