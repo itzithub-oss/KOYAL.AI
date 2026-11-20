@@ -859,11 +859,49 @@ function KoyalApp() {
             requestHeaders = { "Content-Type": "application/json" };
             requestBody = JSON.stringify(requestPayload);
           }
-          const response = await fetch("/api/chat", { method: "POST", headers: requestHeaders, body: requestBody });
-          const data: ChatApiResponse = await response.json();
-          if (data.debug) console.error("[KOYAL API DEBUG]", data.debug);
-          if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(ERROR_REPLY);
-          const assistantMessage: Message = { role: "assistant", content: data.reply, time: timestamp(), sources: Array.isArray(data.sources) ? data.sources : [] };
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: requestHeaders,
+            body: job.attachment ? requestBody : JSON.stringify({ ...requestPayload, stream: true }),
+          });
+          let finalReply = "";
+          let finalSources: { title: string; url: string }[] = [];
+          if (response.ok && response.headers.get("content-type")?.includes("text/event-stream") && response.body) {
+            const placeholder: Message = { role: "assistant", content: "", time: timestamp() };
+            setMessages((old) => [...old, placeholder]);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const events = buffer.split("\\n\\n");
+              buffer = events.pop() || "";
+              for (const event of events) {
+                const line = event.split("\\n").find((item) => item.startsWith("data: "));
+                if (!line) continue;
+                const payload = JSON.parse(line.slice(6)) as { type: string; text?: string; reply?: string; sources?: { title: string; url: string }[]; message?: string };
+                if (payload.type === "delta" && payload.text) {
+                  finalReply += payload.text;
+                  setMessages((old) => old.map((item, index) => index === old.length - 1 && item.role === "assistant" ? { ...item, content: finalReply } : item));
+                } else if (payload.type === "done") {
+                  finalReply = payload.reply || finalReply;
+                  finalSources = Array.isArray(payload.sources) ? payload.sources : [];
+                } else if (payload.type === "error") {
+                  throw new Error(payload.message || ERROR_REPLY);
+                }
+              }
+            }
+            if (!finalReply.trim()) throw new Error(ERROR_REPLY);
+          } else {
+            const data: ChatApiResponse = await response.json();
+            if (data.debug) console.error("[KOYAL API DEBUG]", data.debug);
+            if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(ERROR_REPLY);
+            finalReply = data.reply;
+            finalSources = Array.isArray(data.sources) ? data.sources : [];
+          }
+          const assistantMessage: Message = { role: "assistant", content: finalReply, time: timestamp(), sources: finalSources };
           conversationContextRef.current = [...conversationContextRef.current, assistantMessage];
           setMessages((old) => [...old, assistantMessage]);
           setPendingMemorySuggestion(suggestMemoryFromMessage(job.originalText, memories));
@@ -876,7 +914,11 @@ function KoyalApp() {
           const errorMessage: Message = { role: "assistant", content: ERROR_REPLY, time: timestamp() };
           conversationContextRef.current = [...conversationContextRef.current, errorMessage];
           setPendingMemorySuggestion("");
-          setMessages((old) => [...old, errorMessage]);
+          setMessages((old) => {
+            if (old[old.length - 1]?.role === "assistant" && old[old.length - 1]?.content === "") return [...old.slice(0, -1), errorMessage];
+            if (old[old.length - 1]?.role === "assistant" && old[old.length - 1]?.content) return [...old.slice(0, -1), errorMessage];
+            return [...old, errorMessage];
+          });
         }
       }
     } finally {
