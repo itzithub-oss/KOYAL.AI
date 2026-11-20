@@ -40,7 +40,8 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
   const [muted, setMuted] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const activeRef = useRef(false);
   const busyRef = useRef(false);
   const restartRef = useRef(false);
@@ -57,10 +58,9 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
     activeRef.current = false;
     busyRef.current = false;
     stopListening();
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
+    if (audioSourceRef.current) {
+      try { audioSourceRef.current.stop(); } catch { /* already stopped */ }
+      audioSourceRef.current = null;
     }
     setOpen(false);
     setListening(false);
@@ -75,10 +75,12 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
     activeRef.current = false;
     restartRef.current = false;
     try { recognitionRef.current?.abort(); } catch { /* ignore */ }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
+    if (audioSourceRef.current) {
+      try { audioSourceRef.current.stop(); } catch { /* already stopped */ }
+      audioSourceRef.current = null;
     }
+    void audioContextRef.current?.close();
+    audioContextRef.current = null;
   }, []);
 
   async function speakWithElevenLabs(text: string) {
@@ -92,22 +94,24 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
       const data = await response.json().catch(() => ({}));
       throw new Error(data.error || "ElevenLabs could not generate Koyal's voice.");
     }
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audioRef.current = audio;
+    const audioContext = audioContextRef.current;
+    if (!audioContext) throw new Error("Audio is not ready. End the call and start Voice Mode again.");
+    if (audioContext.state === "suspended") await audioContext.resume();
+    const audioBytes = await response.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(audioBytes);
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    audioSourceRef.current = source;
     setSpeaking(true);
     setStatus("Koyal is speaking...");
     try {
-      const playbackFinished = new Promise<void>((resolve, reject) => {
-        audio.onended = () => resolve();
-        audio.onerror = () => reject(new Error("Koyal's audio could not be played."));
+      await new Promise<void>((resolve, reject) => {
+        source.onended = () => resolve();
+        try { source.start(0); } catch (error) { reject(error); }
       });
-      await audio.play();
-      await playbackFinished;
     } finally {
-      URL.revokeObjectURL(url);
-      if (audioRef.current === audio) audioRef.current = null;
+      if (audioSourceRef.current === source) audioSourceRef.current = null;
       setSpeaking(false);
     }
   }
@@ -215,6 +219,21 @@ export default function VoiceMode({ subscriptionPlan = "Just" }: { subscriptionP
     setMuted(false);
     setStatus("Starting Koyal's voice...");
     setConnecting(true);
+    // Create and resume audio synchronously from the user's click to satisfy browser playback policies.
+    try {
+      const AudioContextConstructor = window.AudioContext;
+      if (!AudioContextConstructor) throw new Error("Web Audio is unavailable in this browser.");
+      if (!audioContextRef.current || audioContextRef.current.state === "closed") {
+        audioContextRef.current = new AudioContextConstructor();
+      }
+      void audioContextRef.current.resume().catch(() => {
+        setStatus("Audio could not start. Check your browser's sound permissions.");
+      });
+    } catch {
+      setConnecting(false);
+      setStatus("Audio is unavailable in this browser. Please try the latest Chrome or Opera.");
+      return;
+    }
     activeRef.current = true;
     busyRef.current = false;
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
