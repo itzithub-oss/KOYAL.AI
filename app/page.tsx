@@ -297,7 +297,8 @@ function KoyalApp() {
   const loadedRef = useRef(false);
   const historyLoadedRef = useRef(false);
   const chatQueueRef = useRef<ChatQueueJob[]>([]);
-  const processingQueueRef = useRef(false);\n  const conversationContextRef = useRef<Message[]>([WELCOME]);
+  const processingQueueRef = useRef(false);
+  const conversationContextRef = useRef<Message[]>([WELCOME]);
   const chatSessionsRef = useRef<ChatSession[]>([]);
   const currentThinking = thinking.find((option) => option.id === thinkingId) || thinking[3];
   const indexThinking = thinking.findIndex((option) => option.id === thinkingId);
