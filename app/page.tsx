@@ -903,7 +903,9 @@ function KoyalApp() {
           }
           const assistantMessage: Message = { role: "assistant", content: finalReply, time: timestamp(), sources: finalSources };
           conversationContextRef.current = [...conversationContextRef.current, assistantMessage];
-          setMessages((old) => [...old, assistantMessage]);
+          setMessages((old) => old[old.length - 1]?.role === "assistant"
+            ? [...old.slice(0, -1), assistantMessage]
+            : [...old, assistantMessage]);
           setPendingMemorySuggestion(suggestMemoryFromMessage(job.originalText, memories));
           if (job.featherCost > 0) setFeathers((old) => {
             const value = Math.max(0, old - job.featherCost);
