@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   const upstream = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(VOICE_ID) + "?output_format=mp3_44100_128", {
     method: "POST",
     headers: { "xi-api-key": apiKey, "Content-Type": "application/json", Accept: "audio/mpeg" },
-    body: JSON.stringify({ text: text.trim(), model_id: "eleven_flash_v2_5", language_code: supportedLanguage, voice_settings: { stability: 0.48, similarity_boost: 0.82, style: 0.22, use_speaker_boost: true, speed: 1.0 } }),
+    body: JSON.stringify({ text: text.trim(), model_id: "eleven_flash_v2_5", language_code: supportedLanguage, voice_settings: { stability: 0.68, similarity_boost: 0.82, style: 0.08, use_speaker_boost: true, speed: 0.92 } }),
     signal: AbortSignal.timeout(25000),
     cache: "no-store",
   });
