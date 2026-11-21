@@ -105,7 +105,6 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           prompt: fullPrompt,
           steps: 4,
-          seed: Math.floor(Math.random() * 2_000_000_000),
         }),
         cache: "no-store",
         signal: AbortSignal.timeout(50_000),
