@@ -227,7 +227,7 @@ function KoyalApp() {
   const [fileError, setFileError] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
   const [feathers, setFeathers] = useState(2480);
-  const [thinkingId, setThinkingId] = useState<ThinkingEffort>("high");
+  const [thinkingId, setThinkingId] = useState<ThinkingEffort>("just");
   const [thinkingEffortOpen, setThinkingEffortOpen] = useState(false);
   const [characterMode, setCharacterMode] = useState<CharacterMode>("normal");
   const [characterOpen, setCharacterOpen] = useState(true);
@@ -1066,6 +1066,13 @@ function KoyalApp() {
             <button type="button" onClick={() => { setAiDetailsOpen(true); setDownloadAppOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setFindUpOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${aiDetailsOpen ? styles.navOn : ""}`}><Icon name="message"/>AI Details<span className={styles.navSmall}>Contact</span></button>
             <button type="button" onClick={() => { setDownloadAppOpen(true); setAiDetailsOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setFindUpOpen(false); setTravelOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${downloadAppOpen ? styles.navOn : ""}`}><Icon name="arrow"/>Download App<span className={styles.navSmall}>Android</span></button>
           </nav>
+          <div className={styles.policyLinks} aria-label="Legal policies">
+            <span className={styles.policyLinksTitle}>LEGAL &amp; POLICIES</span>
+            <a href="/policies/terms-and-conditions">Terms &amp; Conditions</a>
+            <a href="/policies/privacy-policy">Privacy Policy</a>
+            <a href="/policies/refund-and-cancellation">Refund &amp; Cancellation</a>
+            <a href="/policies/subscription-and-renewal">Subscription &amp; Renewal</a>
+          </div>
           <button type="button" className={styles.sidebarProfile} onClick={openProfile} aria-label="Open your profile">
             <div className={styles.sidebarProfileTop}>
               <WingedAvatar photo={profile.photo} supreme={selectedPlan === "Supreme"} variant="small" />
