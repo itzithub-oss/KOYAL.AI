@@ -37,7 +37,7 @@ h1{font-size:clamp(26px,4vw,38px);margin:0 0 5px;letter-spacing:-.04em}.sub{colo
     style=button.dataset.style;
     document.querySelectorAll('.chip').forEach(item=>item.classList.toggle('active',item===button));
   });
-  function showEmpty(message){
+  function showEmpty(message, explanation='Your generated artwork will appear here.'){
     results.className='empty';
     results.replaceChildren();
     const wrap=document.createElement('div');
@@ -46,7 +46,7 @@ h1{font-size:clamp(26px,4vw,38px);margin:0 0 5px;letter-spacing:-.04em}.sub{colo
     const detail=document.createElement('span');
     spark.className='spark';spark.textContent='✧';
     strong.style.display='block';strong.style.color='#e9dfe8';strong.textContent=message;
-    detail.style.fontSize='12px';detail.textContent='Your generated artwork will appear here.';
+    detail.style.display='block';detail.style.fontSize='12px';detail.style.marginTop='8px';detail.style.overflowWrap='anywhere';detail.textContent=explanation;
     wrap.append(spark,strong,detail);results.append(wrap);
   }
   function addCard(item,index,ratio){
@@ -92,8 +92,9 @@ h1{font-size:clamp(26px,4vw,38px);margin:0 0 5px;letter-spacing:-.04em}.sub{colo
       }
       $('status').textContent='Done! Your images are ready to view and download.';
     }catch(error){
-      if(!generated)showEmpty('Image generation failed');
-      $('status').textContent=(generated?generated+' image'+(generated===1?'':'s')+' generated. ':'')+(error instanceof Error?error.message:'Something went wrong. Please try again.');
+      const errorText=error instanceof Error?error.message:'Something went wrong. Please try again.';
+      if(!generated)showEmpty('Image generation failed',errorText);
+      $('status').textContent=(generated?generated+' image'+(generated===1?'':'s')+' generated. ':'')+errorText;
     }finally{
       button.disabled=false;button.textContent='✦ Generate image';
     }
