@@ -49,49 +49,51 @@ h1{font-size:clamp(26px,4vw,38px);margin:0 0 5px;letter-spacing:-.04em}.sub{colo
     detail.style.fontSize='12px';detail.textContent='Your generated artwork will appear here.';
     wrap.append(spark,strong,detail);results.append(wrap);
   }
+  function addCard(item,index,ratio){
+    if(!item||typeof item.image!=='string')return;
+    const card=document.createElement('article');
+    const art=document.createElement('div');
+    const image=document.createElement('img');
+    const title=document.createElement('div');
+    const download=document.createElement('button');
+    const imageUrl='data:'+(item.mimeType||'image/png')+';base64,'+item.image;
+    art.className='art '+ratio;
+    image.src=imageUrl;image.alt=style+' image variation '+(index+1);image.loading='lazy';
+    title.className='card-title';title.textContent=style+' · Variation '+(index+1);
+    download.className='download';download.type='button';download.textContent='↓ Download image';
+    download.addEventListener('click',()=>{
+      const link=document.createElement('a');link.href=imageUrl;link.download='koyal-image-'+(index+1)+'.png';link.click();
+    });
+    art.append(image);card.append(art,title,download);results.append(card);
+  }
   $('generate').addEventListener('click',async()=>{
     const prompt=$('prompt').value.trim();
     if(!prompt){$('status').textContent='Please describe the image you want to create.';$('prompt').focus();return;}
     const count=Number($('count').value),ratio=$('ratio').value,button=$('generate');
+    let generated=0;
     button.disabled=true;button.textContent='Creating your image…';
-    $('status').textContent='Connecting to Cloudflare AI. This can take a little while.';
-    results.className='empty';results.textContent='Generating…';
-    $('resultCount').textContent='Generating';
+    results.className='cards';results.replaceChildren();
+    $('status').textContent='Starting image generation…';
+    $('resultCount').textContent='0 images';
     try{
-      const response=await fetch('/api/image-studio',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({prompt,style,ratio,count})
-      });
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(data.error||'Image generation failed. Please try again.');
-      if(!Array.isArray(data.images)||!data.images.length)throw new Error('No image was returned. Please try again.');
-      results.className='cards';results.replaceChildren();
-      data.images.forEach((item,index)=>{
-        if(!item||typeof item.image!=='string')return;
-        const card=document.createElement('article');
-        const art=document.createElement('div');
-        const image=document.createElement('img');
-        const title=document.createElement('div');
-        const download=document.createElement('button');
-        const imageUrl='data:'+(item.mimeType||'image/png')+';base64,'+item.image;
-        art.className='art '+ratio;
-        image.src=imageUrl;image.alt=style+' image variation '+(index+1);image.loading='lazy';
-        title.className='card-title';title.textContent=style+' · Variation '+(index+1);
-        download.className='download';download.type='button';download.textContent='↓ Download image';
-        download.addEventListener('click',()=>{
-          const link=document.createElement('a');link.href=imageUrl;link.download='koyal-image-'+(index+1)+'.png';link.click();
+      for(let index=0;index<count;index++){
+        $('status').textContent='Generating image '+(index+1)+' of '+count+'…';
+        button.textContent='Creating '+(index+1)+' of '+count+'…';
+        const response=await fetch('/api/image-studio',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({prompt,style,ratio,count:1})
         });
-        art.append(image);card.append(art,title,download);results.append(card);
-      });
-      const shown=results.children.length;
-      $('resultCount').textContent=shown+' image'+(shown===1?'':'s');
-      $('status').textContent='Done! Your image'+(shown===1?' is':'s are')+' ready to view and download.';
-      if(!shown)showEmpty('No image was returned');
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(data.error||'Image generation failed. Please try again.');
+        if(!Array.isArray(data.images)||!data.images.length)throw new Error('No image was returned. Please try again.');
+        data.images.forEach(item=>addCard(item,generated++,ratio));
+        $('resultCount').textContent=generated+' image'+(generated===1?'':'s');
+      }
+      $('status').textContent='Done! Your images are ready to view and download.';
     }catch(error){
-      showEmpty('Image generation failed');
-      $('resultCount').textContent='0 images';
-      $('status').textContent=error instanceof Error?error.message:'Something went wrong. Please try again.';
+      if(!generated)showEmpty('Image generation failed');
+      $('status').textContent=(generated?generated+' image'+(generated===1?'':'s')+' generated. ':'')+(error instanceof Error?error.message:'Something went wrong. Please try again.');
     }finally{
       button.disabled=false;button.textContent='✦ Generate image';
     }
