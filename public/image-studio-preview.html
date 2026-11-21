@@ -4,28 +4,97 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#100d14">
-<title>KOYAL AI — Image Studio Preview</title>
+<title>KOYAL AI — Image Studio</title>
 <style>
 :root{color-scheme:dark;--bg:#100d14;--panel:#19141e;--line:#342631;--muted:#a99eaa;--red:#c52b43;--red2:#f05a70}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% 0,#381522 0,transparent 35%),var(--bg);color:#f8f3f7;font:15px/1.5 Inter,ui-sans-serif,system-ui,Segoe UI,sans-serif;min-height:100vh}
-.wrap{max-width:1050px;margin:auto;padding:26px 20px 48px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px}.brand{display:flex;align-items:center;gap:13px}.mark{width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,#751b32,#21121f);display:grid;place-items:center;font-size:25px;color:#ffb0ba;box-shadow:0 8px 30px #9e1e3a33}.brand strong{letter-spacing:.12em;font-size:18px}.brand small{display:block;color:var(--muted);font-size:12px;letter-spacing:0}.pill{border:1px solid #713143;background:#351722;color:#ffb1bd;padding:5px 11px;border-radius:99px;font-size:11px;letter-spacing:.12em}
-h1{font-size:clamp(26px,4vw,38px);margin:0 0 5px;letter-spacing:-.04em}.sub{color:var(--muted);margin:0 0 23px}.layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:18px}.panel{background:linear-gradient(150deg,#1d1721,#151119);border:1px solid var(--line);border-radius:19px;padding:20px;box-shadow:0 16px 50px #0003}.panel h2{font-size:15px;margin:0 0 14px}.field-label{display:block;color:#c7bac7;font-size:12px;margin:14px 0 7px}textarea,select{width:100%;border:1px solid #443440;background:#100d14;color:#f8f3f7;border-radius:11px;padding:12px;font:inherit;outline:none}textarea{resize:vertical;min-height:125px}textarea:focus,select:focus{border-color:#d34a60;box-shadow:0 0 0 3px #d34a6022}.styles{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#211923;border:1px solid #43313f;color:#d9cbd7;border-radius:99px;padding:7px 12px;font-size:12px;cursor:pointer}.chip.active{background:#702033;border-color:#dc5369;color:white}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.generate{width:100%;margin-top:18px;border:0;border-radius:12px;padding:13px;background:linear-gradient(100deg,#a51f38,#e1475e);color:white;font-weight:750;font-size:14px;cursor:pointer;box-shadow:0 8px 24px #b51d3b33}.generate:hover{filter:brightness(1.12)}.hint{font-size:11px;color:var(--muted);margin:11px 0 0}.gallery-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.gallery-head h2{margin:0}.count{font-size:11px;color:var(--muted)}.empty{min-height:360px;border:1px dashed #51404e;border-radius:14px;display:grid;place-items:center;text-align:center;padding:25px;color:var(--muted)}.empty .spark{font-size:44px;color:#d65a70;margin-bottom:8px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.art{aspect-ratio:1/1;border-radius:12px;display:grid;place-items:center;overflow:hidden;position:relative;background:radial-gradient(circle at 28% 25%,#bd4767 0,transparent 32%),radial-gradient(circle at 72% 78%,#423c91 0,transparent 35%),linear-gradient(135deg,#15172e,#55223d 60%,#17121f)}.art:before{content:"✧";font-size:55px;color:#fff9;text-shadow:0 0 30px #ff9bb9}.art.landscape{aspect-ratio:16/9}.art.portrait{aspect-ratio:2/3}.art.story{aspect-ratio:9/16}.card-title{font-size:12px;font-weight:650;margin-top:8px}.card-desc{font-size:11px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}.notice{margin-top:16px;border:1px solid #57422e;background:#241d17;color:#d9c29e;border-radius:11px;padding:11px 13px;font-size:11px}.foot{text-align:center;color:#817783;font-size:11px;margin-top:25px}
+.wrap{max-width:1050px;margin:auto;padding:26px 20px 48px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px}.brand{display:flex;align-items:center;gap:13px}.mark{width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,#751b32,#21121f);display:grid;place-items:center;font-size:25px;color:#ffb0ba;box-shadow:0 8px 30px #9e1e3a33}.brand strong{letter-spacing:.12em;font-size:18px}.brand small{display:block;color:var(--muted);font-size:12px;letter-spacing:0}.pill{border:1px solid #315c43;background:#17281e;color:#a9edbd;padding:5px 11px;border-radius:99px;font-size:11px;letter-spacing:.12em}
+h1{font-size:clamp(26px,4vw,38px);margin:0 0 5px;letter-spacing:-.04em}.sub{color:var(--muted);margin:0 0 23px}.layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:18px}.panel{background:linear-gradient(150deg,#1d1721,#151119);border:1px solid var(--line);border-radius:19px;padding:20px;box-shadow:0 16px 50px #0003}.panel h2{font-size:15px;margin:0 0 14px}.field-label{display:block;color:#c7bac7;font-size:12px;margin:14px 0 7px}textarea,select{width:100%;border:1px solid #443440;background:#100d14;color:#f8f3f7;border-radius:11px;padding:12px;font:inherit;outline:none}textarea{resize:vertical;min-height:125px}textarea:focus,select:focus{border-color:#d34a60;box-shadow:0 0 0 3px #d34a6022}.styles{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#211923;border:1px solid #43313f;color:#d9cbd7;border-radius:99px;padding:7px 12px;font-size:12px;cursor:pointer}.chip.active{background:#702033;border-color:#dc5369;color:white}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.generate{width:100%;margin-top:18px;border:0;border-radius:12px;padding:13px;background:linear-gradient(100deg,#a51f38,#e1475e);color:white;font-weight:750;font-size:14px;cursor:pointer;box-shadow:0 8px 24px #b51d3b33}.generate:hover{filter:brightness(1.12)}.generate:disabled{opacity:.6;cursor:wait;filter:none}.hint{font-size:11px;color:var(--muted);margin:11px 0 0;min-height:17px}.gallery-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.gallery-head h2{margin:0}.count{font-size:11px;color:var(--muted)}.empty{min-height:360px;border:1px dashed #51404e;border-radius:14px;display:grid;place-items:center;text-align:center;padding:25px;color:var(--muted)}.empty .spark{font-size:44px;color:#d65a70;margin-bottom:8px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.art{aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:#100d14;border:1px solid #3b2b39}.art img{width:100%;height:100%;object-fit:contain;display:block}.art.landscape{aspect-ratio:16/9}.art.portrait{aspect-ratio:2/3}.art.story{aspect-ratio:9/16}.card-title{font-size:12px;font-weight:650;margin-top:8px}.card-desc{font-size:11px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}.download{margin-top:8px;width:100%;border:1px solid #624050;background:#281923;color:#ffdce4;border-radius:9px;padding:8px;font-size:11px;font-weight:650;cursor:pointer}.download:hover{background:#422131}.notice{margin-top:16px;border:1px solid #57422e;background:#241d17;color:#d9c29e;border-radius:11px;padding:11px 13px;font-size:11px}.foot{text-align:center;color:#817783;font-size:11px;margin-top:25px}
 @media(max-width:720px){.wrap{padding:18px 13px 32px}.layout{grid-template-columns:1fr}.panel{padding:16px}.empty{min-height:220px}.top{margin-bottom:23px}}
 </style>
 </head>
 <body><main class="wrap">
-<header class="top"><div class="brand"><div class="mark">✦</div><div><strong>KOYAL <span style="color:#f05a70">IMAGE STUDIO</span></strong><small>Imagine it. Create it.</small></div></div><span class="pill">PREVIEW BUILD</span></header>
-<h1>Bring your imagination to life.</h1><p class="sub">Create artwork, concepts and visual ideas with KOYAL AI.</p>
+<header class="top"><div class="brand"><div class="mark">✦</div><div><strong>KOYAL <span style="color:#f05a70">IMAGE STUDIO</span></strong><small>Imagine it. Create it.</small></div></div><span class="pill">AI CONNECTED</span></header>
+<h1>Bring your imagination to life.</h1><p class="sub">Create original artwork, concepts and visual ideas with KOYAL AI.</p>
 <div class="layout">
 <section class="panel"><h2>✦ Describe your image</h2>
-<label class="field-label" for="prompt">Your prompt</label><textarea id="prompt" placeholder="A cinematic futuristic city at sunset, glowing neon lights, intricate details..."></textarea>
-<span class="field-label">Choose a style</span><div class="styles" id="styles"><button class="chip active" data-style="Realistic">Realistic</button><button class="chip" data-style="Anime">Anime</button><button class="chip" data-style="3D Art">3D Art</button><button class="chip" data-style="Cartoon">Cartoon</button><button class="chip" data-style="Logo">Logo</button><button class="chip" data-style="Poster">Poster</button><button class="chip" data-style="Digital Art">Digital Art</button></div>
-<div class="two"><div><label class="field-label" for="ratio">Aspect ratio</label><select id="ratio"><option value="square">Square · 1:1</option><option value="portrait">Portrait · 2:3</option><option value="landscape">Landscape · 16:9</option><option value="story">Story · 9:16</option></select></div><div><label class="field-label" for="count">Variations</label><select id="count"><option value="1">1 image</option><option value="2">2 images</option><option value="3">3 images</option><option value="4">4 images</option></select></div></div>
-<button class="generate" id="generate">✦ Generate image</button><p class="hint" id="status">Demo mode — connect an image-generation provider to create real images.</p>
+<label class="field-label" for="prompt">Your prompt</label><textarea id="prompt" maxlength="1800" placeholder="A cinematic futuristic city at sunset, glowing neon lights, intricate details..."></textarea>
+<span class="field-label">Choose a style</span><div class="styles" id="styles"><button type="button" class="chip active" data-style="Realistic">Realistic</button><button type="button" class="chip" data-style="Anime">Anime</button><button type="button" class="chip" data-style="3D Art">3D Art</button><button type="button" class="chip" data-style="Cartoon">Cartoon</button><button type="button" class="chip" data-style="Logo">Logo</button><button type="button" class="chip" data-style="Poster">Poster</button><button type="button" class="chip" data-style="Digital Art">Digital Art</button></div>
+<div class="two"><div><label class="field-label" for="ratio">Composition</label><select id="ratio"><option value="square">Square · 1:1</option><option value="portrait">Portrait · 2:3</option><option value="landscape">Landscape · 16:9</option><option value="story">Story · 9:16</option></select></div><div><label class="field-label" for="count">Variations</label><select id="count"><option value="1">1 image</option><option value="2">2 images</option><option value="3">3 images</option><option value="4">4 images</option></select></div></div>
+<button class="generate" id="generate">✦ Generate image</button><p class="hint" id="status" role="status" aria-live="polite">Ready. Describe what you want to create.</p>
 </section>
-<section class="panel"><div class="gallery-head"><h2>Your creations</h2><span class="count" id="resultCount">0 images</span></div><div id="results" class="empty"><div><div class="spark">✧</div><strong style="display:block;color:#e9dfe8">Your artwork will appear here</strong><span style="font-size:12px">Write a prompt and generate your first concept.</span></div></div><div class="notice">This is a UI preview. The generated tiles are visual placeholders; no image API, credits or uploads are connected.</div></section>
-</div><footer class="foot">KOYAL AI · IMAGE STUDIO · EXPERIMENTAL PREVIEW</footer>
+<section class="panel"><div class="gallery-head"><h2>Your creations</h2><span class="count" id="resultCount">0 images</span></div><div id="results" class="empty"><div><div class="spark">✧</div><strong style="display:block;color:#e9dfe8">Your artwork will appear here</strong><span style="font-size:12px">Write a prompt and generate your first image.</span></div></div><div class="notice">Uses Cloudflare Workers AI's free daily allocation. Multiple variations use one generation request each. Composition is a prompt hint; the model controls the final image dimensions.</div></section>
+</div><footer class="foot">KOYAL AI · IMAGE STUDIO</footer>
 </main>
 <script>
-(()=>{let style='Realistic';const $=id=>document.getElementById(id);$('styles').addEventListener('click',e=>{const b=e.target.closest('button[data-style]');if(!b)return;style=b.dataset.style;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('active',x===b))});$('generate').addEventListener('click',()=>{const prompt=$('prompt').value.trim();if(!prompt){$('status').textContent='Please describe the image you want to create.';$('prompt').focus();return}const count=+$('count').value,ratio=$('ratio').value,results=$('results');results.className='cards';results.innerHTML='';for(let i=0;i<count;i++){const card=document.createElement('article'),art=document.createElement('div'),title=document.createElement('div'),desc=document.createElement('div');art.className='art '+ratio;title.className='card-title';title.textContent=style+' · Concept '+(i+1);desc.className='card-desc';desc.textContent=prompt;card.append(art,title,desc);results.append(card)}$('resultCount').textContent=count+' image'+(count===1?'':'s');$('status').textContent='Concept preview ready. Real image generation is not connected yet.'})})();
+(()=> {
+  let style='Realistic';
+  const $=id=>document.getElementById(id);
+  const results=$('results');
+  $('styles').addEventListener('click',event=>{
+    const button=event.target.closest('button[data-style]');
+    if(!button)return;
+    style=button.dataset.style;
+    document.querySelectorAll('.chip').forEach(item=>item.classList.toggle('active',item===button));
+  });
+  function showEmpty(message){
+    results.className='empty';
+    results.replaceChildren();
+    const wrap=document.createElement('div');
+    const spark=document.createElement('div');
+    const strong=document.createElement('strong');
+    const detail=document.createElement('span');
+    spark.className='spark';spark.textContent='✧';
+    strong.style.display='block';strong.style.color='#e9dfe8';strong.textContent=message;
+    detail.style.fontSize='12px';detail.textContent='Your generated artwork will appear here.';
+    wrap.append(spark,strong,detail);results.append(wrap);
+  }
+  $('generate').addEventListener('click',async()=>{
+    const prompt=$('prompt').value.trim();
+    if(!prompt){$('status').textContent='Please describe the image you want to create.';$('prompt').focus();return;}
+    const count=Number($('count').value),ratio=$('ratio').value,button=$('generate');
+    button.disabled=true;button.textContent='Creating your image…';
+    $('status').textContent='Connecting to Cloudflare AI. This can take a little while.';
+    results.className='empty';results.textContent='Generating…';
+    $('resultCount').textContent='Generating';
+    try{
+      const response=await fetch('/api/image-studio',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({prompt,style,ratio,count})
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.error||'Image generation failed. Please try again.');
+      if(!Array.isArray(data.images)||!data.images.length)throw new Error('No image was returned. Please try again.');
+      results.className='cards';results.replaceChildren();
+      data.images.forEach((item,index)=>{
+        if(!item||typeof item.image!=='string')return;
+        const card=document.createElement('article');
+        const art=document.createElement('div');
+        const image=document.createElement('img');
+        const title=document.createElement('div');
+        const download=document.createElement('button');
+        const imageUrl='data:'+(item.mimeType||'image/png')+';base64,'+item.image;
+        art.className='art '+ratio;
+        image.src=imageUrl;image.alt=style+' image variation '+(index+1);image.loading='lazy';
+        title.className='card-title';title.textContent=style+' · Variation '+(index+1);
+        download.className='download';download.type='button';download.textContent='↓ Download image';
+        download.addEventListener('click',()=>{
+          const link=document.createElement('a');link.href=imageUrl;link.download='koyal-image-'+(index+1)+'.png';link.click();
+        });
+        art.append(image);card.append(art,title,download);results.append(card);
+      });
+      const shown=results.children.length;
+      $('resultCount').textContent=shown+' image'+(shown===1?'':'s');
+      $('status').textContent='Done! Your image'+(shown===1?' is':'s are')+' ready to view and download.';
+      if(!shown)showEmpty('No image was returned');
+    }catch(error){
+      showEmpty('Image generation failed');
+      $('resultCount').textContent='0 images';
+      $('status').textContent=error instanceof Error?error.message:'Something went wrong. Please try again.';
+    }finally{
+      button.disabled=false;button.textContent='✦ Generate image';
+    }
+  });
+})();
 </script></body></html>
