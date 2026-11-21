@@ -597,3 +597,33 @@
 .downloadAppSteps ol { margin:12px 0; padding-left:20px; color:#e8dce9; font-size:12px; line-height:1.9; }
 .downloadAppSteps p { margin:0; color:#9f91a7; font-size:10px; line-height:1.6; }
 @media(max-width:600px) { .downloadAppSection { padding:18px 13px max(18px,env(safe-area-inset-bottom)); } .downloadAppHeader h2 { font-size:34px; } .downloadAppCard { align-items:flex-start; gap:15px; padding:17px 13px; } .downloadAppLogo { flex-basis:68px; width:68px; height:68px; border-radius:18px; } .downloadAppLogo img { width:54px; height:54px; } .downloadAppCopy h3 { font-size:21px; } .downloadAppButton { min-height:44px; padding:0 13px; font-size:11px; } .downloadAppSteps { padding:16px; } }
+
+
+/* Always-visible legal links in the app sidebar */
+.policyLinks {
+  flex-shrink: 0;
+  display: grid;
+  gap: 5px;
+  margin: 12px 2px 12px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 109, 164, .2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .025);
+}
+.policyLinksTitle {
+  color: #a99caf;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .14em;
+  margin-bottom: 2px;
+}
+.policyLinks a {
+  color: #ff9aaf;
+  font-size: 11px;
+  line-height: 1.45;
+  text-decoration: none;
+}
+.policyLinks a:hover, .policyLinks a:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+}
