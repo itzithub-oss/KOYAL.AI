@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 const MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const MAX_PROMPT_LENGTH = 1800;
@@ -80,8 +80,8 @@ export async function POST(request: Request) {
     if (!Object.prototype.hasOwnProperty.call(COMPOSITIONS, ratio)) {
       return NextResponse.json({ error: "Please choose a valid composition." }, { status: 400 });
     }
-    if (!Number.isInteger(count) || count < 1 || count > 4) {
-      return NextResponse.json({ error: "You can generate between 1 and 4 variations at a time." }, { status: 400 });
+    if (count !== 1) {
+      return NextResponse.json({ error: "Generate one image per request." }, { status: 400 });
     }
 
     const fullPrompt = [
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
           seed: Math.floor(Math.random() * 2_000_000_000),
         }),
         cache: "no-store",
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(50_000),
       });
 
       const payload = await response.json().catch(() => null) as {
