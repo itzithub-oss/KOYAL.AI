@@ -85,7 +85,7 @@
 .overflowMenu button:hover { background: rgba(255,255,255,.08); }
 .chatSpace { position: relative; display: flex; flex: 1 1 0; min-height: 0; background: linear-gradient(180deg, rgba(15,7,16,.25), #08070d 96%); overflow: hidden; }
 .sceneBackdrop { position: absolute; pointer-events: none; z-index: 0; top: 0; right: 0; width: min(94%,1100px); height: min(77%,620px); background-image: linear-gradient(90deg, #08070d 0%, transparent 26%), linear-gradient(180deg, transparent 45%, #08070d 100%), url('/koyal-scene.webp'); background-position: center; background-size: cover; opacity: .89; mask-image: linear-gradient(180deg, #000 40%, transparent 100%); }
-.chatScroll { z-index: 1; position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.chatScroll { z-index: 1; position: relative; flex: 1 1 0; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 .messages { display: flex; flex-direction: column; min-height: 100%; gap: 14px; padding: 115px 31px 22px; }
 .messageRow { display: flex; gap: 18px; align-items: flex-start; }
 .assistantRow { align-self: flex-start; max-width: min(80%,820px); }
@@ -317,7 +317,9 @@
   .topbar { flex-shrink: 0; padding-top: max(8px,env(safe-area-inset-top)); }
   .mobileMenuButton { top: max(16px,env(safe-area-inset-top)); }
   .bottomArea { padding-bottom: max(10px,env(safe-area-inset-bottom)); flex-shrink: 0; }
-  .messages { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  /* Keep one vertical scroll container: the chat viewport. Nested message scrolling blocks touch swipes on some mobile browsers. */
+  .chatScroll { min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+  .messages { overflow-y: visible; overscroll-behavior: auto; }
   .composer textarea, .profileFields input, .profileFields select, .field input { font-size: 16px; }
   .profileModal { max-width: 100%; }
   .profileHead, .profileHeadActions { flex-wrap: wrap; }
