@@ -321,7 +321,7 @@ function KoyalApp() {
   const currentThinking = thinking.find((option) => option.id === thinkingId) || thinking[3];
   const indexThinking = thinking.findIndex((option) => option.id === thinkingId);
   const currentCharacter = characters.find((character) => character.id === characterMode) || characters[0];
-  const discountedThinkingIds: ThinkingEffort[] = selectedPlan === "Let It" ? ["let-it"] : selectedPlan === "Care" ? ["let-it", "care"] : selectedPlan === "Elite" ? ["let-it", "care", "high", "ultra-high", "elite"] : [];
+  const discountedThinkingIds: string[] = selectedPlan === "Let It" ? ["let-it"] : selectedPlan === "Care" ? ["let-it", "care"] : selectedPlan === "Elite" ? ["let-it", "care", "high", "ultra-high", "elite"] : [];
   const featherCost = selectedPlan === "Supreme" ? 0 : discountedThinkingIds.includes(thinkingId) ? currentThinking.feathers * 0.5 : currentThinking.feathers;
   const visibleMessages = search.trim()
     ? messages.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
@@ -1079,7 +1079,7 @@ function KoyalApp() {
             <button type="button" onClick={() => { setTravelOpen(true); setTravelTab("planner"); setFindUpOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); setAiDetailsOpen(false); closeSidebar(); }} className={`${styles.navItem} ${travelOpen ? styles.navOn : ""}`}><Icon name="arrow"/>Tours &amp; Travels<span className={styles.navSmall}>Explore</span></button>
             <button type="button" onClick={() => { setDailyHubOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setCodeModeOpen(false); closeSidebar(); }} className={`${styles.navItem} ${dailyHubOpen ? styles.navOn : ""}`}><Icon name="brain"/>Daily AI Hub<span className={styles.navSmall}>5</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
-            <button type="button" onClick={() => { setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
+            <button type="button" onClick={() => { if (!["Care", "Elite", "Supreme"].includes(selectedPlan)) { setSubscriptionOpen(true); closeSidebar(); return; } setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
               {characterOpen && <div className={styles.characterList}>
@@ -1088,8 +1088,8 @@ function KoyalApp() {
               </div>}
             </div>
             <button type="button" onClick={() => setTeacherMode((v) => !v)} className={`${styles.navItem} ${teacherMode ? styles.navOn : ""}`}><Icon name="book"/>Teacher Mode<span className={styles.navSmall}>{teacherMode ? "On" : ""}</span></button>
-            <button type="button" onClick={() => setStudyMode((v) => !v)} className={`${styles.navItem} ${studyMode ? styles.navOn : ""}`}><Icon name="graduation"/>Study Mode<span className={styles.navSmall}>{studyMode ? "On" : "Off"}</span></button>
-            {studyMode && <div className={styles.teacherSettings}>
+            <button type="button" onClick={() => { if (!["Care", "Elite", "Supreme"].includes(selectedPlan)) { setStudyMode(false); setSubscriptionOpen(true); closeSidebar(); return; } setStudyMode((v) => !v); }} className={`${styles.navItem} ${studyMode ? styles.navOn : ""}`}><Icon name="graduation"/>Study Mode<span className={styles.navSmall}>{studyMode ? "On" : "Off"}</span></button>
+            {studyMode && ["Care", "Elite", "Supreme"].includes(selectedPlan) && <div className={styles.teacherSettings}>
               <label>Study class<select value={teacherClass} onChange={(e) => setTeacherClass(e.target.value)}>{Array.from({length:12},(_,i) => <option key={i} value={String(i+1)}>{i+1}</option>)}</select></label>
               <label>Subject<select value={teacherSubject} onChange={(e) => setTeacherSubject(e.target.value)}>{teacherSubjects.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
               <label>Learning focus<select value={studyFocus} onChange={(e) => setStudyFocus(e.target.value)}>{["Understand the topic","Homework help","Quiz practice","Exam preparation","Revision and notes"].map((s) => <option key={s}>{s}</option>)}</select></label>
@@ -1402,7 +1402,7 @@ function KoyalApp() {
             </div>
           </div>
       </div>}
-            {codeModeOpen && !profileOpen && !memoryOpen && !tasksOpen && <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", gap:16, width:"min(1100px,calc(100% - 32px))", height:"100%", minHeight:0, margin:"0 auto", padding:"28px 0 18px", overflowY:"auto" }}>
+            {codeModeOpen && ["Care", "Elite", "Supreme"].includes(selectedPlan) && !profileOpen && !memoryOpen && !tasksOpen && <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", gap:16, width:"min(1100px,calc(100% - 32px))", height:"100%", minHeight:0, margin:"0 auto", padding:"28px 0 18px", overflowY:"auto" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
                 <div><h2 style={{ margin:0, fontSize:26 }}>⌘ Code Mode</h2><p style={{ margin:"6px 0 0", opacity:.7, fontSize:13 }}>Generate, explain, debug and improve code with Koyal.</p></div>
                 <button type="button" onClick={() => setCodeModeOpen(false)} className={styles.editProfileButton}>← Back to Chat</button>
