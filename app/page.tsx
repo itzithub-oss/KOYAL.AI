@@ -433,8 +433,10 @@ function KoyalApp() {
       setEditingProfile(false);
       setProfileError("");
       setSelectedPlan("Just");
-      setFeathers(257);
-      localStorage.setItem("koyal-ai-feather-balance:guest", "257");
+      const guestWallet = Number(localStorage.getItem("koyal-ai-feather-balance:guest"));
+      const guestBalance = Number.isFinite(guestWallet) && localStorage.getItem("koyal-ai-feather-balance:guest") !== null ? Math.max(0, guestWallet) : 257;
+      localStorage.setItem("koyal-ai-feather-balance:guest", String(guestBalance));
+      setFeathers(guestBalance);
       setSubscriptionOpen(false);
       setFeatherShopOpen(false);
     };
