@@ -226,7 +226,7 @@ function KoyalApp() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanName>("Just");
-  const [feathers, setFeathers] = useState(2480);
+  const [feathers, setFeathers] = useState(257);
   const [thinkingId, setThinkingId] = useState<ThinkingEffort>("just");
   const [thinkingEffortOpen, setThinkingEffortOpen] = useState(false);
   const [characterMode, setCharacterMode] = useState<CharacterMode>("normal");
@@ -321,7 +321,8 @@ function KoyalApp() {
   const currentThinking = thinking.find((option) => option.id === thinkingId) || thinking[3];
   const indexThinking = thinking.findIndex((option) => option.id === thinkingId);
   const currentCharacter = characters.find((character) => character.id === characterMode) || characters[0];
-  const featherCost = selectedPlan === "Supreme" ? 0 : currentThinking.feathers;
+  const discountedThinkingIds: ThinkingEffort[] = selectedPlan === "Let It" ? ["let-it"] : selectedPlan === "Care" ? ["let-it", "care"] : selectedPlan === "Elite" ? ["let-it", "care", "high", "ultra-high", "elite"] : [];
+  const featherCost = selectedPlan === "Supreme" ? 0 : discountedThinkingIds.includes(thinkingId) ? currentThinking.feathers * 0.5 : currentThinking.feathers;
   const visibleMessages = search.trim()
     ? messages.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
     : messages;
@@ -364,8 +365,28 @@ function KoyalApp() {
         localStorage.setItem("koyal-ai-subscription-plan", "Just");
         setSelectedPlan("Just");
       } else if (plans.some((p) => p.name === plan)) setSelectedPlan(plan as PlanName);
-      const featherStore = localStorage.getItem("koyal-ai-feather-balance");
-      if (featherStore !== null && Number.isFinite(Number(featherStore))) setFeathers(Number(featherStore));
+      const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+      const userId = auth && auth.access_token && auth.user && auth.user.id ? String(auth.user.id) : "";
+      const walletKey = userId ? "koyal-ai-feather-balance:" + userId : "koyal-ai-feather-balance:guest";
+      const savedWallet = localStorage.getItem(walletKey);
+      const legacyWallet = localStorage.getItem("koyal-ai-feather-balance");
+      if (savedWallet !== null && Number.isFinite(Number(savedWallet))) setFeathers(Math.max(0, Number(savedWallet)));
+      else if (userId && legacyWallet !== null && Number.isFinite(Number(legacyWallet))) {
+        const migrated = Math.max(0, Number(legacyWallet));
+        localStorage.setItem(walletKey, String(migrated)); setFeathers(migrated);
+      } else if (userId) {
+        const claimedKey = "koyal-ai-welcome-bonus-claimed:" + userId;
+        if (localStorage.getItem(claimedKey) !== "true") {
+          localStorage.setItem(walletKey, "150"); localStorage.setItem(claimedKey, "true"); setFeathers(150);
+        } else { localStorage.setItem(walletKey, "0"); setFeathers(0); }
+      } else { localStorage.setItem(walletKey, "257"); setFeathers(257); }
+      if (planExpiry > Date.now() && planExpiry <= Date.now() + 2 * 24 * 60 * 60 * 1000) {
+        const reminderKey = "koyal-ai-expiry-reminder:" + (userId || "guest") + ":" + planExpiry;
+        if (!localStorage.getItem(reminderKey)) {
+          localStorage.setItem(reminderKey, "true");
+          window.setTimeout(() => window.alert("Your KOYAL subscription expires in 2 days or less. Renew to keep your plan benefits."), 3000);
+        }
+      }
       const profileJson = localStorage.getItem("koyal-ai-profile-v2");
       if (profileJson) {
         const stored = JSON.parse(profileJson) as Partial<Profile>;
@@ -412,7 +433,8 @@ function KoyalApp() {
       setEditingProfile(false);
       setProfileError("");
       setSelectedPlan("Just");
-      setFeathers(2480);
+      setFeathers(257);
+      localStorage.setItem("koyal-ai-feather-balance:guest", "257");
       setSubscriptionOpen(false);
       setFeatherShopOpen(false);
     };
@@ -510,6 +532,12 @@ function KoyalApp() {
       event.target.value = ""; return;
     }
     setSelectedFile(file);
+  }
+  function walletStorageKey() {
+    try {
+      const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+      return auth?.access_token && auth?.user?.id ? "koyal-ai-feather-balance:" + String(auth.user.id) : "koyal-ai-feather-balance:guest";
+    } catch { return "koyal-ai-feather-balance:guest"; }
   }
   function isSignedIn() {
     try {
@@ -669,7 +697,7 @@ function KoyalApp() {
     }
     setFeathers((current) => {
       const next = current + amount;
-      localStorage.setItem("koyal-ai-feather-balance", String(next));
+      localStorage.setItem(walletStorageKey(), String(next));
       return next;
     });
     setPurchaseNotice(`Demo purchase successful! ${amount.toLocaleString("en-IN")} feathers have been added. ₹${rupees.toLocaleString("en-IN")} was not charged. UPI/GPay checkout will be connected later.`);
@@ -705,7 +733,7 @@ function KoyalApp() {
     if (reward === "feathers") {
       setFeathers((current) => {
         const next = current + 180;
-        localStorage.setItem("koyal-ai-feather-balance", String(next));
+        localStorage.setItem(walletStorageKey(), String(next));
         return next;
       });
       setCouponNotice("Coupon applied! 180 feathers have been added.");
@@ -722,6 +750,8 @@ function KoyalApp() {
     if (!requireSignIn("select a subscription plan")) return;
     setSelectedPlan(plan);
     localStorage.setItem("koyal-ai-subscription-plan", plan);
+    if (plan === "Just") localStorage.removeItem("koyal-ai-subscription-expires-at");
+    else localStorage.setItem("koyal-ai-subscription-expires-at", String(Date.now() + 30 * 24 * 60 * 60 * 1000));
     setSubscriptionOpen(false);
     if (plan !== "Supreme" && thinkingId === "supreme") setThinkingId("high");
   }
@@ -780,6 +810,10 @@ function KoyalApp() {
     setMenuOpen(false);
   }
   async function runCodeMode() {
+    if (!["Care", "Elite", "Supreme"].includes(selectedPlan)) {
+      setCodeModeOpen(false); setSubscriptionOpen(true);
+      setCodeError("Code Mode is available from the Care plan onwards."); return;
+    }
     const prompt = codePrompt.trim();
     if (!prompt || codeLoading) return;
     setCodeLoading(true);
@@ -909,7 +943,7 @@ function KoyalApp() {
           setPendingMemorySuggestion(suggestMemoryFromMessage(job.originalText, memories));
           if (job.featherCost > 0) setFeathers((old) => {
             const value = Math.max(0, old - job.featherCost);
-            localStorage.setItem("koyal-ai-feather-balance", String(value));
+            localStorage.setItem(walletStorageKey(), String(value));
             return value;
           });
         } catch {
@@ -936,6 +970,9 @@ function KoyalApp() {
     const text = input.trim();
     const attachment = selectedFile;
     if (!text && !attachment && !(urlReaderEnabled && urlInput.trim())) return;
+    if (studyMode && !["Care", "Elite", "Supreme"].includes(selectedPlan)) {
+      setStudyMode(false); setSubscriptionOpen(true); return;
+    }
     if (featherCost > feathers) { openFeatherShop(); return; }
     const message = text || (attachment ? (attachment.type === "application/pdf" ? "Please summarize the attached PDF." : "Please describe and read the attached image.") : urlReaderEnabled ? "Please summarize this webpage." : "Please help me with this attachment.");
     const systemDetails = [
@@ -1433,7 +1470,7 @@ function KoyalApp() {
             <div className={`${styles.effortCard} ${thinkingEffortOpen ? styles.effortCardOpen : ""}`}>
               <button className={styles.effortToggle} type="button" aria-expanded={thinkingEffortOpen} aria-controls="thinking-effort-controls" onClick={() => setThinkingEffortOpen((open) => !open)}>
                 <span className={styles.effortHeading}>Thinking Effort</span>
-                <span className={styles.effortCurrent}><span>{selectedPlan === "Supreme" ? "∞" : currentThinking.feathers}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong></span>
+                <span className={styles.effortCurrent}><span>{selectedPlan === "Supreme" ? "∞" : featherCost}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong></span>
                 <Icon name="chevron" size={15}/>
               </button>
               {thinkingEffortOpen && <div className={styles.effortControls} id="thinking-effort-controls">
