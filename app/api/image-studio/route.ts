@@ -111,32 +111,55 @@ export async function POST(request: Request) {
         signal: AbortSignal.timeout(50_000),
       });
 
-      const payload = await response.json().catch(() => null) as {
+      const contentType = response.headers.get("content-type") || "";
+      let payload: {
         success?: boolean;
         result?: string | { image?: string };
-      } | null;
+        errors?: Array<{ message?: string }>;
+        messages?: Array<{ message?: string }>;
+      } | null = null;
+      let rawImage: string | null = null;
 
-      if (!response.ok || !payload?.success || !payload.result) {
+      if (contentType.includes("application/json")) {
+        payload = await response.json().catch(() => null);
+      } else if (response.ok && contentType.startsWith("image/")) {
+        const bytes = Buffer.from(await response.arrayBuffer());
+        rawImage = bytes.toString("base64");
+      } else {
+        const responseText = await response.text().catch(() => "");
+        try {
+          payload = JSON.parse(responseText);
+        } catch {
+          payload = null;
+        }
+      }
+
+      const image = rawImage || (typeof payload?.result === "string"
+        ? payload.result
+        : payload?.result?.image);
+      if (!response.ok || (!image && !payload?.success)) {
         const message = errorMessage(payload);
         console.error("[Image Studio] Cloudflare request failed", {
           status: response.status,
+          contentType,
           message,
         });
+        const detail = message !== "Cloudflare could not generate the image."
+          ? ` Cloudflare says: ${message}`
+          : "";
         const quotaMessage = response.status === 429
-          ? "Cloudflare's free daily AI allowance may be used up, or the model is temporarily busy. Please try again later."
+          ? "Cloudflare's AI usage limit may have been reached, or the model is temporarily busy."
           : response.status === 403
-            ? "Cloudflare denied this request. Check that your API token has Workers AI Read or Workers AI Write permission and that the model is available on your plan."
-            : "Image generation failed. Please try again.";
+            ? "Cloudflare denied this request. Check the API token's Workers AI permission and account access."
+            : `Image generation failed (Cloudflare HTTP ${response.status || "unknown"}).${detail}`;
         return NextResponse.json({ error: quotaMessage }, { status: response.status >= 400 && response.status < 600 ? response.status : 502 });
       }
 
-      const image = typeof payload.result === "string"
-        ? payload.result
-        : payload.result.image;
       if (!image) {
         return NextResponse.json({ error: "Cloudflare returned an empty image. Please try again." }, { status: 502 });
       }
-      images.push({ image, mimeType: "image/png" });
+      const mimeType = rawImage ? (contentType.split(";")[0] || "image/jpeg") : "image/jpeg";
+      images.push({ image, mimeType });
     }
 
     return NextResponse.json({ images });
