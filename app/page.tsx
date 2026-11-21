@@ -1071,6 +1071,7 @@ function KoyalApp() {
           </div>
           <nav className={styles.nav} aria-label="Koyal features">
             <button type="button" onClick={resetChat} className={`${styles.navItem} ${styles.navMain}`}><Icon name="chat"/><strong>New Chat</strong></button>
+            <a href="/image-studio-preview.html" className={styles.navItem} style={{ textDecoration: "none" }}><span aria-hidden="true">🎨</span><strong>Image Studio</strong><span className={styles.navSmall}>Preview</span></a>
             <button type="button" onClick={openChatHistory} className={`${styles.navItem} ${historyOpen ? styles.navOn : ""}`}><Icon name="chat"/>Chat History<span className={styles.navSmall}>{chatSessions.length}</span></button>
             <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
             <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
