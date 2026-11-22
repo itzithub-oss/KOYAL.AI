@@ -65,7 +65,7 @@ export async function POST(request: Request) {
         payment_status: "PENDING",
       }),
     });
-    return Response.json({ orderId, paymentSessionId: payment.payment_session_id, amountPaise });
+    return Response.json({ orderId, paymentSessionId: payment.payment_session_id, amountPaise, mode: process.env.CASHFREE_ENV === "production" ? "production" : "sandbox" });
   } catch (error) {
     console.error("KOYAL create payment order:", error instanceof Error ? error.message : "unknown error");
     return Response.json({ error: "Could not create the payment order. Please try again." }, { status: 500 });
