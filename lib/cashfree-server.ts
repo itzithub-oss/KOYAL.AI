@@ -66,12 +66,13 @@ export async function fetchCashfreeOrder(orderId: string) {
   return data as { order_id: string; order_status: string; order_amount: number; order_currency: string };
 }
 
-export async function creditPaidFeatherOrder(orderId: string, amountPaise: number) {
+export async function creditPaidFeatherOrder(orderId: string, amountPaise: number, expectedUserId?: string) {
   const rows = await supabaseRequest(
     `koyal_payment_orders?select=id,user_id,feather_quantity,amount_paise,payment_status&cashfree_order_id=eq.${encodeURIComponent(orderId)}&limit=1`,
   ) as Array<{ id: string; user_id: string; feather_quantity: number; amount_paise: number; payment_status: string }>;
   const order = rows?.[0];
   if (!order) throw new Error("Payment order was not found.");
+  if (expectedUserId && order.user_id !== expectedUserId) throw new Error("This payment belongs to another account.");
   if (order.amount_paise !== amountPaise || order.payment_status === "CANCELLED") {
     throw new Error("Payment amount or order status did not match.");
   }
