@@ -77,12 +77,22 @@ export async function creditPaidFeatherOrder(orderId: string, amountPaise: numbe
   if (order.amount_paise !== amountPaise || order.payment_status === "CANCELLED") {
     throw new Error("Payment amount or order status did not match.");
   }
-  await supabaseRequest(`koyal_payment_orders?cashfree_order_id=eq.${encodeURIComponent(orderId)}`, {
-    method: "PATCH",
-    headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ payment_status: "PAID" }),
-  });
-  await supabaseRequest("rpc/credit_koyal_feathers", {
+  // Keep retries safe: only pending or already-paid orders may enter the credit flow.
+  // An already-paid order must still call the idempotent RPC so a previous RPC failure
+  // can be recovered without another customer payment.
+  const updatedOrders = await supabaseRequest(
+    `koyal_payment_orders?cashfree_order_id=eq.${encodeURIComponent(orderId)}&payment_status=in.(PENDING,PAID)`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ payment_status: "PAID" }),
+    },
+  ) as Array<{ id: string }>;
+  if (!updatedOrders?.length) {
+    throw new Error("Payment order could not be confirmed as paid.");
+  }
+
+  const credited = await supabaseRequest("rpc/credit_koyal_feathers", {
     method: "POST",
     body: JSON.stringify({
       p_user_id: order.user_id,
@@ -91,6 +101,25 @@ export async function creditPaidFeatherOrder(orderId: string, amountPaise: numbe
       p_amount_paise: order.amount_paise,
     }),
   });
+
+  // The SQL function returns false when this order already has a ledger entry.
+  // Treat that as success only after confirming the existing ledger matches this order.
+  if (credited !== true) {
+    const ledgerRows = await supabaseRequest(
+      `koyal_feather_ledger?select=cashfree_order_id,user_id,quantity,amount_paise&cashfree_order_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+    ) as Array<{ cashfree_order_id: string; user_id: string; quantity: number; amount_paise: number }>;
+    const ledger = ledgerRows?.[0];
+    if (
+      !ledger ||
+      ledger.cashfree_order_id !== orderId ||
+      ledger.user_id !== order.user_id ||
+      ledger.quantity !== order.feather_quantity ||
+      ledger.amount_paise !== order.amount_paise
+    ) {
+      throw new Error("Feather credit could not be confirmed in the payment ledger.");
+    }
+  }
+
   return { userId: order.user_id, quantity: order.feather_quantity };
 }
 
