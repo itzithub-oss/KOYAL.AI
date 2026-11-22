@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         user_id: user.id,
         cashfree_order_id: orderId,
-        order_type: "FEATHERS",
+        order_type: "feathers",
         plan_name: null,
         feather_quantity: quantity,
         amount_paise: amountPaise,
