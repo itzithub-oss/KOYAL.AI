@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const quantity = Number(body.featherQuantity);
-    const phone = String(body.phone || user.user_metadata?.phone || "").replace(/[^\\d]/g, "");
+    const phone = String(body.phone || user.user_metadata?.phone || "").replace(/\D/g, "");
     if (!Number.isSafeInteger(quantity) || quantity < 2 || quantity > 100000) {
       return Response.json({ error: "Choose between 2 and 100,000 feathers." }, { status: 400 });
     }
