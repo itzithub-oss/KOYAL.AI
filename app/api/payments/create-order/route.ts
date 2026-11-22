@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       return Response.json({
         error: detail
           ? `Cashfree rejected the order (${cashfreeResponse.status}): ${detail}`
-          : `Cashfree rejected the order (HTTP ${cashfreeResponse.status}). Check the Cashfree sandbox credentials and merchant configuration.`,
+          : `Cashfree rejected the order (HTTP ${cashfreeResponse.status}). Check the Cashfree credentials and merchant configuration.`,
       }, { status: 502 });
     }
 
