@@ -9,16 +9,22 @@ export async function POST(request: Request) {
     if (!user) return Response.json({ error: "Please log in before buying feathers." }, { status: 401 });
 
     const body = await request.json().catch(() => ({}));
+    const requestedPlan = typeof body.planName === "string" ? body.planName : "";
+    const planPrices: Record<string, number> = { "Let It": 70, Care: 120, Elite: 220, Supreme: 400 };
+    const isSubscription = Object.prototype.hasOwnProperty.call(planPrices, requestedPlan);
     const quantity = Number(body.featherQuantity);
+    if (!isSubscription && body.planName !== undefined) {
+      return Response.json({ error: "Choose a valid KOYAL subscription plan." }, { status: 400 });
+    }
     const phone = String(body.phone || user.user_metadata?.phone || "").replace(/\D/g, "");
-    if (!Number.isSafeInteger(quantity) || quantity < 2 || quantity > 100000) {
+    if (!isSubscription && (!Number.isSafeInteger(quantity) || quantity < 2 || quantity > 100000)) {
       return Response.json({ error: "Choose between 2 and 100,000 feathers." }, { status: 400 });
     }
     if (phone.length !== 10) {
       return Response.json({ error: "Enter a valid 10-digit Indian mobile number for Cashfree checkout." }, { status: 400 });
     }
 
-    const amountPaise = quantity * 50;
+    const amountPaise = isSubscription ? planPrices[requestedPlan] * 100 : quantity * 50;
     const orderId = `koyal_${Date.now()}_${randomUUID().slice(0, 8)}`;
     const appUrl = new URL(request.url).origin;
     const cashfreeResponse = await fetch(`${cashfreeBaseUrl()}/orders`, {
@@ -42,7 +48,7 @@ export async function POST(request: Request) {
         order_meta: {
           return_url: `${appUrl}/payments/return?order_id={order_id}`,
         },
-        order_note: `KOYAL AI feather purchase - ${quantity} feathers`,
+        order_note: isSubscription ? `KOYAL AI ${requestedPlan} plan - 30 days` : `KOYAL AI feather purchase - ${quantity} feathers`,
       }),
       cache: "no-store",
     });
@@ -72,15 +78,15 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         user_id: user.id,
         cashfree_order_id: orderId,
-        order_type: "feathers",
-        plan_name: null,
-        feather_quantity: quantity,
+        order_type: isSubscription ? "subscription" : "feathers",
+        plan_name: isSubscription ? requestedPlan : null,
+        feather_quantity: isSubscription ? null : quantity,
         amount_paise: amountPaise,
         payment_session_id: payment.payment_session_id,
         payment_status: "PENDING",
       }),
     });
-    return Response.json({ orderId, paymentSessionId: payment.payment_session_id, amountPaise, mode: process.env.CASHFREE_ENV === "production" ? "production" : "sandbox" });
+    return Response.json({ orderId, paymentSessionId: payment.payment_session_id, amountPaise, planName: isSubscription ? requestedPlan : null, mode: process.env.CASHFREE_ENV === "production" ? "production" : "sandbox" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
     console.error("KOYAL create payment order:", message);
