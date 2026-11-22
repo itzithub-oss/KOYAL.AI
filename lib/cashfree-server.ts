@@ -18,7 +18,8 @@ export function supabaseHeaders() {
   const key = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
   return {
     apikey: key,
-    Authorization: `Bearer ${key}`,
+    // New sb_secret keys are API keys, not JWTs: never send them as Bearer tokens.
+    ...(key.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${key}` }),
     "Content-Type": "application/json",
   };
 }
