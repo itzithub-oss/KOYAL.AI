@@ -1,4 +1,4 @@
-import { creditPaidFeatherOrder, fetchCashfreeOrder, supabaseRequest, verifyCashfreeWebhook } from "@/lib/cashfree-server";
+import { fetchCashfreeOrder, processPaidOrder, supabaseRequest, verifyCashfreeWebhook } from "@/lib/cashfree-server";
 
 export const runtime = "nodejs";
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     });
     const cashfreeOrder = await fetchCashfreeOrder(orderId);
     if (cashfreeOrder.order_status === "PAID" && cashfreeOrder.order_currency === "INR") {
-      await creditPaidFeatherOrder(orderId, Math.round(cashfreeOrder.order_amount * 100));
+      await processPaidOrder(orderId, Math.round(cashfreeOrder.order_amount * 100));
     }
     return Response.json({ received: true });
   } catch (error) {
