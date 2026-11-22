@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     const amountPaise = quantity * 50;
     const orderId = `koyal_${Date.now()}_${randomUUID().slice(0, 8)}`;
-    const appUrl = requiredEnv("NEXT_PUBLIC_APP_URL").replace(/\/$/, "");
+    const appUrl = new URL(request.url).origin;
     const cashfreeResponse = await fetch(`${cashfreeBaseUrl()}/orders`, {
       method: "POST",
       headers: {
