@@ -1,4 +1,4 @@
-import { creditPaidFeatherOrder, fetchCashfreeOrder, getAuthenticatedUser } from "@/lib/cashfree-server";
+import { fetchCashfreeOrder, getAuthenticatedUser, processPaidOrder } from "@/lib/cashfree-server";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,10 @@ export async function POST(request: Request) {
     if (cashfreeOrder.order_id !== orderId || cashfreeOrder.order_status !== "PAID" || cashfreeOrder.order_currency !== "INR") {
       return Response.json({ status: cashfreeOrder.order_status || "PENDING", credited: false });
     }
-    const result = await creditPaidFeatherOrder(orderId, Math.round(cashfreeOrder.order_amount * 100), user.id);
+    const result = await processPaidOrder(orderId, Math.round(cashfreeOrder.order_amount * 100), user.id);
+    if (result.type === "subscription") {
+      return Response.json({ status: "PAID", credited: true, plan: result.plan, expiresAt: result.expiresAt });
+    }
     return Response.json({ status: "PAID", credited: true, quantity: result.quantity });
   } catch (error) {
     console.error("KOYAL verify payment:", error instanceof Error ? error.message : "unknown error");
