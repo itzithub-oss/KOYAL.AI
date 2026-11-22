@@ -371,6 +371,7 @@ function KoyalApp() {
       localStorage.setItem("koyal-ai-subscription-plan", "Just");
       localStorage.removeItem("koyal-ai-subscription-expires-at");
       setSelectedPlan("Just");
+      const planExpiry = 0;
       const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
       const userId = auth && auth.access_token && auth.user && auth.user.id ? String(auth.user.id) : "";
       const walletKey = userId ? "koyal-ai-feather-balance:" + userId : "koyal-ai-feather-balance:guest";
@@ -732,7 +733,7 @@ function KoyalApp() {
       setPurchaseNotice("Your Supreme plan already includes unlimited feathers.");
       return;
     }
-    let phoneDigits = checkoutPhone.replace(/\\D/g, "");
+    let phoneDigits = checkoutPhone.replace(/\D/g, "");
     if (phoneDigits.length === 12 && phoneDigits.startsWith("91")) phoneDigits = phoneDigits.slice(2);
     if (phoneDigits.length !== 10) {
       setPurchaseNotice("Enter a valid 10-digit Indian mobile number for Cashfree checkout.");
