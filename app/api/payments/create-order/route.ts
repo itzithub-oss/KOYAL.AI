@@ -14,8 +14,8 @@ export async function POST(request: Request) {
     if (!Number.isSafeInteger(quantity) || quantity < 2 || quantity > 100000) {
       return Response.json({ error: "Choose between 2 and 100,000 feathers." }, { status: 400 });
     }
-    if (phone.length < 10 || phone.length > 15) {
-      return Response.json({ error: "Enter a valid phone number for Cashfree checkout." }, { status: 400 });
+    if (phone.length !== 10) {
+      return Response.json({ error: "Enter a valid 10-digit Indian mobile number for Cashfree checkout." }, { status: 400 });
     }
 
     const amountPaise = quantity * 50;
