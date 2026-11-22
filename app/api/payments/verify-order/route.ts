@@ -15,8 +15,7 @@ export async function POST(request: Request) {
     if (cashfreeOrder.order_id !== orderId || cashfreeOrder.order_status !== "PAID" || cashfreeOrder.order_currency !== "INR") {
       return Response.json({ status: cashfreeOrder.order_status || "PENDING", credited: false });
     }
-    const result = await creditPaidFeatherOrder(orderId, Math.round(cashfreeOrder.order_amount * 100));
-    if (result.userId !== user.id) return Response.json({ error: "This payment belongs to another account." }, { status: 403 });
+    const result = await creditPaidFeatherOrder(orderId, Math.round(cashfreeOrder.order_amount * 100), user.id);
     return Response.json({ status: "PAID", credited: true, quantity: result.quantity });
   } catch (error) {
     console.error("KOYAL verify payment:", error instanceof Error ? error.message : "unknown error");
