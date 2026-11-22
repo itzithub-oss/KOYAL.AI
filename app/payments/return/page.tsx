@@ -26,6 +26,16 @@ export default function PaymentReturnPage() {
         if (result.status !== "PAID" || !result.credited) {
           throw new Error("Cashfree has not confirmed this payment yet. Please wait a moment and retry.");
         }
+        if (result.plan && result.expiresAt) {
+          localStorage.setItem("koyal-ai-subscription-plan", String(result.plan));
+          localStorage.setItem("koyal-ai-subscription-expires-at", String(Date.parse(result.expiresAt)));
+          if (active) {
+            const expiry = new Date(result.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+            setMessage(`${result.plan} plan is now active until ${expiry}. Returning to KOYAL AI…`);
+            window.setTimeout(() => { window.location.replace("/"); }, 2200);
+          }
+          return;
+        }
         const walletResponse = await fetch("/api/payments/wallet", {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
