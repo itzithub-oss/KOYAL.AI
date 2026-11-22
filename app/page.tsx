@@ -6,6 +6,14 @@ import AuthGate from "./components/AuthGate";
 import BootScreen from "./components/BootScreen";
 import WingedAvatar from "./components/WingedAvatar";
 import styles from "./koyal-final.module.css";
+
+declare global {
+  interface Window {
+    Cashfree?: (options: { mode: "sandbox" | "production" }) => {
+      checkout: (options: { paymentSessionId: string; redirectTarget?: string }) => Promise<unknown>;
+    };
+  }
+}
 import { addMemory, buildMemoryContext, deleteMemory, loadMemories, suggestMemoryFromMessage, type KoyalMemory } from "../lib/koyal-memory.mjs";
 import { addTask, deleteTask, loadTasks, updateTask, type KoyalTask } from "../lib/koyal-tasks.mjs";
 import { getDailyThought } from "../lib/daily-thoughts.mjs";
@@ -292,6 +300,7 @@ function KoyalApp() {
   const [featherShopOpen, setFeatherShopOpen] = useState(false);
   const [customFeathers, setCustomFeathers] = useState("250");
   const [purchaseNotice, setPurchaseNotice] = useState("");
+  const [checkoutPhone, setCheckoutPhone] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponNotice, setCouponNotice] = useState("");
   const profilePhotoInput = useRef<HTMLInputElement>(null);
@@ -426,6 +435,29 @@ function KoyalApp() {
     const bootTimer = window.setTimeout(() => setBooting(false), 2500);
     return () => window.clearTimeout(bootTimer);
   }, []);
+  useEffect(() => {
+    let active = true;
+    async function syncServerWallet() {
+      try {
+        const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+        if (!auth?.access_token || !auth?.user?.id) return;
+        const response = await fetch("/api/payments/wallet", {
+          headers: { Authorization: `Bearer ${auth.access_token}` },
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const balance = Math.max(0, Number(data.balance) || 0);
+        if (active) setFeathers(balance);
+        localStorage.setItem("koyal-ai-feather-balance:" + auth.user.id, String(balance));
+      } catch {
+        // Keep the last displayed value if the server is temporarily unavailable.
+      }
+    }
+    void syncServerWallet();
+    return () => { active = false; };
+  }, []);
+
   useEffect(() => {
     const resetAccountProfile = () => {
       setProfile(EMPTY_PROFILE);
@@ -684,25 +716,63 @@ function KoyalApp() {
     if (!requireSignIn("buy feathers")) return;
     setPurchaseNotice("");
     setCouponNotice("");
+    try {
+      const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+      setCheckoutPhone(profile.phone || String(auth?.user?.user_metadata?.phone || ""));
+    } catch {
+      setCheckoutPhone(profile.phone || "");
+    }
     setFeatherShopOpen(true);
     setMobileNav(false);
   }
-  function requestFeatherPurchase(amount: number, rupees: number) {
+  async function requestFeatherPurchase(amount: number) {
     if (!requireSignIn("buy feathers")) return;
-    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100000 || !Number.isFinite(rupees) || rupees < 0) {
-      setPurchaseNotice("Choose a valid whole-number feather amount.");
+    if (!Number.isSafeInteger(amount) || amount < 2 || amount > 100000) {
+      setPurchaseNotice("Choose between 2 and 100,000 whole feathers.");
       return;
     }
     if (selectedPlan === "Supreme") {
       setPurchaseNotice("Your Supreme plan already includes unlimited feathers.");
       return;
     }
-    setFeathers((current) => {
-      const next = current + amount;
-      localStorage.setItem(walletStorageKey(), String(next));
-      return next;
-    });
-    setPurchaseNotice(`Demo purchase successful! ${amount.toLocaleString("en-IN")} feathers have been added. ₹${rupees.toLocaleString("en-IN")} was not charged. UPI/GPay checkout will be connected later.`);
+    const phoneDigits = checkoutPhone.replace(/\\D/g, "");
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+      setPurchaseNotice("Enter a valid phone number for Cashfree checkout.");
+      return;
+    }
+    try {
+      const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+      if (!auth?.access_token) {
+        setPurchaseNotice("Please log in again before purchasing.");
+        return;
+      }
+      setPurchaseNotice("Creating your secure payment order…");
+      const response = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.access_token}` },
+        body: JSON.stringify({ featherQuantity: amount, phone: phoneDigits }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.paymentSessionId) {
+        throw new Error(result.error || "Could not start Cashfree checkout.");
+      }
+      if (!window.Cashfree) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Cashfree checkout could not load. Please check your connection."));
+          document.head.appendChild(script);
+        });
+      }
+      if (!window.Cashfree) throw new Error("Cashfree checkout did not initialize. Please try again.");
+      const cashfree = window.Cashfree({ mode: result.mode === "production" ? "production" : "sandbox" });
+      setPurchaseNotice("Opening Cashfree’s secure checkout…");
+      await cashfree.checkout({ paymentSessionId: result.paymentSessionId, redirectTarget: "_self" });
+    } catch (error) {
+      setPurchaseNotice(error instanceof Error ? error.message : "Payment could not be started. Please try again.");
+    }
   }
   function redeemCoupon() {
     const code = couponCode.trim();
@@ -750,12 +820,15 @@ function KoyalApp() {
   }
   function selectPlan(plan: PlanName) {
     if (!requireSignIn("select a subscription plan")) return;
-    setSelectedPlan(plan);
-    localStorage.setItem("koyal-ai-subscription-plan", plan);
-    if (plan === "Just") localStorage.removeItem("koyal-ai-subscription-expires-at");
-    else localStorage.setItem("koyal-ai-subscription-expires-at", String(Date.now() + 30 * 24 * 60 * 60 * 1000));
+    if (plan !== "Just") {
+      window.alert("Paid monthly subscriptions are not activated yet. KOYAL will enable them after the recurring Cashfree subscription flow is completed.");
+      return;
+    }
+    setSelectedPlan("Just");
+    localStorage.setItem("koyal-ai-subscription-plan", "Just");
+    localStorage.removeItem("koyal-ai-subscription-expires-at");
     setSubscriptionOpen(false);
-    if (plan !== "Supreme" && thinkingId === "supreme") setThinkingId("high");
+    if (thinkingId === "supreme") setThinkingId("high");
   }
   function speakMessage(text: string, index: number) {
     if (!("speechSynthesis" in window)) return;
@@ -1516,15 +1589,16 @@ function KoyalApp() {
       {featherShopOpen && <div className={styles.modalOverlay} onClick={() => setFeatherShopOpen(false)}><div className={styles.featherModal} role="dialog" aria-modal="true" aria-label="Feather store" onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}><h2>🪶 Feather Store</h2><button type="button" aria-label="Close feather store" onClick={() => setFeatherShopOpen(false)}><Icon name="x"/></button></div>
         <p className={styles.featherBalanceLine}>Current balance: <strong>{selectedPlan === "Supreme" ? "∞ Unlimited feathers" : `${feathers.toLocaleString("en-IN")} feathers`}</strong></p>
-        <p className={styles.demoNotice}>Demo mode: Buy adds feathers immediately without charging money. UPI / Google Pay payment integration will be added later.</p>
+        <p className={styles.demoNotice}>Secure Cashfree checkout. Feathers are credited only after the payment is verified by KOYAL AI.</p>
+        <label className={styles.customPack}>Phone number for payment <input type="tel" value={checkoutPhone} onChange={(e) => setCheckoutPhone(e.target.value)} placeholder="10-digit mobile number" autoComplete="tel" /></label>
         <div className={styles.packGrid}>{FEATHER_PACKS.map((pack) => <div className={styles.pack} key={pack.quantity}>
           <div className={styles.packCount}>🪶 {pack.quantity.toLocaleString("en-IN")}</div><div className={styles.packPrice}>₹{pack.rupees}</div><small>₹0.50 per feather</small>
-          <button type="button" onClick={() => requestFeatherPurchase(pack.quantity,pack.rupees)}>Buy</button>
+          <button type="button" onClick={() => requestFeatherPurchase(pack.quantity)}>Buy</button>
         </div>)}</div>
         <div className={styles.customPack}><div><strong>Custom feather amount</strong><p>₹0.50 per feather</p></div>
-          <label>Feathers <input type="number" min="1" max="100000" step="1" value={customFeathers} onChange={(e) => setCustomFeathers(e.target.value)} /></label>
+          <label>Feathers <input type="number" min="2" max="100000" step="1" value={customFeathers} onChange={(e) => setCustomFeathers(e.target.value)} /></label>
           <div className={styles.customTotal}>₹{(Math.max(0,Number(customFeathers) || 0) * PRICE_PER_FEATHER).toLocaleString("en-IN",{maximumFractionDigits:2})}</div>
-          <button type="button" onClick={() => requestFeatherPurchase(Number(customFeathers), Number(customFeathers) * PRICE_PER_FEATHER)}>Buy</button>
+          <button type="button" onClick={() => requestFeatherPurchase(Number(customFeathers))}>Buy</button>
         </div>
         <div className={styles.customPack} style={{ marginTop: 18 }}>
           <div><strong>🎟️ Have a coupon?</strong><p>Log in to redeem one coupon per email account.</p></div>
@@ -1534,7 +1608,7 @@ function KoyalApp() {
         </div>
         {purchaseNotice && <div className={styles.purchaseNotice} role="status">{purchaseNotice}</div>}
       </div></div>}
-      {subscriptionOpen && <div className={styles.modalOverlay} onClick={() => setSubscriptionOpen(false)}><div className={styles.modal} role="dialog" aria-modal="true" aria-label="Subscription plans" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>KOYAL Plans</h2><button onClick={() => setSubscriptionOpen(false)} type="button"><Icon name="x"/></button></div><p className={styles.demoNotice}>Demo plan selector only. Selecting Supreme locally shows unlimited feathers and wings, but does not activate a paid subscription. Production subscriptions require server-side payment verification.</p><div className={styles.planGrid}>{plans.map((plan) => <div key={plan.name} className={`${styles.planCard} ${selectedPlan === plan.name ? styles.planCurrent : ""}`}><h3>{plan.name}</h3><div className={styles.price}>₹{plan.price}<small>/mo</small></div><p>{plan.description}</p><button type="button" onClick={() => selectPlan(plan.name)}>{selectedPlan === plan.name ? "Selected" : "Select demo plan"}</button></div>)}</div></div></div>}
+      {subscriptionOpen && <div className={styles.modalOverlay} onClick={() => setSubscriptionOpen(false)}><div className={styles.modal} role="dialog" aria-modal="true" aria-label="Subscription plans" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>KOYAL Plans</h2><button onClick={() => setSubscriptionOpen(false)} type="button"><Icon name="x"/></button></div><p className={styles.demoNotice}>Demo plan selector only. Selecting Supreme locally shows unlimited feathers and wings, but does not activate a paid subscription. Production subscriptions require server-side payment verification.</p><div className={styles.planGrid}>{plans.map((plan) => <div key={plan.name} className={`${styles.planCard} ${selectedPlan === plan.name ? styles.planCurrent : ""}`}><h3>{plan.name}</h3><div className={styles.price}>₹{plan.price}<small>/mo</small></div><p>{plan.description}</p><button type="button" onClick={() => selectPlan(plan.name)} disabled={plan.name !== "Just"}>{plan.name === "Just" ? (selectedPlan === plan.name ? "Selected" : "Select free plan") : "Paid plan coming soon"}</button></div>)}</div></div></div>}
     </main>
   );
 }
