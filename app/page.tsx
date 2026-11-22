@@ -411,7 +411,7 @@ function KoyalApp() {
                 gender: typeof synced.gender === "string" ? synced.gender : "",
                 phone: typeof synced.phone === "string" ? synced.phone : "",
                 dob: typeof synced.dob === "string" ? synced.dob : "",
-                photo: typeof synced.photo === "string" ? synced.photo : "",
+                photo: "", // Photos stay in device storage; never embed Base64 images in Supabase JWT metadata.
               };
               setProfile(valid);
               localStorage.setItem("koyal-ai-profile-v2", JSON.stringify(valid));
@@ -673,7 +673,7 @@ function KoyalApp() {
             apikey: supabaseKey,
             Authorization: `Bearer ${auth.access_token}`,
           },
-          body: JSON.stringify({ data: { koyal_profile: saved } }),
+          body: JSON.stringify({ data: { koyal_profile: { ...saved, photo: "" } } }),
         });
         if (!response.ok) throw new Error("Account profile sync failed.");
         const updatedUser = await response.json();
