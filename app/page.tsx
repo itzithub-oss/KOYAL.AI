@@ -372,7 +372,6 @@ function KoyalApp() {
       localStorage.setItem("koyal-ai-subscription-plan", "Just");
       localStorage.removeItem("koyal-ai-subscription-expires-at");
       setSelectedPlan("Just");
-      const planExpiry = 0;
       const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
       const userId = auth && auth.access_token && auth.user && auth.user.id ? String(auth.user.id) : "";
       const walletKey = userId ? "koyal-ai-feather-balance:" + userId : "koyal-ai-feather-balance:guest";
@@ -388,13 +387,6 @@ function KoyalApp() {
           localStorage.setItem(walletKey, "150"); localStorage.setItem(claimedKey, "true"); setFeathers(150);
         } else { localStorage.setItem(walletKey, "0"); setFeathers(0); }
       } else { localStorage.setItem(walletKey, "257"); setFeathers(257); }
-      if (planExpiry > Date.now() && planExpiry <= Date.now() + 2 * 24 * 60 * 60 * 1000) {
-        const reminderKey = "koyal-ai-expiry-reminder:" + (userId || "guest") + ":" + planExpiry;
-        if (!localStorage.getItem(reminderKey)) {
-          localStorage.setItem(reminderKey, "true");
-          window.setTimeout(() => window.alert("Your KOYAL subscription expires in 2 days or less. Renew to keep your plan benefits."), 3000);
-        }
-      }
       const profileJson = localStorage.getItem("koyal-ai-profile-v2");
       if (profileJson) {
         const stored = JSON.parse(profileJson) as Partial<Profile>;
