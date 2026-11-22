@@ -367,13 +367,10 @@ function KoyalApp() {
         saveChatHistory(localStorage, [initialSession]); localStorage.setItem(ACTIVE_CHAT_KEY, initialSession.id);
       }
       historyLoadedRef.current = true;
-      const plan = localStorage.getItem("koyal-ai-subscription-plan");
-      const planExpiry = Number(localStorage.getItem("koyal-ai-subscription-expires-at") || 0);
-      if (planExpiry && planExpiry <= Date.now()) {
-        localStorage.removeItem("koyal-ai-subscription-expires-at");
-        localStorage.setItem("koyal-ai-subscription-plan", "Just");
-        setSelectedPlan("Just");
-      } else if (plans.some((p) => p.name === plan)) setSelectedPlan(plan as PlanName);
+      // Paid plan entitlements must come from verified recurring-payment records, never browser storage.
+      localStorage.setItem("koyal-ai-subscription-plan", "Just");
+      localStorage.removeItem("koyal-ai-subscription-expires-at");
+      setSelectedPlan("Just");
       const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
       const userId = auth && auth.access_token && auth.user && auth.user.id ? String(auth.user.id) : "";
       const walletKey = userId ? "koyal-ai-feather-balance:" + userId : "koyal-ai-feather-balance:guest";
@@ -735,9 +732,10 @@ function KoyalApp() {
       setPurchaseNotice("Your Supreme plan already includes unlimited feathers.");
       return;
     }
-    const phoneDigits = checkoutPhone.replace(/\\D/g, "");
-    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
-      setPurchaseNotice("Enter a valid phone number for Cashfree checkout.");
+    let phoneDigits = checkoutPhone.replace(/\\D/g, "");
+    if (phoneDigits.length === 12 && phoneDigits.startsWith("91")) phoneDigits = phoneDigits.slice(2);
+    if (phoneDigits.length !== 10) {
+      setPurchaseNotice("Enter a valid 10-digit Indian mobile number for Cashfree checkout.");
       return;
     }
     try {
@@ -1608,7 +1606,7 @@ function KoyalApp() {
         </div>
         {purchaseNotice && <div className={styles.purchaseNotice} role="status">{purchaseNotice}</div>}
       </div></div>}
-      {subscriptionOpen && <div className={styles.modalOverlay} onClick={() => setSubscriptionOpen(false)}><div className={styles.modal} role="dialog" aria-modal="true" aria-label="Subscription plans" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>KOYAL Plans</h2><button onClick={() => setSubscriptionOpen(false)} type="button"><Icon name="x"/></button></div><p className={styles.demoNotice}>Demo plan selector only. Selecting Supreme locally shows unlimited feathers and wings, but does not activate a paid subscription. Production subscriptions require server-side payment verification.</p><div className={styles.planGrid}>{plans.map((plan) => <div key={plan.name} className={`${styles.planCard} ${selectedPlan === plan.name ? styles.planCurrent : ""}`}><h3>{plan.name}</h3><div className={styles.price}>₹{plan.price}<small>/mo</small></div><p>{plan.description}</p><button type="button" onClick={() => selectPlan(plan.name)} disabled={plan.name !== "Just"}>{plan.name === "Just" ? (selectedPlan === plan.name ? "Selected" : "Select free plan") : "Paid plan coming soon"}</button></div>)}</div></div></div>}
+      {subscriptionOpen && <div className={styles.modalOverlay} onClick={() => setSubscriptionOpen(false)}><div className={styles.modal} role="dialog" aria-modal="true" aria-label="Subscription plans" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>KOYAL Plans</h2><button onClick={() => setSubscriptionOpen(false)} type="button"><Icon name="x"/></button></div><p className={styles.demoNotice}>Paid monthly plans are temporarily unavailable while secure recurring Cashfree checkout is being completed. Only verified subscriptions will activate paid features.</p><div className={styles.planGrid}>{plans.map((plan) => <div key={plan.name} className={`${styles.planCard} ${selectedPlan === plan.name ? styles.planCurrent : ""}`}><h3>{plan.name}</h3><div className={styles.price}>₹{plan.price}<small>/mo</small></div><p>{plan.description}</p><button type="button" onClick={() => selectPlan(plan.name)} disabled={plan.name !== "Just"}>{plan.name === "Just" ? (selectedPlan === plan.name ? "Selected" : "Select free plan") : "Paid plan coming soon"}</button></div>)}</div></div></div>}
     </main>
   );
 }
