@@ -836,6 +836,10 @@ function KoyalApp() {
   async function requestSubscriptionPurchase(plan: PlanName) {
     if (!requireSignIn("buy a subscription")) return;
     if (plan === "Just") {
+      if (selectedPlan !== "Just") {
+        setSubscriptionNotice("Your paid plan stays active until its expiry. It will not renew automatically.");
+        return;
+      }
       setSelectedPlan("Just"); localStorage.setItem("koyal-ai-subscription-plan", "Just");
       localStorage.removeItem("koyal-ai-subscription-expires-at"); setSubscriptionOpen(false);
       if (thinkingId === "supreme") setThinkingId("high"); return;
