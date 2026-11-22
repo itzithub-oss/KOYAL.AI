@@ -1,0 +1,32 @@
+import { creditPaidFeatherOrder, fetchCashfreeOrder, requiredEnv, supabaseRequest, verifyCashfreeWebhook } from "@/lib/cashfree-server";
+
+export const runtime = "nodejs";
+
+export async function POST(request: Request) {
+  try {
+    const rawBody = await request.text();
+    const signature = request.headers.get("x-webhook-signature") || "";
+    const timestamp = request.headers.get("x-webhook-timestamp") || "";
+    if (!signature || !timestamp || !verifyCashfreeWebhook(rawBody, timestamp, signature)) {
+      return Response.json({ error: "Invalid webhook signature." }, { status: 401 });
+    }
+    const event = JSON.parse(rawBody);
+    const orderId = event?.data?.order?.order_id || event?.data?.order_id;
+    const paymentId = event?.data?.payment?.cf_payment_id || event?.data?.cf_payment_id || "unknown";
+    if (typeof orderId !== "string") return Response.json({ received: true });
+    const eventId = `${event.type || "EVENT"}:${orderId}:${paymentId}`;
+    await supabaseRequest("koyal_payment_events?on_conflict=event_id", {
+      method: "POST",
+      headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+      body: JSON.stringify({ event_id: eventId, event_type: String(event.type || "UNKNOWN") }),
+    });
+    const cashfreeOrder = await fetchCashfreeOrder(orderId);
+    if (cashfreeOrder.order_status === "PAID" && cashfreeOrder.order_currency === "INR") {
+      await creditPaidFeatherOrder(orderId, Math.round(cashfreeOrder.order_amount * 100));
+    }
+    return Response.json({ received: true });
+  } catch (error) {
+    console.error("KOYAL Cashfree webhook:", error instanceof Error ? error.message : "unknown error");
+    return Response.json({ error: "Webhook processing failed." }, { status: 500 });
+  }
+}
