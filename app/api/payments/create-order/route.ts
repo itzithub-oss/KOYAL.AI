@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const quantity = Number(body.featherQuantity);
-    const phone = String(body.phone || user.user_metadata?.phone || "").replace(/[^\d]/g, "");
+    const phone = String(body.phone || user.user_metadata?.phone || "").replace(/[^\\d]/g, "");
     if (!Number.isSafeInteger(quantity) || quantity < 2 || quantity > 100000) {
       return Response.json({ error: "Choose between 2 and 100,000 feathers." }, { status: 400 });
     }
@@ -48,7 +48,22 @@ export async function POST(request: Request) {
     });
     const payment = await cashfreeResponse.json().catch(() => ({}));
     if (!cashfreeResponse.ok || !payment.payment_session_id) {
-      return Response.json({ error: "Cashfree could not start checkout. Please try again." }, { status: 502 });
+      const providerCode = typeof payment.code === "string" ? payment.code : "";
+      const providerMessage = typeof payment.message === "string" ? payment.message : "";
+      const providerType = typeof payment.type === "string" ? payment.type : "";
+      // Log only Cashfree's non-secret error metadata; never log credentials or customer details.
+      console.error("KOYAL Cashfree order rejected:", JSON.stringify({
+        httpStatus: cashfreeResponse.status,
+        code: providerCode,
+        type: providerType,
+        message: providerMessage.slice(0, 300),
+      }));
+      const detail = [providerCode, providerMessage || providerType].filter(Boolean).join(": ");
+      return Response.json({
+        error: detail
+          ? `Cashfree rejected the order (${cashfreeResponse.status}): ${detail}`
+          : `Cashfree rejected the order (HTTP ${cashfreeResponse.status}). Check the Cashfree sandbox credentials and merchant configuration.`,
+      }, { status: 502 });
     }
 
     await supabaseRequest("koyal_payment_orders", {
@@ -67,7 +82,11 @@ export async function POST(request: Request) {
     });
     return Response.json({ orderId, paymentSessionId: payment.payment_session_id, amountPaise, mode: process.env.CASHFREE_ENV === "production" ? "production" : "sandbox" });
   } catch (error) {
-    console.error("KOYAL create payment order:", error instanceof Error ? error.message : "unknown error");
+    const message = error instanceof Error ? error.message : "unknown error";
+    console.error("KOYAL create payment order:", message);
+    if (message.startsWith("Missing server environment variable:")) {
+      return Response.json({ error: "Payment setup is incomplete on the server. Please check the required Cashfree and Supabase environment variables in Vercel." }, { status: 500 });
+    }
     return Response.json({ error: "Could not create the payment order. Please try again." }, { status: 500 });
   }
 }
