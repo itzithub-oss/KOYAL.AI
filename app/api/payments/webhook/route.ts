@@ -1,4 +1,4 @@
-import { creditPaidFeatherOrder, fetchCashfreeOrder, requiredEnv, supabaseRequest, verifyCashfreeWebhook } from "@/lib/cashfree-server";
+import { creditPaidFeatherOrder, fetchCashfreeOrder, supabaseRequest, verifyCashfreeWebhook } from "@/lib/cashfree-server";
 
 export const runtime = "nodejs";
 
