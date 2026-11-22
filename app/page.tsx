@@ -433,6 +433,7 @@ function KoyalApp() {
         const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
         if (!auth?.access_token || !auth?.user?.id) return;
         const response = await fetch("/api/payments/wallet", {
+          credentials: "omit",
           headers: { Authorization: `Bearer ${auth.access_token}` },
           cache: "no-store",
         });
@@ -741,6 +742,7 @@ function KoyalApp() {
       setPurchaseNotice("Creating your secure payment order…");
       const response = await fetch("/api/payments/create-order", {
         method: "POST",
+        credentials: "omit",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.access_token}` },
         body: JSON.stringify({ featherQuantity: amount, phone: phoneDigits }),
       });
