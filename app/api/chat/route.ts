@@ -816,7 +816,7 @@ export async function POST(request: NextRequest) {
     const conversation = buildConversation(message, body);
 
     if (body.stream && (process.env.VERCEL === "1" || supreme || body.webSearch || body.urlContextUrl)) {
-      return streamGeminiResponse(conversation, body, message);
+      return await streamGeminiResponse(conversation, body, message);
     }
 
     let reply: string;
