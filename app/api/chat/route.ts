@@ -75,6 +75,13 @@ function isSupremePlan(plan: string) {
   return plan.trim().toLowerCase() === "supreme";
 }
 
+function shouldAutoWebSearch(message: string): boolean {
+  const query = message.toLowerCase();
+  return /\\b(latest|recent|current|today|tonight|yesterday|this week|this month|breaking|live|real[- ]time|right now|news|headlines|updates?|current affairs|weather|forecast|stock price|share price|market price|exchange rate|live score|results today|who won|newly announced|just announced)\\b/.test(query)
+    || /आज की खबर|ताज़ा खबर|ताजा खबर|आज के समाचार|समाचार|अभी की खबर|हाल की खबर|मौसम का हाल|आज का मौसम|लाइव स्कोर|ताज़ा अपडेट|ताजा अपडेट/.test(query)
+    || /\\b(search the web|search online|look up online|check online|find online)\\b/.test(query);
+}
+
 type CharacterId =
   | "normal"
   | "mother"
@@ -809,7 +816,6 @@ export async function POST(request: NextRequest) {
   let requestKind = "chat";
   try {
     const body = await readBody(request);
-    requestKind = body.webSearch ? "web-search" : body.urlContextUrl ? "url-context" : "chat";
 
     const message =
       typeof body.message === "string"
@@ -821,6 +827,10 @@ export async function POST(request: NextRequest) {
         reply: "Message is required.",
       });
     }
+
+    // Automatically enable Google Search for questions that need fresh information.
+    body.webSearch = Boolean(body.webSearch || shouldAutoWebSearch(message));
+    requestKind = body.webSearch ? "web-search" : body.urlContextUrl ? "url-context" : "chat";
 
     if (message.length > MAX_MESSAGE_LENGTH) {
       throw new InputError("Please keep your message under 20,000 characters.");
