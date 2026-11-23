@@ -77,9 +77,9 @@ function isSupremePlan(plan: string) {
 
 function shouldAutoWebSearch(message: string): boolean {
   const query = message.toLowerCase();
-  return /\\b(latest|recent|current|today|tonight|yesterday|this week|this month|breaking|live|real[- ]time|right now|news|headlines|updates?|current affairs|weather|forecast|stock price|share price|market price|exchange rate|live score|results today|who won|newly announced|just announced)\\b/.test(query)
+  return /\b(latest|recent|current|today|tonight|yesterday|this week|this month|breaking|live|real[- ]time|right now|news|headlines|updates?|current affairs|weather|forecast|stock price|share price|market price|exchange rate|live score|results today|who won|newly announced|just announced)\b/.test(query)
     || /आज की खबर|ताज़ा खबर|ताजा खबर|आज के समाचार|समाचार|अभी की खबर|हाल की खबर|मौसम का हाल|आज का मौसम|लाइव स्कोर|ताज़ा अपडेट|ताजा अपडेट/.test(query)
-    || /\\b(search the web|search online|look up online|check online|find online)\\b/.test(query);
+    || /\b(search the web|search online|look up online|check online|find online)\b/.test(query);
 }
 
 type CharacterId =
