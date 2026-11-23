@@ -384,7 +384,7 @@ function KoyalApp() {
         if (localStorage.getItem(claimedKey) !== "true") {
           localStorage.setItem(walletKey, "150"); localStorage.setItem(claimedKey, "true"); setFeathers(150);
         } else { localStorage.setItem(walletKey, "0"); setFeathers(0); }
-      } else { localStorage.setItem(walletKey, "257"); setFeathers(257); }
+      } else { localStorage.setItem(walletKey, "56"); setFeathers(56); }
       const profileJson = localStorage.getItem("koyal-ai-profile-v2");
       if (profileJson) {
         const stored = JSON.parse(profileJson) as Partial<Profile>;
@@ -479,7 +479,7 @@ function KoyalApp() {
       setProfileError("");
       setSelectedPlan("Just");
       const guestWallet = Number(localStorage.getItem("koyal-ai-feather-balance:guest"));
-      const guestBalance = Number.isFinite(guestWallet) && localStorage.getItem("koyal-ai-feather-balance:guest") !== null ? Math.max(0, guestWallet) : 257;
+      const guestBalance = Number.isFinite(guestWallet) && localStorage.getItem("koyal-ai-feather-balance:guest") !== null ? Math.max(0, guestWallet) : 56;
       localStorage.setItem("koyal-ai-feather-balance:guest", String(guestBalance));
       setFeathers(guestBalance);
       setSubscriptionOpen(false);
