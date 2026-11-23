@@ -2,7 +2,15 @@ import Link from "next/link";
 import "./globals.css";
 
 export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
-export const metadata = { title: "KOYAL AI", description: "Your own AI assistant" };
+export const metadata = {
+  title: "KOYAL AI",
+  description: "Your own AI assistant",
+  icons: {
+    icon: "/koyal-bird.png",
+    shortcut: "/koyal-bird.png",
+    apple: "/koyal-bird.png",
+  },
+};
 
 const policyLinks = [
   { href: "/policies/terms-and-conditions", label: "Terms & Conditions" },
