@@ -55,7 +55,7 @@ const OLLAMA_URL = "http://127.0.0.1:11434/api/chat";
 const OLLAMA_MODEL = "qwen2.5:3b";
 
 // Your existing locked Gemini model is preserved.
-const GEMINI_MODEL = "gemini-3.1-flash-lite" as const;
+const GEMINI_MODEL = "gemini-3.5-flash-lite" as const;
 
 function text(value: unknown, limit = 200): string {
   return typeof value === "string" ? value.trim().slice(0, limit) : "";
