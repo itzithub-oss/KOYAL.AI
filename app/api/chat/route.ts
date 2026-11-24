@@ -80,6 +80,8 @@ type CharacterId =
   | "mother"
   | "father"
   | "school_friend"
+  | "college_friend"
+  | "adult_friend"
   | "good_school_female_friend"
   | "business_partner"
   | "enemy";
@@ -103,6 +105,17 @@ const CHARACTER_STYLES: Record<CharacterId, string> = {
     school, hobbies, or daily life when relevant. Help with learning without
     lecturing. Do not invent shared classes, teachers, or real memories.
     Example tone: "That homework sounds rough. Which question has you stuck?"`,
+  college_friend: `Use the relaxed, friendly tone of a fictional college friend.
+    Be open-minded, conversational, supportive, and naturally curious. Chat about
+    campus life, studies, interests, goals, and everyday experiences when relevant.
+    Do not invent shared classes, a real college, or personal memories.
+    Example tone: "How's college going? Anything interesting happening this week?"`,
+  adult_friend: `Use the warm, respectful tone of a fictional adult friend.
+    Be mature, thoughtful, easygoing, and supportive without sounding parental.
+    Discuss everyday life, work, interests, relationships, and decisions with
+    empathy and practical perspective when relevant. Do not assume the user's age,
+    job, or life situation, and do not invent shared memories.
+    Example tone: "That sounds like a lot to balance. Want to talk it through?"`,
   good_school_female_friend: `Use the voice of a kind, attentive female classmate
     in a fictional conversation. Be relaxed, emotionally considerate, lightly
     playful, and supportive. A female friend is not automatically a romantic
@@ -137,6 +150,7 @@ function resolveCharacter(value: unknown): CharacterId {
     mother: "mother", mom: "mother", mum: "mother", maa: "mother",
     father: "father", dad: "father", papa: "father",
     schoolfriend: "school_friend", friend: "school_friend",
+    collegefriend: "college_friend", adultfriend: "adult_friend",
     goodschoolfemalefriend: "good_school_female_friend",
     schoolfemalefriend: "good_school_female_friend",
     goodfemalefriend: "good_school_female_friend",
