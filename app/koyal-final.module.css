@@ -59,6 +59,7 @@
 .characterList { padding: 4px 10px 8px; display: grid; gap: 1px; }
 .characterItem { width: 100%; text-align: left; border: 0; border-radius: 9px; background: transparent; padding: 4px 7px; color: #c8c2d8; font-size: 12.4px; display: flex; align-items: center; gap: 11px; min-height: 31px; }
 .characterItem:hover, .characterSelected { background: rgba(255,255,255,.08); color: #fff; }
+.friendSubcategories { display: grid; gap: 1px; margin: 0 0 3px 16px; padding-left: 7px; border-left: 1px solid rgba(113,134,190,.35); }
 .characterIcon { display: grid; place-items: center; color: white; width: 23px; height: 23px; border-radius: 50%; font-size: 13px; flex: 0 0 23px; }
 .normalMode { border: 1px solid rgba(255,80,120,.2); border-radius: 9px; background: rgba(255,80,120,.07); color: #ff98b0; padding: 8px; margin-top: 5px; }
 .teacherSettings { display: grid; gap: 8px; background: rgba(255,255,255,.035); padding: 9px 13px; border-radius: 12px; }
