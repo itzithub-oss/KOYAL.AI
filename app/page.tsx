@@ -1190,6 +1190,7 @@ function KoyalApp() {
             <div className={styles.brandName}>KOYAL <span>AI</span></div>
             <div className={styles.brandTagline}>Intelligence with a Softer Soul</div>
             <div className={styles.credits}>Brought to you by<br/><strong>Divyansh Acharjee, Tejas Raj &amp; Kavya Patel</strong></div>
+            <div className={styles.credits}>A product of <strong>Enrapture Philia PVT Ltd.</strong></div>
           </div>
           <nav className={styles.nav} aria-label="Koyal features">
             <button type="button" onClick={resetChat} className={`${styles.navItem} ${styles.navMain}`}><Icon name="chat"/><strong>New Chat</strong></button>
