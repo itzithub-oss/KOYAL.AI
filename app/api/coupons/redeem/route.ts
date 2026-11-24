@@ -7,6 +7,8 @@ const COUPONS: Record<string, "Let It" | "Care" | "Elite" | "Supreme"> = {
   carefree26: "Care",
   elitefree26: "Elite",
   supremefree26: "Supreme",
+  cadet0117: "Elite",
+  welcomebonus01: "Supreme",
 };
 
 export async function POST(request: Request) {
