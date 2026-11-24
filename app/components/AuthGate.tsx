@@ -33,7 +33,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     try {
       if (value) {
         localStorage.setItem(SESSION_KEY, JSON.stringify(value));
-        window.dispatchEvent(new Event("koyal-account-signed-in"));
       } else localStorage.removeItem(SESSION_KEY);
     } catch {
       setError("Your browser could not save the login session. Please allow site storage.");
@@ -93,6 +92,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     restore();
     return () => { active = false; };
   }, []);
+
+  // Notify the app after a session is available, including when a valid
+  // session is restored from localStorage on a page reload.
+  useEffect(() => {
+    if (session?.access_token) {
+      window.dispatchEvent(new Event("koyal-account-signed-in"));
+    }
+  }, [session?.access_token]);
 
   useEffect(() => {
     if (!session?.refresh_token) return;
