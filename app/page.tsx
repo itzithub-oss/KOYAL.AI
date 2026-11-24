@@ -465,10 +465,15 @@ function KoyalApp() {
         if (data.expiresAt) localStorage.setItem("koyal-ai-subscription-expires-at", String(Date.parse(data.expiresAt)));
         else localStorage.removeItem("koyal-ai-subscription-expires-at");
         if (plan === "Supreme") setThinkingId("supreme");
-      } catch { /* Keep the free plan until the server confirms a paid subscription. */ }
+      } catch { /* Keep the last confirmed plan if the server is temporarily unavailable. */ }
     }
+    const handleSignIn = () => { void syncSubscription(); };
+    window.addEventListener("koyal-account-signed-in", handleSignIn);
     void syncSubscription();
-    return () => { active = false; };
+    return () => {
+      active = false;
+      window.removeEventListener("koyal-account-signed-in", handleSignIn);
+    };
   }, []);
 
   useEffect(() => {
