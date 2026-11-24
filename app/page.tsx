@@ -29,7 +29,7 @@ type Message = {
 };
 type PlanName = "Just" | "Let It" | "Care" | "Elite" | "Supreme";
 type CharacterMode =
-  | "normal" | "mother" | "father" | "school-friend"
+  | "normal" | "mother" | "father" | "school-friend" | "college-friend" | "adult-friend"
   | "school-female-friend" | "business-partner" | "enemy";
 type ThinkingEffort =
   | "just" | "let-it" | "care" | "high" | "ultra-high" | "elite" | "supreme";
@@ -64,6 +64,8 @@ const characters: { id: CharacterMode; name: string; icon: string; color: string
   { id: "mother", name: "Mother", icon: "♥", color: "#fa368e" },
   { id: "father", name: "Father", icon: "♟", color: "#4f90e7" },
   { id: "school-friend", name: "School Friend", icon: "✦", color: "#11b8a4" },
+  { id: "college-friend", name: "College Friend", icon: "🎓", color: "#3686d8" },
+  { id: "adult-friend", name: "Adult Friend", icon: "☕", color: "#b17a45" },
   { id: "school-female-friend", name: "Good School Female Friend", icon: "✿", color: "#bd4cff" },
   { id: "business-partner", name: "Business Partner", icon: "▣", color: "#dca632" },
   { id: "enemy", name: "Enemy", icon: "♜", color: "#dc3053" },
