@@ -791,10 +791,28 @@ function KoyalApp() {
   }
   async function redeemCoupon() {
     const code = couponCode.trim();
-    let auth: { access_token?: string } | null = null;
+    let auth: { access_token?: string; user?: { email?: string } } | null = null;
     try { auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null"); } catch { auth = null; }
     if (!auth?.access_token) {
       setCouponNotice("Please log in before redeeming a coupon.");
+      return;
+    }
+    const normalized = code.toLowerCase();
+    if (normalized === "cadet0131") {
+      const email = typeof auth.user?.email === "string" ? auth.user.email.trim().toLowerCase() : "";
+      if (!email) { setCouponNotice("Please log in with your email to redeem this coupon."); return; }
+      const redeemedKey = `koyal-ai-redeemed-coupons:${email}`;
+      let redeemed: string[] = [];
+      try { redeemed = JSON.parse(localStorage.getItem(redeemedKey) || "[]"); } catch { redeemed = []; }
+      if (redeemed.includes(normalized)) { setCouponNotice("This coupon has already been redeemed on this device for this email account."); return; }
+      localStorage.setItem(redeemedKey, JSON.stringify([...redeemed, normalized]));
+      setFeathers((current) => {
+        const next = current + 180;
+        localStorage.setItem(walletStorageKey(), String(next));
+        return next;
+      });
+      setCouponNotice("Coupon applied! 180 feathers have been added.");
+      setCouponCode("");
       return;
     }
     setCouponNotice("Checking coupon…");
