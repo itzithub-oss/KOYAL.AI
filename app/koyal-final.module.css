@@ -83,6 +83,9 @@
 .overflowMenu { position: absolute; top: 51px; right: 0; width: 207px; padding: 8px; border-radius: 13px; background: #15111e; border: 1px solid rgba(255,255,255,.17); box-shadow: 0 16px 45px #000; z-index: 15; }
 .overflowMenu button { color: #ece3f3; border: 0; background: transparent; display: flex; gap: 8px; align-items: center; text-align: left; width: 100%; border-radius: 8px; padding: 10px; }
 .overflowMenu button:hover { background: rgba(255,255,255,.08); }
+.overflowMenuAccount { display: grid; gap: 7px; padding: 9px 10px 10px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.overflowMenuAccount span { color: #cfc3d5; font-size: 11px; overflow-wrap: anywhere; }
+.overflowMenu .overflowMenuAccount button { width: fit-content; padding: 6px 11px; color: #fff; background: #ff476d; font-weight: 700; justify-content: center; }
 .chatSpace { position: relative; display: flex; flex: 1 1 0; min-height: 0; background: linear-gradient(180deg, rgba(15,7,16,.25), #08070d 96%); overflow: hidden; }
 .sceneBackdrop { position: absolute; pointer-events: none; z-index: 0; top: 0; right: 0; width: min(94%,1100px); height: min(77%,620px); background-image: linear-gradient(90deg, #08070d 0%, transparent 26%), linear-gradient(180deg, transparent 45%, #08070d 100%), url('/koyal-scene.webp'); background-position: center; background-size: cover; opacity: .89; mask-image: linear-gradient(180deg, #000 40%, transparent 100%); }
 .chatScroll { z-index: 1; position: relative; flex: 1 1 0; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
