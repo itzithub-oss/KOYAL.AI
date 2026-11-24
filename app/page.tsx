@@ -308,6 +308,7 @@ function KoyalApp() {
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [subscriptionNotice, setSubscriptionNotice] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -338,6 +339,22 @@ function KoyalApp() {
     ? messages.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
     : messages;
   const visibleChatSessions = searchChatSessions(chatSessions, historyQuery);
+
+  useEffect(() => {
+    const syncAccountEmail = () => {
+      try {
+        const session = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+        setAccountEmail(typeof session?.user?.email === "string" ? session.user.email : "");
+      } catch { setAccountEmail(""); }
+    };
+    syncAccountEmail();
+    window.addEventListener("koyal-account-signed-in", syncAccountEmail);
+    window.addEventListener("koyal-account-signed-out", syncAccountEmail);
+    return () => {
+      window.removeEventListener("koyal-account-signed-in", syncAccountEmail);
+      window.removeEventListener("koyal-account-signed-out", syncAccountEmail);
+    };
+  }, []);
 
   useEffect(() => {
     const refreshThought = () => setDailyThought(getDailyThought(Date.now()));
@@ -1260,6 +1277,10 @@ function KoyalApp() {
               <button type="button" className={styles.roundTop} title="Search messages" aria-label="Search messages" onClick={() => {setSearchOpen((v) => !v);setSearch("");}}><Icon name="search"/></button>
               <div className={styles.menuWrap}><button type="button" className={styles.roundTop} title="More options" aria-label="More options" onClick={() => setMenuOpen((v) => !v)}><Icon name="dots"/></button>
                 {menuOpen && <div className={styles.overflowMenu}>
+                  {accountEmail && <div className={styles.overflowMenuAccount}>
+                    <span>{accountEmail}</span>
+                    <button type="button" onClick={() => { window.dispatchEvent(new Event("koyal-account-sign-out-request")); setMenuOpen(false); }}>Sign out</button>
+                  </div>}
                   <button type="button" onClick={copyChat}><Icon name="copy" size={16}/>{copied ? "Copied" : "Copy conversation"}</button>
                   <button type="button" onClick={() => exportChat("txt")}>Download TXT</button>
                   <button type="button" onClick={() => exportChat("docx")}>Download Word (.docx)</button>
