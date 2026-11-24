@@ -31,8 +31,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   function saveSession(value: AuthSession | null) {
     setSession(value);
     try {
-      if (value) localStorage.setItem(SESSION_KEY, JSON.stringify(value));
-      else localStorage.removeItem(SESSION_KEY);
+      if (value) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(value));
+        window.dispatchEvent(new Event("koyal-account-signed-in"));
+      } else localStorage.removeItem(SESSION_KEY);
     } catch {
       setError("Your browser could not save the login session. Please allow site storage.");
     }
