@@ -102,6 +102,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }, [session?.access_token]);
 
   useEffect(() => {
+    const handleSignOutRequest = () => { void signOut(); };
+    window.addEventListener("koyal-account-sign-out-request", handleSignOutRequest);
+    return () => window.removeEventListener("koyal-account-sign-out-request", handleSignOutRequest);
+  }, [session]);
+
+  useEffect(() => {
     if (!session?.refresh_token) return;
     const delay = Math.max(1000, (session.expires_at - Math.floor(Date.now() / 1000) - 60) * 1000);
     const timer = window.setTimeout(async () => {
@@ -186,10 +192,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   if (session) {
     return <>
       {children}
-      <div style={{ position: "fixed", zIndex: 120, top: 12, right: 14, display: "flex", alignItems: "center", gap: 9, maxWidth: "min(92vw, 360px)", padding: "7px 10px", borderRadius: 999, border: "1px solid rgba(255,71,109,.38)", background: "rgba(12,12,19,.92)", color: "#fff", font: "12px system-ui", boxShadow: "0 4px 24px #0005" }}>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.user?.email || "Signed in"}</span>
-        <button type="button" onClick={signOut} style={{ border: 0, borderRadius: 999, padding: "6px 10px", background: "#ff476d", color: "white", fontWeight: 700, cursor: "pointer" }}>Sign out</button>
-      </div>
     </>;
   }
 
