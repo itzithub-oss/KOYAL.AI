@@ -64,8 +64,6 @@ const characters: { id: CharacterMode; name: string; icon: string; color: string
   { id: "mother", name: "Mother", icon: "♥", color: "#fa368e" },
   { id: "father", name: "Father", icon: "♟", color: "#4f90e7" },
   { id: "school-friend", name: "School Friend", icon: "✦", color: "#11b8a4" },
-  { id: "college-friend", name: "College Friend", icon: "🎓", color: "#3686d8" },
-  { id: "adult-friend", name: "Adult Friend", icon: "☕", color: "#b17a45" },
   { id: "school-female-friend", name: "Good School Female Friend", icon: "✿", color: "#bd4cff" },
   { id: "business-partner", name: "Business Partner", icon: "▣", color: "#dca632" },
   { id: "enemy", name: "Enemy", icon: "♜", color: "#dc3053" },
@@ -242,6 +240,7 @@ function KoyalApp() {
   const [thinkingEffortOpen, setThinkingEffortOpen] = useState(false);
   const [characterMode, setCharacterMode] = useState<CharacterMode>("normal");
   const [characterOpen, setCharacterOpen] = useState(true);
+  const [friendSubcategoryOpen, setFriendSubcategoryOpen] = useState(false);
   const [preciseMode, setPreciseMode] = useState(false);
   const [teacherMode, setTeacherMode] = useState(false);
   const [teacherClass, setTeacherClass] = useState("8");
@@ -1225,7 +1224,16 @@ function KoyalApp() {
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
               {characterOpen && <div className={styles.characterList}>
-                {characters.slice(1).map((character) => <button key={character.id} type="button" className={`${styles.characterItem} ${characterMode === character.id ? styles.characterSelected : ""}`} onClick={() => setCharacterMode(character.id)}><span className={styles.characterIcon} style={{ backgroundColor: character.color }}>{character.icon}</span>{character.name}</button>)}
+                {characters.slice(1).filter((character) => character.id !== "school-friend").map((character) => <button key={character.id} type="button" className={`${styles.characterItem} ${characterMode === character.id ? styles.characterSelected : ""}`} onClick={() => setCharacterMode(character.id)}><span className={styles.characterIcon} style={{ backgroundColor: character.color }}>{character.icon}</span>{character.name}</button>)}
+                <button type="button" className={`${styles.characterItem} ${["college-friend", "adult-friend"].includes(characterMode) ? styles.characterSelected : ""}`} onClick={() => setFriendSubcategoryOpen((open) => !open)} aria-expanded={friendSubcategoryOpen}>
+                  <span className={styles.characterIcon} style={{ backgroundColor: "#3686d8" }}>✦</span>Friend
+                  <span style={{ marginLeft: "auto", opacity: .7 }}>{friendSubcategoryOpen ? "▾" : "▸"}</span>
+                </button>
+                {friendSubcategoryOpen && <div className={styles.friendSubcategories}>
+                  <button type="button" className={`${styles.characterItem} ${characterMode === "college-friend" ? styles.characterSelected : ""}`} onClick={() => setCharacterMode("college-friend")}><span className={styles.characterIcon} style={{ backgroundColor: "#3686d8" }}>🎓</span>College</button>
+                  <button type="button" className={`${styles.characterItem} ${characterMode === "adult-friend" ? styles.characterSelected : ""}`} onClick={() => setCharacterMode("adult-friend")}><span className={styles.characterIcon} style={{ backgroundColor: "#b17a45" }}>☕</span>Adult</button>
+                </div>}
+                <button type="button" className={`${styles.characterItem} ${characterMode === "school-friend" ? styles.characterSelected : ""}`} onClick={() => setCharacterMode("school-friend")}><span className={styles.characterIcon} style={{ backgroundColor: "#11b8a4" }}>✦</span>School Friend</button>
                 {characterMode !== "normal" && <button type="button" className={styles.normalMode} onClick={() => setCharacterMode("normal")}>Use normal Koyal</button>}
               </div>}
             </div>
