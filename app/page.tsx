@@ -789,49 +789,34 @@ function KoyalApp() {
       setPurchaseNotice(error instanceof Error ? error.message : "Payment could not be started. Please try again.");
     }
   }
-  function redeemCoupon() {
+  async function redeemCoupon() {
     const code = couponCode.trim();
-    const sessionRaw = localStorage.getItem("koyal-ai-auth-session");
-    let email = "";
+    let auth: { access_token?: string } | null = null;
+    try { auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null"); } catch { auth = null; }
+    if (!auth?.access_token) {
+      setCouponNotice("Please log in before redeeming a coupon.");
+      return;
+    }
+    setCouponNotice("Checking coupon…");
     try {
-      const session = sessionRaw ? JSON.parse(sessionRaw) : null;
-      email = typeof session?.user?.email === "string" ? session.user.email.trim().toLowerCase() : "";
-    } catch { /* Invalid or absent session is treated as signed out. */ }
-    if (!email) {
-      setCouponNotice("Please log in with your email to redeem a coupon. You can continue using Koyal without logging in.");
-      return;
-    }
-    const normalized = code.toLowerCase();
-    const rewards: Record<string, "feathers" | "elite" | "supreme"> = {
-      cadet0131: "feathers",
-      cadet0117: "elite",
-      welcomebonus01: "supreme",
-    };
-    const reward = rewards[normalized];
-    if (!reward) { setCouponNotice("That coupon code is not valid."); return; }
-    const redeemedKey = `koyal-ai-redeemed-coupons:${email}`;
-    let redeemed: string[] = [];
-    try { redeemed = JSON.parse(localStorage.getItem(redeemedKey) || "[]"); } catch { redeemed = []; }
-    if (redeemed.includes(normalized)) {
-      setCouponNotice("This coupon has already been redeemed on this device for this email account.");
-      return;
-    }
-    localStorage.setItem(redeemedKey, JSON.stringify([...redeemed, normalized]));
-    if (reward === "feathers") {
-      setFeathers((current) => {
-        const next = current + 180;
-        localStorage.setItem(walletStorageKey(), String(next));
-        return next;
+      const response = await fetch("/api/coupons/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.access_token}` },
+        body: JSON.stringify({ code }),
       });
-      setCouponNotice("Coupon applied! 180 feathers have been added.");
-    } else {
-      const plan: PlanName = reward === "elite" ? "Elite" : "Supreme";
-      localStorage.setItem("koyal-ai-subscription-plan", plan);
-      localStorage.setItem("koyal-ai-subscription-expires-at", String(Date.now() + 30 * 24 * 60 * 60 * 1000));
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Coupon could not be redeemed.");
+      const plan = data.plan as PlanName;
+      if (!["Let It", "Care", "Elite", "Supreme"].includes(plan)) throw new Error("The coupon response was invalid.");
       setSelectedPlan(plan);
+      localStorage.setItem("koyal-ai-subscription-plan", plan);
+      localStorage.setItem("koyal-ai-subscription-expires-at", String(Date.parse(data.expiresAt)));
+      if (plan === "Supreme") setThinkingId("supreme");
       setCouponNotice(`Coupon applied! ${plan} is active for 1 month.`);
+      setCouponCode("");
+    } catch (error) {
+      setCouponNotice(error instanceof Error ? error.message : "Coupon could not be redeemed. Please try again.");
     }
-    setCouponCode("");
   }
   async function requestSubscriptionPurchase(plan: PlanName) {
     if (!requireSignIn("buy a subscription")) return;
@@ -1601,10 +1586,6 @@ function KoyalApp() {
             </div>
             <form className={styles.composer} onSubmit={sendMessage}>
               <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "0 12px 8px" }}>
-                <button type="button" aria-pressed={webSearchEnabled} onClick={() => setWebSearchEnabled((enabled) => !enabled)} style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 999, padding: "7px 12px", border: webSearchEnabled ? "1px solid rgba(255,71,109,.8)" : "1px solid var(--border, rgba(150,150,150,.3))", background: webSearchEnabled ? "rgba(255,71,109,.13)" : "transparent", color: "inherit", fontSize: 12, cursor: "pointer" }}>
-                  <Icon name="search" size={15}/> Web Search {webSearchEnabled ? "On" : "Off"}
-                </button>
-                {webSearchEnabled && <small style={{ opacity: .7 }}>Searches current web sources. Uses Gemini online.</small>}
                 <button type="button" aria-pressed={urlReaderEnabled} onClick={() => setUrlReaderEnabled((enabled) => !enabled)} style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 999, padding: "7px 12px", border: urlReaderEnabled ? "1px solid rgba(255,71,109,.8)" : "1px solid var(--border, rgba(150,150,150,.3))", background: urlReaderEnabled ? "rgba(255,71,109,.13)" : "transparent", color: "inherit", fontSize: 12, cursor: "pointer" }}>
                   ↗ Read URL {urlReaderEnabled ? "On" : "Off"}
                 </button>
@@ -1642,7 +1623,7 @@ function KoyalApp() {
           <button type="button" onClick={() => requestFeatherPurchase(Number(customFeathers))}>Buy</button>
         </div>
         <div className={styles.customPack} style={{ marginTop: 18 }}>
-          <div><strong>🎟️ Have a coupon?</strong><p>Log in to redeem one coupon per email account.</p></div>
+          <div><strong>🎟️ Have a coupon?</strong><p>Log in to redeem each coupon once per account.</p></div>
           <label>Coupon code <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Enter coupon code" autoComplete="off" /></label>
           <button type="button" onClick={redeemCoupon} disabled={!couponCode.trim()}>Apply Coupon</button>
           {couponNotice && <p className={styles.purchaseNotice} role="status">{couponNotice}</p>}
