@@ -19,7 +19,29 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const code = typeof body.code === "string" ? body.code.trim().toLowerCase() : "";
     const plan = COUPONS[code];
-    if (!plan) return Response.json({ error: "That coupon code is not valid." }, { status: 400 });
+    if (!plan) {
+      const managed = await supabaseRequest(
+        `koyal_admin_coupons?select=code,plan_name,is_active,expires_at&code=eq.${encodeURIComponent(code)}&limit=1`,
+      ) as Array<{ code: string; plan_name: "Let It" | "Care" | "Elite" | "Supreme"; is_active: boolean; expires_at: string | null }>;
+      const coupon = managed?.[0];
+      if (!coupon || !coupon.is_active) return Response.json({ error: "That coupon code is not valid." }, { status: 400 });
+      if (coupon.expires_at && Date.parse(coupon.expires_at) <= Date.now()) return Response.json({ error: "This coupon has expired." }, { status: 400 });
+
+      const activeCoupons = await supabaseRequest(
+        `koyal_coupon_redemptions?select=expires_at&user_id=eq.${encodeURIComponent(user.id)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=expires_at.desc&limit=1`,
+      ) as Array<{ expires_at: string }>;
+      const paid = await getActiveSubscription(user.id);
+      const paidExpiry = paid.expiresAt ? Date.parse(paid.expiresAt) : 0;
+      const couponExpiry = activeCoupons?.[0]?.expires_at ? Date.parse(activeCoupons[0].expires_at) : 0;
+      const startAt = Math.max(Date.now(), paidExpiry, couponExpiry);
+      const redeemedAt = new Date().toISOString();
+      const expiresAt = new Date(startAt + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const result = await supabaseRequest("rpc/redeem_koyal_admin_subscription_coupon", {
+        method: "POST",
+        body: JSON.stringify({ p_user_id: user.id, p_code: code, p_redeemed_at: redeemedAt, p_expires_at: expiresAt }),
+      }) as { plan: string; expiresAt: string };
+      return Response.json({ success: true, plan: result.plan, expiresAt: result.expiresAt }, { headers: { "Cache-Control": "no-store" } });
+    }
 
     const existing = await supabaseRequest(
       `koyal_coupon_redemptions?select=id&user_id=eq.${encodeURIComponent(user.id)}&coupon_code=eq.${encodeURIComponent(code)}&limit=1`,
