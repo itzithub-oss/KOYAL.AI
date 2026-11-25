@@ -334,14 +334,14 @@ function KoyalApp() {
   const currentThinking = thinking.find((option) => option.id === thinkingId) || thinking[3];
   const indexThinking = thinking.findIndex((option) => option.id === thinkingId);
   const currentCharacter = characters.find((character) => character.id === characterMode) || characters[0];
+  const isAdminAccount = accountEmail.trim().toLowerCase() === "koyalaiindia@gmail.com";
+  const effectivePlan: PlanName = isAdminAccount ? "Supreme" : selectedPlan;
   const discountedThinkingIds: string[] = effectivePlan === "Let It" ? ["let-it"] : effectivePlan === "Care" ? ["let-it", "care"] : effectivePlan === "Elite" ? ["let-it", "care", "high", "ultra-high", "elite"] : [];
   const featherCost = effectivePlan === "Supreme" ? 0 : discountedThinkingIds.includes(thinkingId) ? currentThinking.feathers * 0.5 : currentThinking.feathers;
   const visibleMessages = search.trim()
     ? messages.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
     : messages;
   const visibleChatSessions = searchChatSessions(chatSessions, historyQuery);
-  const isAdminAccount = accountEmail.trim().toLowerCase() === "koyalaiindia@gmail.com";
-  const effectivePlan: PlanName = isAdminAccount ? "Supreme" : selectedPlan;
 
   useEffect(() => {
     const syncAccountEmail = () => {
@@ -1223,7 +1223,7 @@ function KoyalApp() {
             <button type="button" onClick={() => { setTravelOpen(true); setTravelTab("planner"); setFindUpOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); setAiDetailsOpen(false); closeSidebar(); }} className={`${styles.navItem} ${travelOpen ? styles.navOn : ""}`}><Icon name="arrow"/>Tours &amp; Travels<span className={styles.navSmall}>Explore</span></button>
             <button type="button" onClick={() => { setDailyHubOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setCodeModeOpen(false); closeSidebar(); }} className={`${styles.navItem} ${dailyHubOpen ? styles.navOn : ""}`}><Icon name="brain"/>Daily AI Hub<span className={styles.navSmall}>5</span></button>
             <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
-            <button type="button" onClick={() => { if (!["Care", "Elite", "Supreme"].includes(selectedPlan)) { setSubscriptionOpen(true); closeSidebar(); return; } setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
+            <button type="button" onClick={() => { if (!["Care", "Elite", "Supreme"].includes(effectivePlan)) { setSubscriptionOpen(true); closeSidebar(); return; } setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
               {characterOpen && <div className={styles.characterList}>
@@ -1267,7 +1267,7 @@ function KoyalApp() {
           </div>
           <button type="button" className={`${styles.sidebarProfile} ${isAdminAccount ? styles.sidebarProfileAdmin : ""}`} onClick={openProfile} aria-label="Open your profile">
             <div className={styles.sidebarProfileTop}>
-              {isAdminAccount ? <img className={styles.sidebarAdminBird} src="/koyal-bird.png" alt="KOYAL bird" /> : <WingedAvatar photo={profile.photo} supreme={selectedPlan === "Supreme"} variant="small" />}
+              {isAdminAccount ? <img className={styles.sidebarAdminBird} src="/koyal-bird.png" alt="KOYAL bird" /> : <WingedAvatar photo={profile.photo} supreme={effectivePlan === "Supreme"} variant="small" />}
               <span className={styles.sidebarProfileName}><strong>{isAdminAccount ? "Koyal Ai India" : profile.name || "Your Profile"}</strong>{isAdminAccount ? <small className={styles.sidebarAdminTag}>ADMIN</small> : <small>{selectedPlan === "Supreme" ? "♛ Supreme Plan" : `${selectedPlan} Plan`}</small>}</span>
               <Icon name="chevron" size={17}/>
             </div>
@@ -1442,7 +1442,7 @@ function KoyalApp() {
             setTripPlanLoading(true); setTripPlanError("");
             const prompt = `Act as a professional travel planner. Generate the complete trip plan directly for display in the Tours & Travels page, not in chat. Destination: ${tripDestination.trim()}. Dates: ${tripStartDate || "not decided"} to ${tripEndDate || "not decided"}. Travellers: ${tripTravellers}. Total budget: ${tripBudget.trim() || "suggest a reasonable budget"}. Travel style: ${tripStyle}. Provide a day-by-day itinerary, estimated cost breakdown, transport options, accommodation areas, attractions, food suggestions, safety tips and booking checklist. Label estimates clearly and never invent live prices or availability. Use clear headings and concise bullets.`;
             try {
-              const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, mode: "Normal", thinkingLevel: currentThinking.name, language: "English by default", subscriptionPlan: selectedPlan, name: profile.name, characterMode: "normal", teacherMode: false, preciseMode: false, philosophicalMode: false, webSearch: false }) });
+              const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, mode: "Normal", thinkingLevel: currentThinking.name, language: "English by default", subscriptionPlan: effectivePlan, name: profile.name, characterMode: "normal", teacherMode: false, preciseMode: false, philosophicalMode: false, webSearch: false }) });
               const data: ChatApiResponse = await response.json();
               if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(data.error || "Koyal could not create the trip plan. Please try again.");
               setTripPlan(data.reply); setTripDetailsEditing(false);
