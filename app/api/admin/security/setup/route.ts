@@ -1,4 +1,4 @@
-import { hashAdminAnswer, getAdminSecurity, getKoyalAdminUser, reauthenticateKoyalAdmin, writeAdminLog } from "@/lib/koyal-admin";
+import { hashAdminAnswer, hashAdminPasskey, getAdminSecurity, getKoyalAdminUser, reauthenticateKoyalAdmin, writeAdminLog, createKoyalAdminSession } from "@/lib/koyal-admin";
 import { supabaseRequest } from "@/lib/cashfree-server";
 
 export const runtime = "nodejs";
@@ -12,36 +12,50 @@ export async function POST(request: Request) {
       await writeAdminLog(user, "admin_security_setup_password_rejected");
       return Response.json({ error: "The administrator password could not be verified." }, { status: 401 });
     }
+
     const existing = await getAdminSecurity(user.id);
-    if (existing) return Response.json({ error: "Admin security questions have already been configured. They cannot be reset from this screen." }, { status: 409 });
+    if (existing?.passkey_hashes?.length === 3) {
+      return Response.json({ error: "Admin security is already configured. Contact the administrator recovery process to change it." }, { status: 409 });
+    }
 
     const answers = body.answers;
-    if (!Array.isArray(answers) || answers.length !== 5) {
-      return Response.json({ error: "Provide three answers for each of the five security questions." }, { status: 400 });
+    const passkeys = body.passkeys;
+    if (!Array.isArray(answers) || answers.length !== 3 || answers.some((combo: unknown) => !Array.isArray(combo) || combo.length !== 5)) {
+      return Response.json({ error: "Provide all five answers for each of the three combinations." }, { status: 400 });
     }
-    const answerHashes = [];
-    for (const group of answers) {
-      if (!Array.isArray(group) || group.length !== 3 || group.some((answer) => typeof answer !== "string" || answer.trim().length < 2 || answer.trim().length > 120)) {
-        return Response.json({ error: "Each question needs exactly three answers between 2 and 120 characters." }, { status: 400 });
-      }
-      const normalized = group.map((answer: string) => answer.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US"));
-      if (new Set(normalized).size !== 3) {
-        return Response.json({ error: "The three accepted answers for each question must be different." }, { status: 400 });
-      }
-      answerHashes.push(group.map((answer: string) => hashAdminAnswer(answer)));
+    if (!Array.isArray(passkeys) || passkeys.length !== 3 || passkeys.some((value: unknown) => typeof value !== "string" || value.trim().length < 12 || value.length > 128)) {
+      return Response.json({ error: "Provide three different passkeys, each at least 12 characters." }, { status: 400 });
     }
 
-    await supabaseRequest("koyal_admin_security", {
-      method: "POST",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ user_id: user.id, answer_hashes: answerHashes }),
+    const normalizedCombos = answers.map((combo: string[]) => combo.map(value => typeof value === "string" ? value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US") : ""));
+    if (normalizedCombos.some(combo => combo.some(value => value.length < 2 || value.length > 120)) ||
+        new Set(normalizedCombos.map(combo => combo.join("|"))).size !== 3 ||
+        new Set(passkeys.map((value: string) => value)).size !== 3) {
+      return Response.json({ error: "All answers must be valid, all three answer combinations must differ, and all passkeys must be unique." }, { status: 400 });
+    }
+
+    const answerHashes = answers.map((combo: string[]) => combo.map(answer => hashAdminAnswer(answer)));
+    const passkeyHashes = passkeys.map((passkey: string) => hashAdminPasskey(passkey));
+    const payload = { answer_hashes: answerHashes, passkey_hashes: passkeyHashes, failed_attempts: 0, locked_until: null, updated_at: new Date().toISOString() };
+
+    if (existing) {
+      await supabaseRequest(`koyal_admin_security?user_id=eq.${encodeURIComponent(user.id)}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(payload),
+      });
+    } else {
+      await supabaseRequest("koyal_admin_security", {
+        method: "POST", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ user_id: user.id, ...payload }),
+      });
+    }
+
+    const session = await createKoyalAdminSession(user);
+    await writeAdminLog(user, "admin_security_combinations_configured");
+    return Response.json({ success: true, expiresAt: session.expiresAt }, {
+      headers: { "Cache-Control": "no-store", "Set-Cookie": session.cookie },
     });
-    await writeAdminLog(user, "admin_security_questions_configured");
-    return Response.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (/duplicate|unique/i.test(message)) return Response.json({ error: "Admin security questions have already been configured." }, { status: 409 });
-    console.error("KOYAL admin security setup failed:", message);
-    return Response.json({ error: "Could not save admin security answers. Confirm the admin security migration has been applied." }, { status: 500 });
+    console.error("KOYAL admin security setup failed:", error instanceof Error ? error.message : "unknown error");
+    return Response.json({ error: "Could not complete admin security setup. Confirm the latest admin security migrations have been applied." }, { status: 500 });
   }
 }
