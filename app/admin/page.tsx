@@ -240,19 +240,31 @@ export default function AdminPage() {
           <label>Re-enter your KOYAL AI password<input type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} /></label>
           <button className="adminPrimary" disabled={busy} onClick={beginVerification}>{busy ? "Checking…" : "Continue"}</button>
         </>}
-        {step === "setup" && <>
-          <p className="adminHint">Create three fresh, private accepted answers for each question. Do not reuse answers you have posted in a chat or online.</p>
-          {SECURITY_QUESTIONS.map((question, index) => <div className="adminQuestionGroup" key={question}>
-            <strong>{index + 1}. {question}</strong>
-            {[0, 1, 2].map(answerIndex => <input key={answerIndex} value={setupAnswers[index][answerIndex]} placeholder={`Alternative answer ${answerIndex + 1}`} onChange={event => setSetupAnswers(old => old.map((group, groupIndex) => groupIndex === index ? group.map((value, valueIndex) => valueIndex === answerIndex ? event.target.value : value) : group))} />)}
+        {step === "setupAnswers" && <>
+          <p className="adminHint">Enter the five answers for each of your three complete combinations. Use private answers that you have not shared publicly.</p>
+          {[0, 1, 2].map(comboIndex => <div className="adminQuestionGroup" key={comboIndex}>
+            <strong>Combination {comboIndex + 1}</strong>
+            {SECURITY_QUESTIONS.map((question, questionIndex) => <label key={question}>{question}<input autoComplete="off" value={setupAnswers[comboIndex][questionIndex]} onChange={event => setSetupAnswers(old => old.map((combo, index) => index === comboIndex ? combo.map((value, qIndex) => qIndex === questionIndex ? event.target.value : value) : combo))} /></label>)}
           </div>)}
-          <button className="adminPrimary" disabled={busy} onClick={saveSecurityAnswers}>{busy ? "Saving securely…" : "Save security answers"}</button>
+          <button className="adminPrimary" disabled={busy} onClick={continueToSetupPasskeys}>Next</button>
+        </>}
+        {step === "setupPasskeys" && <>
+          <p className="adminHint">Set a different private passkey for each answer combination. Each passkey must be at least 12 characters.</p>
+          {[0, 1, 2].map(index => <label key={index}>Passkey for Combination {index + 1}<input type="password" autoComplete="new-password" value={setupPasskeys[index]} onChange={event => setSetupPasskeys(old => old.map((value, valueIndex) => valueIndex === index ? event.target.value : value))} /></label>)}
+          <button className="adminPrimary" disabled={busy} onClick={finishSecuritySetup}>{busy ? "Verifying…" : "Login"}</button>
+          <button className="adminSecondary" disabled={busy} onClick={() => setStep("setupAnswers")}>Back to answers</button>
         </>}
         {step === "questions" && <>
-          <p className="adminHint">Answer the one randomly selected question. Enter any one of the three accepted answers you registered for that question.</p>
+          <p className="adminHint">Enter all five answers from the same complete combination.</p>
           {questions.map(question => <label key={question.index}>{question.question}<input autoComplete="off" value={challengeAnswers[question.index] || ""} onChange={event => setChallengeAnswers(old => ({ ...old, [question.index]: event.target.value }))} /></label>)}
-          <button className="adminPrimary" disabled={busy} onClick={verifyAnswers}>{busy ? "Verifying…" : "VERIFY ADMIN ACCESS"}</button>
+          <button className="adminPrimary" disabled={busy} onClick={verifyAnswers}>{busy ? "Checking combination…" : "Next"}</button>
           <button className="adminSecondary" disabled={busy} onClick={() => { setStep("password"); setPassword(""); setError(""); }}>Start again</button>
+        </>}
+        {step === "passkey" && <>
+          <p className="adminHint">Combination {Number(verifiedCombination) + 1} matched. Enter its assigned passkey.</p>
+          <label>Combination {Number(verifiedCombination) + 1} passkey<input type="password" autoComplete="current-password" value={loginPasskey} onChange={event => setLoginPasskey(event.target.value)} /></label>
+          <button className="adminPrimary" disabled={busy} onClick={verifyPasskey}>{busy ? "Verifying…" : "Login"}</button>
+          <button className="adminSecondary" disabled={busy} onClick={() => { setStep("password"); setPassword(""); setLoginPasskey(""); setError(""); }}>Start again</button>
         </>}
         {error && <p className="adminError" role="alert">{error}</p>}
         <button className="adminBack" onClick={() => window.location.assign("/")}>← Back to KOYAL AI</button>
