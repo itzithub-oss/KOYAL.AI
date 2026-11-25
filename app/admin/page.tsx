@@ -108,6 +108,14 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState("");
   const [usersError, setUsersError] = useState("");
   const [usersTotal, setUsersTotal] = useState<number | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [analyticsError, setAnalyticsError] = useState("");
+  const [partners, setPartners] = useState<any[]>([]);
+  const [partnerSearch, setPartnerSearch] = useState("");
+  const [partnerError, setPartnerError] = useState("");
+  const [partnerNotice, setPartnerNotice] = useState("");
+  const [partnerBusy, setPartnerBusy] = useState(false);
+  const [partnerForm, setPartnerForm] = useState({ name: "", category: "", description: "", location: "", phone: "", website: "" });
 
   const headers = useMemo<Record<string, string>>(() => {
     const result: Record<string, string> = { "Content-Type": "application/json" };
@@ -229,6 +237,35 @@ export default function AdminPage() {
   }, [unlocked, activeModule, featherSearch, accessToken]);
 
   useEffect(() => {
+    if (!unlocked || activeModule !== "analytics") return;
+    const query = new URLSearchParams();
+    if (appliedStartDate) query.set("start", appliedStartDate);
+    if (appliedEndDate) query.set("end", appliedEndDate);
+    fetch(`/api/admin/analytics?${query.toString()}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Could not load analytics.");
+        setAnalyticsData(data);
+        setAnalyticsError("");
+      })
+      .catch(cause => setAnalyticsError(cause instanceof Error ? cause.message : "Could not load analytics."));
+  }, [unlocked, activeModule, appliedStartDate, appliedEndDate, accessToken]);
+
+  useEffect(() => {
+    if (!unlocked || activeModule !== "partners") return;
+    const query = new URLSearchParams();
+    if (partnerSearch.trim()) query.set("search", partnerSearch.trim());
+    fetch(`/api/admin/partners?${query.toString()}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Could not load partners.");
+        setPartners(Array.isArray(data.partners) ? data.partners : []);
+        setPartnerError("");
+      })
+      .catch(cause => setPartnerError(cause instanceof Error ? cause.message : "Could not load partners."));
+  }, [unlocked, activeModule, partnerSearch, accessToken]);
+
+  useEffect(() => {
     if (!unlocked || activeModule !== "users") return;
     const query = new URLSearchParams();
     if (userSearch.trim()) query.set("search", userSearch.trim());
@@ -242,6 +279,44 @@ export default function AdminPage() {
       })
       .catch(cause => setUsersError(cause instanceof Error ? cause.message : "Could not load users."));
   }, [unlocked, activeModule, userSearch, accessToken]);
+
+  async function refreshPartners() {
+    const query = new URLSearchParams();
+    if (partnerSearch.trim()) query.set("search", partnerSearch.trim());
+    const response = await fetch(`/api/admin/partners?${query.toString()}`, { headers, cache: "no-store" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Could not refresh partners.");
+    setPartners(Array.isArray(data.partners) ? data.partners : []);
+  }
+
+  async function createPartner() {
+    setPartnerError(""); setPartnerNotice("");
+    if (!partnerForm.name.trim() || !partnerForm.category.trim() || !partnerForm.location.trim()) {
+      setPartnerError("Business name, category and location are required."); return;
+    }
+    setPartnerBusy(true);
+    try {
+      const response = await fetch("/api/admin/partners", { method: "POST", headers, body: JSON.stringify(partnerForm) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not create partner.");
+      setPartnerForm({ name: "", category: "", description: "", location: "", phone: "", website: "" });
+      await refreshPartners();
+      setPartnerNotice("Partner listing created and added to the live FIND UP directory.");
+    } catch (cause) { setPartnerError(cause instanceof Error ? cause.message : "Could not create partner."); }
+    finally { setPartnerBusy(false); }
+  }
+
+  async function updatePartner(partnerId: string, changes: Record<string, unknown>) {
+    setPartnerError(""); setPartnerNotice(""); setPartnerBusy(true);
+    try {
+      const response = await fetch("/api/admin/partners", { method: "PATCH", headers, body: JSON.stringify({ id: partnerId, ...changes }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not update partner.");
+      await refreshPartners();
+      setPartnerNotice("Partner listing updated.");
+    } catch (cause) { setPartnerError(cause instanceof Error ? cause.message : "Could not update partner."); }
+    finally { setPartnerBusy(false); }
+  }
 
   async function createCoupon() {
     setCouponError("");
@@ -539,6 +614,62 @@ export default function AdminPage() {
               <div><small>User ID</small><code>{item.user_id}</code><small>{item.created_at ? new Date(item.created_at).toLocaleString("en-IN") : "Date unavailable"}</small></div>
             </article>) : <p className="adminEmptyText">No payment records match this filter.</p>}</div>
             <p className="adminHint">Showing up to 500 most recent orders. Payment verification with Cashfree will be added only after its order-state handling is safely connected.</p>
+          </section>
+        </div> : activeModule === "analytics" ? <div className="adminContent">
+          <div className="adminModuleIntro"><div><span className="adminEyebrow">VERIFIED DATABASE REPORTS</span><h2>KOYAL Analytics</h2><p>Revenue, payments, wallets and directory totals from saved records. Chat usage is not tracked in a reportable event table yet.</p></div><span className="adminBuildBadge">LIVE DATA</span></div>
+          <section className="adminDateBar"><div><strong>Analytics date range</strong><small>Filter payment and registration reports.</small></div><label>From<input type="date" value={startDate} max={endDate || localDate()} onChange={event => setStartDate(event.target.value)} /></label><label>To<input type="date" value={endDate} min={startDate || undefined} max={localDate()} onChange={event => setEndDate(event.target.value)} /></label><button onClick={() => { setAppliedStartDate(startDate); setAppliedEndDate(endDate); }}>Apply</button><button className="adminReset" onClick={() => { setStartDate(""); setEndDate(""); setAppliedStartDate(""); setAppliedEndDate(""); }}>Reset</button></section>
+          {analyticsError && <div className="adminInlineError">{analyticsError}</div>}
+          <div className="adminMetricGrid">
+            {[["Total users", analyticsData?.metrics?.totalUsers], ["Paid revenue", analyticsData?.metrics?.revenuePaise === undefined ? null : "₹" + (analyticsData.metrics.revenuePaise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })], ["Paid orders", analyticsData?.metrics?.paidOrders], ["Pending payments", analyticsData?.metrics?.pendingPayments], ["Wallet Feathers", analyticsData?.metrics?.totalFeathers], ["Feathers purchased", analyticsData?.metrics?.feathersPurchased], ["Active partners", analyticsData?.metrics?.activePartners], ["New users in sample", analyticsData?.metrics?.newUsersInRetrievedSample]].map(([label, value]) => <article className="adminMetric" key={String(label)}><small>{label}</small><strong>{value === null || value === undefined ? "—" : typeof value === "number" ? value.toLocaleString("en-IN") : value}</strong><em>Verified records</em></article>)}
+          </div>
+          <div className="adminPanelGrid">
+            <section className="adminPanelCard"><div className="adminCardHeading"><h3>Daily paid revenue</h3><span>SELECTED PERIOD</span></div><div className="adminChartBars">{(analyticsData?.charts?.revenue || []).length ? analyticsData.charts.revenue.map((row: any) => <div className="adminBarColumn" key={row.date} title={row.date + ": ₹" + (row.amountPaise / 100).toLocaleString("en-IN")}><div className="adminBar" style={{ height: Math.max(5, (Number(row.amountPaise) / Math.max(1, ...analyticsData.charts.revenue.map((item: any) => Number(item.amountPaise) || 0))) * 100) + "%" }} /><small>{String(row.date).slice(5)}</small></div>) : <div className="adminEmptyChart">No paid revenue in this date range.</div>}</div></section>
+            <section className="adminPanelCard"><div className="adminCardHeading"><h3>Subscription plan revenue</h3><span>PAID ORDERS</span></div><div className="adminDataRows">{(analyticsData?.charts?.planRevenue || []).length ? analyticsData.charts.planRevenue.map((row: any) => <div key={row.plan}><span>{row.plan}</span><strong>₹{(Number(row.amountPaise) / 100).toLocaleString("en-IN")}</strong></div>) : <div className="adminEmptyChart">No paid subscription orders in this range.</div>}</div></section>
+            <section className="adminPanelCard"><div className="adminCardHeading"><h3>Payment status</h3><span>SELECTED PERIOD</span></div><div className="adminDataRows">{(analyticsData?.charts?.paymentSummary || []).length ? analyticsData.charts.paymentSummary.map((row: any) => <div key={row.status}><span>{row.status}</span><strong>{Number(row.count).toLocaleString("en-IN")}</strong></div>) : <div className="adminEmptyChart">No payment records in this range.</div>}</div></section>
+            <section className="adminPanelCard"><div className="adminCardHeading"><h3>Registration trend</h3><span>FIRST 1,000 AUTH USERS</span></div><div className="adminDataRows">{(analyticsData?.charts?.userGrowth || []).length ? analyticsData.charts.userGrowth.map((row: any) => <div key={row.date}><span>{row.date}</span><strong>{Number(row.users).toLocaleString("en-IN")}</strong></div>) : <div className="adminEmptyChart">No registrations found in the retrieved sample for this range.</div>}</div></section>
+          </div>
+          <p className="adminHint">Coverage limits: registration trend uses the first {analyticsData?.coverage?.authUsersRetrieved ?? "—"} of up to 1,000 Auth accounts; payment charts use up to 10,000 orders. AI chat usage and Feather spending are not shown because no verified event source is currently connected.</p>
+        </div> : activeModule === "partners" ? <div className="adminContent">
+          <div className="adminModuleIntro"><div><span className="adminEyebrow">FIND UP · TOURS & TRAVELS</span><h2>Partner Directory</h2><p>Add and maintain businesses displayed in FIND UP and the Tours & Travels directory. The external Google Form does not automatically import submissions.</p></div><span className="adminBuildBadge">AUDITED DIRECTORY</span></div>
+          <section className="adminPanelCard">
+            <h3>Add a partner listing</h3>
+            <div className="adminPaymentFilters adminCouponForm">
+              <label>Business name<input value={partnerForm.name} onChange={event => setPartnerForm(value => ({ ...value, name: event.target.value }))} placeholder="Business name" /></label>
+              <label>Category<input value={partnerForm.category} onChange={event => setPartnerForm(value => ({ ...value, category: event.target.value }))} placeholder="e.g. Travel Agency" /></label>
+              <label>Location<input value={partnerForm.location} onChange={event => setPartnerForm(value => ({ ...value, location: event.target.value }))} placeholder="City, state" /></label>
+              <label>Phone<input value={partnerForm.phone} onChange={event => setPartnerForm(value => ({ ...value, phone: event.target.value }))} placeholder="Contact number" /></label>
+              <label>Website<input value={partnerForm.website} onChange={event => setPartnerForm(value => ({ ...value, website: event.target.value }))} placeholder="https://" /></label>
+              <label>Description<input value={partnerForm.description} onChange={event => setPartnerForm(value => ({ ...value, description: event.target.value }))} placeholder="Services and details" /></label>
+            </div>
+            <button className="adminPrimary" disabled={partnerBusy} onClick={createPartner}>{partnerBusy ? "Saving…" : "Add partner to directory"}</button>
+            {partnerNotice && <p className="adminHint">{partnerNotice}</p>}
+            {partnerError && <div className="adminInlineError">{partnerError}</div>}
+          </section>
+          <section className="adminPanelCard">
+            <div className="adminUserToolbar"><label>Search partners<input value={partnerSearch} onChange={event => setPartnerSearch(event.target.value)} placeholder="Name, category, location…" /></label><span>{partners.length} listings</span></div>
+            <div className="adminUserList">{partners.length ? partners.map(partner => <article key={partner.id}>
+              <div><strong>{partner.name}</strong><small>{partner.category}</small><small>{partner.location}</small></div>
+              <div><small>STATUS</small><strong className={partner.status === "active" ? "adminUserActive" : partner.status === "rejected" ? "adminUserSuspended" : ""}>{partner.status}</strong></div>
+              <div><small>CONTACT</small><strong>{partner.phone || partner.email || "Not provided"}</strong></div>
+              <div><small>SOURCE</small><strong>{partner.source || "—"}</strong></div>
+              <details><summary>Edit listing</summary><div className="adminPaymentFilters adminCouponForm">
+                <label>Name<input defaultValue={partner.name} id={`partner-name-${partner.id}`} /></label>
+                <label>Category<input defaultValue={partner.category} id={`partner-category-${partner.id}`} /></label>
+                <label>Location<input defaultValue={partner.location} id={`partner-location-${partner.id}`} /></label>
+                <label>Phone<input defaultValue={partner.phone || ""} id={`partner-phone-${partner.id}`} /></label>
+                <label>Website<input defaultValue={partner.website || ""} id={`partner-website-${partner.id}`} /></label>
+                <label>Description<input defaultValue={partner.description || ""} id={`partner-description-${partner.id}`} /></label>
+              </div><button className="adminPrimary" disabled={partnerBusy} onClick={() => {
+                const value = (field: string) => (document.getElementById(`partner-${field}-${partner.id}`) as HTMLInputElement | null)?.value || "";
+                updatePartner(partner.id, { name: value("name"), category: value("category"), location: value("location"), phone: value("phone"), website: value("website"), description: value("description") });
+              }}>Save listing details</button></details>
+              <div className="adminPartnerActions">
+                {partner.status !== "active" && <button className="adminSecondary" onClick={() => updatePartner(partner.id, { status: "active" })}>Activate</button>}
+                {partner.status === "active" && <button className="adminSecondary" onClick={() => updatePartner(partner.id, { status: "inactive" })}>Deactivate</button>}
+                {partner.status !== "rejected" && <button className="adminSecondary" onClick={() => updatePartner(partner.id, { status: "rejected" })}>Reject</button>}
+              </div>
+            </article>) : <p className="adminEmptyText">No partner listings found.</p>}</div>
+            <p className="adminHint">Only active listings appear in the public FIND UP and Tours & Travels search. Changes are recorded in the admin activity log. External form applications must be reviewed and added here manually.</p>
           </section>
         </div> : activeModule === "activity" ? <div className="adminContent"><div className="adminModuleIntro"><div><span className="adminEyebrow">IMMUTABLE AUDIT TRAIL</span><h2>Admin Activity Log</h2><p>Read-only record of administrator security and management actions.</p></div><span className="adminBuildBadge">READ ONLY · NO EDIT OR DELETE</span></div><section className="adminPanelCard"><label className="adminActivitySearch">Filter by action<input value={activityFilter} onChange={event => setActivityFilter(event.target.value)} placeholder="e.g. admin_access_granted" /></label><div className="adminActivityList">{activityLogs.length ? activityLogs.map(item => <article key={item.id}><div><strong>{String(item.action).replace(/_/g, " ")}</strong><small>{item.admin_email}</small></div><time>{new Date(item.created_at).toLocaleString("en-IN")}</time><p>{item.details && Object.keys(item.details).length ? JSON.stringify(item.details) : "No additional details"}</p></article>) : <p className="adminEmptyText">No matching activity records.</p>}</div></section></div> : <div className="adminContent"><div className="adminModuleIntro"><div><span className="adminEyebrow">ADMIN MODULE</span><h2>{active.label}</h2><p>{MODULE_DESCRIPTIONS[activeModule].summary}</p></div><span className="adminBuildBadge">IMPLEMENTATION IN PROGRESS</span></div><section className="adminPanelCard adminModuleCard"><h3>Planned controls</h3><ul>{MODULE_DESCRIPTIONS[activeModule].actions.map(action => <li key={action}>{action}</li>)}</ul><p className="adminHint">{MODULE_DESCRIPTIONS[activeModule].note}</p></section></div>}
       </section>
