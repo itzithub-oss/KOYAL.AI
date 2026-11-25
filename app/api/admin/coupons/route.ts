@@ -4,6 +4,7 @@ import { supabaseRequest } from "@/lib/cashfree-server";
 export const runtime = "nodejs";
 
 const PLANS = new Set(["Let It", "Care", "Elite", "Supreme"]);
+const BUILT_IN_CODES = new Set(["letitfree26", "carefree26", "elitefree26", "supremefree26", "cadet0117", "welcomebonus01"]);
 
 export async function GET(request: Request) {
   try {
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
       ? null : Number(body.maxRedemptions);
     const expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
     if (!/^[a-z0-9][a-z0-9_-]{3,39}$/.test(code)) return Response.json({ error: "Use 4–40 characters: lowercase letters, numbers, _ or -." }, { status: 400 });
+    if (BUILT_IN_CODES.has(code)) return Response.json({ error: "That code is reserved for an existing KOYAL coupon." }, { status: 409 });
     if (!PLANS.has(plan)) return Response.json({ error: "Choose a valid subscription plan." }, { status: 400 });
     if (maxRedemptions !== null && (!Number.isInteger(maxRedemptions) || maxRedemptions < 1 || maxRedemptions > 1000000)) return Response.json({ error: "Redemption limit must be a whole number from 1 to 1,000,000." }, { status: 400 });
     if (body.expiresAt && (!expiresAt || !Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now())) return Response.json({ error: "Expiry must be a future date and time." }, { status: 400 });
