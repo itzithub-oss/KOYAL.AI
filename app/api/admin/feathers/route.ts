@@ -15,8 +15,9 @@ export async function GET(request: Request) {
     ]);
     return Response.json({ wallets: wallets || [], adjustments: adjustments || [], readOnlyHistory: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("KOYAL admin feathers failed:", error instanceof Error ? error.message : "unknown error");
-    return Response.json({ error: "Could not load Feather records. Run the admin Feather migration first." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    const detail = error instanceof Error ? error.message : "Unknown database error";
+    console.error("KOYAL admin feathers failed:", detail);
+    return Response.json({ error: "Could not load Feather records.", details: detail.slice(0, 400) }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
 
