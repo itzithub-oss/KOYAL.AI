@@ -57,9 +57,12 @@ export default function AdminPage() {
   const [accountEmail, setAccountEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [unlocked, setUnlocked] = useState(false);
-  const [step, setStep] = useState<"password" | "setup" | "questions">("password");
+  const [step, setStep] = useState<"password" | "setupAnswers" | "setupPasskeys" | "questions" | "passkey">("password");
   const [password, setPassword] = useState("");
-  const [setupAnswers, setSetupAnswers] = useState<string[][]>(Array.from({ length: 5 }, () => ["", "", ""]));
+  const [setupAnswers, setSetupAnswers] = useState<string[][]>(Array.from({ length: 3 }, () => Array(5).fill("")));
+  const [setupPasskeys, setSetupPasskeys] = useState<string[]>(["", "", ""]);
+  const [verifiedCombination, setVerifiedCombination] = useState<number | null>(null);
+  const [loginPasskey, setLoginPasskey] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [challengeAnswers, setChallengeAnswers] = useState<Record<number, string>>({});
@@ -145,7 +148,7 @@ export default function AdminPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not begin admin verification.");
       if (data.setupRequired) {
-        setStep("setup");
+        setStep("setupAnswers");
       } else {
         setChallengeId(data.challengeId);
         setQuestions(data.questions || []);
@@ -157,45 +160,51 @@ export default function AdminPage() {
     } finally { setBusy(false); }
   }
 
-  async function saveSecurityAnswers() {
+  function continueToSetupPasskeys() {
     setError("");
-    if (setupAnswers.some(group => group.some(answer => !answer.trim()) || new Set(group.map(answer => answer.trim().toLocaleLowerCase())).size !== 3)) {
-      setError("Enter three different answers for each of the five questions.");
-      return;
-    }
+    if (setupAnswers.some(combo => combo.some(answer => !answer.trim()))) { setError("Complete all five answers in all three combinations."); return; }
+    const signatures = setupAnswers.map(combo => combo.map(value => value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US")).join("|"));
+    if (new Set(signatures).size !== 3) { setError("Each complete answer combination must be different."); return; }
+    setStep("setupPasskeys");
+  }
+
+  async function finishSecuritySetup() {
+    setError("");
+    if (setupPasskeys.some(value => value.trim().length < 12 || value.length > 128) || new Set(setupPasskeys).size !== 3) { setError("Enter three different passkeys, each at least 12 characters."); return; }
     setBusy(true);
     try {
-      const response = await fetch("/api/admin/security/setup", { method: "POST", headers, body: JSON.stringify({ password, answers: setupAnswers }) });
+      const response = await fetch("/api/admin/security/setup", { method: "POST", headers, body: JSON.stringify({ password, answers: setupAnswers, passkeys: setupPasskeys }) });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Could not save security answers.");
-      await beginVerification();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not save security answers.");
-    } finally { setBusy(false); }
+      if (!response.ok) throw new Error(data.error || "Could not complete admin security setup.");
+      setUnlocked(true); setPassword(""); setSetupAnswers(Array.from({ length: 3 }, () => Array(5).fill(""))); setSetupPasskeys(["", "", ""]); setError("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not complete admin security setup."); }
+    finally { setBusy(false); }
   }
 
   async function verifyAnswers() {
     setError("");
-    if (questions.length !== 1 || !(challengeAnswers[questions[0]?.index] || "").trim()) {
-      setError("Answer the selected security question.");
-      return;
-    }
+    if (questions.length !== 5 || questions.some(question => !(challengeAnswers[question.index] || "").trim())) { setError("Answer all five security questions."); return; }
     setBusy(true);
     try {
-      const response = await fetch("/api/admin/security/verify", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ challengeId, answers: questions.map(question => ({ questionIndex: question.index, answer: challengeAnswers[question.index] })) }),
-      });
+      const response = await fetch("/api/admin/security/verify", { method: "POST", headers, body: JSON.stringify({ challengeId, answers: questions.map(question => ({ questionIndex: question.index, answer: challengeAnswers[question.index] })) }) });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Admin verification failed.");
-      setUnlocked(true);
-      setPassword("");
-      setError("");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Admin verification failed.");
-      setStep("password");
-    } finally { setBusy(false); }
+      if (!response.ok) throw new Error(data.error || "Security answer combination did not match.");
+      setVerifiedCombination(data.combinationIndex); setLoginPasskey(""); setStep("passkey");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Security verification failed."); setStep("password"); setPassword(""); }
+    finally { setBusy(false); }
+  }
+
+  async function verifyPasskey() {
+    setError("");
+    if (!loginPasskey) { setError("Enter the passkey for the verified combination."); return; }
+    setBusy(true);
+    try {
+      const response = await fetch("/api/admin/security/passkey", { method: "POST", headers, body: JSON.stringify({ challengeId, passkey: loginPasskey }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Passkey verification failed.");
+      setUnlocked(true); setPassword(""); setLoginPasskey(""); setError("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Passkey verification failed."); setStep("password"); setPassword(""); }
+    finally { setBusy(false); }
   }
 
   async function signOutAdmin() {
