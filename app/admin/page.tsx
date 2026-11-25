@@ -176,8 +176,8 @@ export default function AdminPage() {
 
   async function verifyAnswers() {
     setError("");
-    if (questions.some(question => !(challengeAnswers[question.index] || "").trim())) {
-      setError("Answer both selected security questions.");
+    if (questions.length !== 1 || !(challengeAnswers[questions[0]?.index] || "").trim()) {
+      setError("Answer the selected security question.");
       return;
     }
     setBusy(true);
@@ -240,7 +240,7 @@ export default function AdminPage() {
           <button className="adminPrimary" disabled={busy} onClick={saveSecurityAnswers}>{busy ? "Saving securely…" : "Save security answers"}</button>
         </>}
         {step === "questions" && <>
-          <p className="adminHint">Answer both randomly selected questions. Any one of the three answers you registered for each question will be accepted.</p>
+          <p className="adminHint">Answer the one randomly selected question. Enter any one of the three accepted answers you registered for that question.</p>
           {questions.map(question => <label key={question.index}>{question.question}<input autoComplete="off" value={challengeAnswers[question.index] || ""} onChange={event => setChallengeAnswers(old => ({ ...old, [question.index]: event.target.value }))} /></label>)}
           <button className="adminPrimary" disabled={busy} onClick={verifyAnswers}>{busy ? "Verifying…" : "VERIFY ADMIN ACCESS"}</button>
           <button className="adminSecondary" disabled={busy} onClick={() => { setStep("password"); setPassword(""); setError(""); }}>Start again</button>
