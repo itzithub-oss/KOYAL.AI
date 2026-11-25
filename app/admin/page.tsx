@@ -234,11 +234,11 @@ export default function AdminPage() {
       <section className="adminGateCard">
         <img src="/koyal-bird.png" alt="KOYAL bird" />
         <div className="adminEyebrow">KOYAL AI · ADMIN SECURITY</div>
-        <h1>{step === "setup" ? "Set up your security questions" : step === "questions" ? "Verify your identity" : "Verify Admin Access"}</h1>
+        <h1>{step === "setupAnswers" ? "Set up answer combinations" : step === "setupPasskeys" ? "Set up combination passkeys" : step === "questions" ? "Verify answer combination" : step === "passkey" ? "Verify passkey" : "Verify Admin Access"}</h1>
         <p>Administrator account: <strong>{ADMIN_EMAIL}</strong></p>
         {step === "password" && <>
           <label>Re-enter your KOYAL AI password<input type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} /></label>
-          <button className="adminPrimary" disabled={busy} onClick={beginVerification}>{busy ? "Checking…" : "Continue"}</button>
+          <button className="adminPrimary" disabled={busy} onClick={beginVerification}>{busy ? "Checking…" : "Next"}</button>
         </>}
         {step === "setupAnswers" && <>
           <p className="adminHint">Enter the five answers for each of your three complete combinations. Use private answers that you have not shared publicly.</p>
