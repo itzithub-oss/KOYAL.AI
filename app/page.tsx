@@ -334,12 +334,14 @@ function KoyalApp() {
   const currentThinking = thinking.find((option) => option.id === thinkingId) || thinking[3];
   const indexThinking = thinking.findIndex((option) => option.id === thinkingId);
   const currentCharacter = characters.find((character) => character.id === characterMode) || characters[0];
-  const discountedThinkingIds: string[] = selectedPlan === "Let It" ? ["let-it"] : selectedPlan === "Care" ? ["let-it", "care"] : selectedPlan === "Elite" ? ["let-it", "care", "high", "ultra-high", "elite"] : [];
-  const featherCost = selectedPlan === "Supreme" ? 0 : discountedThinkingIds.includes(thinkingId) ? currentThinking.feathers * 0.5 : currentThinking.feathers;
+  const discountedThinkingIds: string[] = effectivePlan === "Let It" ? ["let-it"] : effectivePlan === "Care" ? ["let-it", "care"] : effectivePlan === "Elite" ? ["let-it", "care", "high", "ultra-high", "elite"] : [];
+  const featherCost = effectivePlan === "Supreme" ? 0 : discountedThinkingIds.includes(thinkingId) ? currentThinking.feathers * 0.5 : currentThinking.feathers;
   const visibleMessages = search.trim()
     ? messages.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
     : messages;
   const visibleChatSessions = searchChatSessions(chatSessions, historyQuery);
+  const isAdminAccount = accountEmail.trim().toLowerCase() === "koyalaiindia@gmail.com";
+  const effectivePlan: PlanName = isAdminAccount ? "Supreme" : selectedPlan;
 
   useEffect(() => {
     const syncAccountEmail = () => {
@@ -580,7 +582,7 @@ function KoyalApp() {
   }
   function changeThinking(idx: number) {
     const option = thinking[Math.max(0, Math.min(6, idx))];
-    if (option.id === "supreme" && selectedPlan !== "Supreme") {
+    if (option.id === "supreme" && effectivePlan !== "Supreme") {
       if (requireSignIn("access subscription plans")) setSubscriptionOpen(true);
       return;
     }
@@ -767,7 +769,7 @@ function KoyalApp() {
       setPurchaseNotice("Choose between 2 and 100,000 whole feathers.");
       return;
     }
-    if (selectedPlan === "Supreme") {
+    if (effectivePlan === "Supreme") {
       setPurchaseNotice("Your Supreme plan already includes unlimited feathers.");
       return;
     }
@@ -952,7 +954,7 @@ function KoyalApp() {
     setMenuOpen(false);
   }
   async function runCodeMode() {
-    if (!["Care", "Elite", "Supreme"].includes(selectedPlan)) {
+    if (!["Care", "Elite", "Supreme"].includes(effectivePlan)) {
       setCodeModeOpen(false); setSubscriptionOpen(true);
       setCodeError("Code Mode is available from the Care plan onwards."); return;
     }
@@ -979,7 +981,7 @@ function KoyalApp() {
           mode: "Code",
           thinkingLevel: currentThinking.name,
           language: "English by default",
-          subscriptionPlan: selectedPlan,
+          subscriptionPlan: effectivePlan,
           name: profile.name,
           preciseMode: true,
           webSearch: false
@@ -1112,7 +1114,7 @@ function KoyalApp() {
     const text = input.trim();
     const attachment = selectedFile;
     if (!text && !attachment && !(urlReaderEnabled && urlInput.trim())) return;
-    if (studyMode && !["Care", "Elite", "Supreme"].includes(selectedPlan)) {
+    if (studyMode && !["Care", "Elite", "Supreme"].includes(effectivePlan)) {
       setStudyMode(false); setSubscriptionOpen(true); return;
     }
     if (featherCost > feathers) { openFeatherShop(); return; }
@@ -1210,6 +1212,7 @@ function KoyalApp() {
             <div className={styles.credits}>Brought to you by<br/><strong>Divyansh Acharjee, Tejas Raj &amp; Kavya Patel</strong></div>
             <div className={styles.credits}>A product of <strong>Enrapture Philia PVT Ltd.</strong></div>
           </div>
+          {isAdminAccount && <button type="button" onClick={() => { window.location.assign("/admin"); closeSidebar(); }} className={styles.adminNavButton}><Icon name="diamond"/><strong>Admin Panel</strong><span>›</span></button>}
           <nav className={styles.nav} aria-label="Koyal features">
             <button type="button" onClick={resetChat} className={`${styles.navItem} ${styles.navMain}`}><Icon name="chat"/><strong>New Chat</strong></button>
             <button type="button" onClick={openChatHistory} className={`${styles.navItem} ${historyOpen ? styles.navOn : ""}`}><Icon name="chat"/>Chat History<span className={styles.navSmall}>{chatSessions.length}</span></button>
@@ -1238,8 +1241,8 @@ function KoyalApp() {
               </div>}
             </div>
             <button type="button" onClick={() => setTeacherMode((v) => !v)} className={`${styles.navItem} ${teacherMode ? styles.navOn : ""}`}><Icon name="book"/>Teacher Mode<span className={styles.navSmall}>{teacherMode ? "On" : ""}</span></button>
-            <button type="button" onClick={() => { if (!["Care", "Elite", "Supreme"].includes(selectedPlan)) { setStudyMode(false); setSubscriptionOpen(true); closeSidebar(); return; } setStudyMode((v) => !v); }} className={`${styles.navItem} ${studyMode ? styles.navOn : ""}`}><Icon name="graduation"/>Study Mode<span className={styles.navSmall}>{studyMode ? "On" : "Off"}</span></button>
-            {studyMode && ["Care", "Elite", "Supreme"].includes(selectedPlan) && <div className={styles.teacherSettings}>
+            <button type="button" onClick={() => { if (!["Care", "Elite", "Supreme"].includes(effectivePlan)) { setStudyMode(false); setSubscriptionOpen(true); closeSidebar(); return; } setStudyMode((v) => !v); }} className={`${styles.navItem} ${studyMode ? styles.navOn : ""}`}><Icon name="graduation"/>Study Mode<span className={styles.navSmall}>{studyMode ? "On" : "Off"}</span></button>
+            {studyMode && ["Care", "Elite", "Supreme"].includes(effectivePlan) && <div className={styles.teacherSettings}>
               <label>Study class<select value={teacherClass} onChange={(e) => setTeacherClass(e.target.value)}>{Array.from({length:12},(_,i) => <option key={i} value={String(i+1)}>{i+1}</option>)}</select></label>
               <label>Subject<select value={teacherSubject} onChange={(e) => setTeacherSubject(e.target.value)}>{teacherSubjects.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
               <label>Learning focus<select value={studyFocus} onChange={(e) => setStudyFocus(e.target.value)}>{["Understand the topic","Homework help","Quiz practice","Exam preparation","Revision and notes"].map((s) => <option key={s}>{s}</option>)}</select></label>
@@ -1249,7 +1252,7 @@ function KoyalApp() {
               <label>Subject<select value={teacherSubject} onChange={(e) => setTeacherSubject(e.target.value)}>{teacherSubjects.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
             </div>}
             <button type="button" onClick={() => setPhilosophicalMode((v) => !v)} className={`${styles.navItem} ${philosophicalMode ? styles.navOn : ""}`}><Icon name="message"/>Philosophical Mode<span className={styles.navSmall}>{philosophicalMode ? "On" : ""}</span></button>
-            <button type="button" onClick={() => { setRateReviewOpen(false); openFeatherShop(); }} className={styles.navItem}><Icon name="feather"/>Feather Balance<span className={styles.navSmall}>{selectedPlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</span></button>
+            <button type="button" onClick={() => { setRateReviewOpen(false); openFeatherShop(); }} className={styles.navItem}><Icon name="feather"/>Feather Balance<span className={styles.navSmall}>{effectivePlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</span></button>
             <button type="button" onClick={() => { if (requireSignIn("access subscription plans")) setSubscriptionOpen(true); closeSidebar(); }} className={styles.navItem}><Icon name="diamond"/>Subscription</button>
             <button type="button" onClick={() => { setRateReviewOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${rateReviewOpen ? styles.navOn : ""}`}><Icon name="message"/>Rate &amp; Review<span className={styles.navSmall}>Feedback</span></button>
             <button type="button" onClick={() => { setAiDetailsOpen(true); setDownloadAppOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setFindUpOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${aiDetailsOpen ? styles.navOn : ""}`}><Icon name="message"/>AI Details<span className={styles.navSmall}>Contact</span></button>
@@ -1262,15 +1265,15 @@ function KoyalApp() {
             <a href="/policies/refund-and-cancellation">Refund &amp; Cancellation</a>
             <a href="/policies/subscription-and-renewal">Subscription &amp; Renewal</a>
           </div>
-          <button type="button" className={styles.sidebarProfile} onClick={openProfile} aria-label="Open your profile">
+          <button type="button" className={`${styles.sidebarProfile} ${isAdminAccount ? styles.sidebarProfileAdmin : ""}`} onClick={openProfile} aria-label="Open your profile">
             <div className={styles.sidebarProfileTop}>
-              <WingedAvatar photo={profile.photo} supreme={selectedPlan === "Supreme"} variant="small" />
-              <span className={styles.sidebarProfileName}><strong>{profile.name || "Your Profile"}</strong><small>{selectedPlan === "Supreme" ? "♛ Supreme Plan" : `${selectedPlan} Plan`}</small></span>
+              {isAdminAccount ? <img className={styles.sidebarAdminBird} src="/koyal-bird.png" alt="KOYAL bird" /> : <WingedAvatar photo={profile.photo} supreme={selectedPlan === "Supreme"} variant="small" />}
+              <span className={styles.sidebarProfileName}><strong>{isAdminAccount ? "Koyal Ai India" : profile.name || "Your Profile"}</strong>{isAdminAccount ? <small className={styles.sidebarAdminTag}>ADMIN</small> : <small>{selectedPlan === "Supreme" ? "♛ Supreme Plan" : `${selectedPlan} Plan`}</small>}</span>
               <Icon name="chevron" size={17}/>
             </div>
             <div className={styles.sidebarProfileStats}>
-              <span>🪶 <strong>{selectedPlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</strong><small>Feather balance</small></span>
-              <span>◇ <strong>{selectedPlan}</strong><small>Active plan</small></span>
+              <span>🪶 <strong>{effectivePlan === "Supreme" ? "∞" : feathers.toLocaleString("en-IN")}</strong><small>Feather balance</small></span>
+              <span>◇ <strong>{isAdminAccount ? "Admin Access" : selectedPlan}</strong><small>{isAdminAccount ? "Paid features unlocked" : "Active plan"}</small></span>
             </div>
           </button>
         </aside>
@@ -1558,7 +1561,7 @@ function KoyalApp() {
             </div>
           </div>
       </div>}
-            {codeModeOpen && ["Care", "Elite", "Supreme"].includes(selectedPlan) && !profileOpen && !memoryOpen && !tasksOpen && <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", gap:16, width:"min(1100px,calc(100% - 32px))", height:"100%", minHeight:0, margin:"0 auto", padding:"28px 0 18px", overflowY:"auto" }}>
+            {codeModeOpen && ["Care", "Elite", "Supreme"].includes(effectivePlan) && !profileOpen && !memoryOpen && !tasksOpen && <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", gap:16, width:"min(1100px,calc(100% - 32px))", height:"100%", minHeight:0, margin:"0 auto", padding:"28px 0 18px", overflowY:"auto" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
                 <div><h2 style={{ margin:0, fontSize:26 }}>⌘ Code Mode</h2><p style={{ margin:"6px 0 0", opacity:.7, fontSize:13 }}>Generate, explain, debug and improve code with Koyal.</p></div>
                 <button type="button" onClick={() => setCodeModeOpen(false)} className={styles.editProfileButton}>← Back to Chat</button>
@@ -1628,7 +1631,7 @@ function KoyalApp() {
             <div className={`${styles.effortCard} ${thinkingEffortOpen ? styles.effortCardOpen : ""}`}>
               <button className={styles.effortToggle} type="button" aria-expanded={thinkingEffortOpen} aria-controls="thinking-effort-controls" onClick={() => setThinkingEffortOpen((open) => !open)}>
                 <span className={styles.effortHeading}>Thinking Effort</span>
-                <span className={styles.effortCurrent}><span>{selectedPlan === "Supreme" ? "∞" : featherCost}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong></span>
+                <span className={styles.effortCurrent}><span>{effectivePlan === "Supreme" ? "∞" : featherCost}</span><span className={styles.featherSymbol}>🪶</span><strong>{currentThinking.name}</strong></span>
                 <Icon name="chevron" size={15}/>
               </button>
               {thinkingEffortOpen && <div className={styles.effortControls} id="thinking-effort-controls">
@@ -1655,7 +1658,7 @@ function KoyalApp() {
                 <input ref={fileInput} type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp" hidden onChange={handleFile}/>
                 <button type="button" className={styles.attachmentButton} title="Attach a PDF or image" aria-label="Attach a PDF or image" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
                 <textarea value={input} placeholder={teacherMode ? `Ask your Class ${teacherClass} ${teacherSubject} teacher...` : characterMode !== "normal" ? `Message ${currentCharacter.name}...` : "Message Koyal..."} rows={1} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
-                <div className={styles.voiceButton}><VoiceMode subscriptionPlan={selectedPlan}/></div>
+                <div className={styles.voiceButton}><VoiceMode subscriptionPlan={effectivePlan}/></div>
                 <button type="submit" className={styles.sendButton} disabled={!input.trim() && !selectedFile && !(urlReaderEnabled && urlInput.trim())} title={loading ? "Send another question to the queue" : "Send message"} aria-label="Send message"><Icon name="send" size={22}/></button>
               </div>
             </form>
