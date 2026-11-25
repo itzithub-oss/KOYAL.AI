@@ -116,6 +116,16 @@ export default function AdminPage() {
   const [partnerNotice, setPartnerNotice] = useState("");
   const [partnerBusy, setPartnerBusy] = useState(false);
   const [partnerForm, setPartnerForm] = useState({ name: "", category: "", description: "", location: "", phone: "", website: "" });
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementMessage, setAnnouncementMessage] = useState("");
+  const [announcementPriority, setAnnouncementPriority] = useState("normal");
+  const [announcementAudience, setAnnouncementAudience] = useState("all");
+  const [announcementPlan, setAnnouncementPlan] = useState("Supreme");
+  const [announcementSchedule, setAnnouncementSchedule] = useState("");
+  const [announcementError, setAnnouncementError] = useState("");
+  const [announcementNotice, setAnnouncementNotice] = useState("");
+  const [announcementBusy, setAnnouncementBusy] = useState(false);
 
   const headers = useMemo<Record<string, string>>(() => {
     const result: Record<string, string> = { "Content-Type": "application/json" };
@@ -266,6 +276,13 @@ export default function AdminPage() {
   }, [unlocked, activeModule, partnerSearch, accessToken]);
 
   useEffect(() => {
+    if (!unlocked || activeModule !== "announcements") return;
+    fetch("/api/admin/announcements", { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" })
+      .then(async response => { const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || data.details || "Could not load announcements."); setAnnouncements(Array.isArray(data.announcements) ? data.announcements : []); setAnnouncementError(""); })
+      .catch(cause => setAnnouncementError(cause instanceof Error ? cause.message : "Could not load announcements."));
+  }, [unlocked, activeModule, accessToken]);
+
+  useEffect(() => {
     if (!unlocked || activeModule !== "users") return;
     const query = new URLSearchParams();
     if (userSearch.trim()) query.set("search", userSearch.trim());
@@ -316,6 +333,35 @@ export default function AdminPage() {
       setPartnerNotice("Partner listing updated.");
     } catch (cause) { setPartnerError(cause instanceof Error ? cause.message : "Could not update partner."); }
     finally { setPartnerBusy(false); }
+  }
+
+  async function createAnnouncement() {
+    setAnnouncementError(""); setAnnouncementNotice("");
+    if (!announcementTitle.trim() || !announcementMessage.trim()) { setAnnouncementError("Enter an announcement title and message."); return; }
+    setAnnouncementBusy(true);
+    try {
+      const response = await fetch("/api/admin/announcements", { method: "POST", headers, body: JSON.stringify({ title: announcementTitle, message: announcementMessage, priority: announcementPriority, audienceType: announcementAudience, audienceValue: announcementAudience === "plan" ? announcementPlan : null, scheduledAt: announcementSchedule ? new Date(announcementSchedule).toISOString() : null }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || data.details || "Could not create announcement.");
+      setAnnouncementTitle(""); setAnnouncementMessage(""); setAnnouncementSchedule("");
+      const refreshed = await fetch("/api/admin/announcements", { headers, cache: "no-store" });
+      const latest = await refreshed.json().catch(() => ({}));
+      if (!refreshed.ok) throw new Error(latest.error || latest.details || "Announcement created, but history could not refresh.");
+      setAnnouncements(Array.isArray(latest.announcements) ? latest.announcements : []);
+      setAnnouncementNotice("Announcement saved. Its schedule and audience are recorded.");
+    } catch (cause) { setAnnouncementError(cause instanceof Error ? cause.message : "Could not create announcement."); }
+    finally { setAnnouncementBusy(false); }
+  }
+
+  async function toggleAnnouncement(id: string, isActive: boolean) {
+    setAnnouncementError(""); setAnnouncementNotice("");
+    try {
+      const response = await fetch("/api/admin/announcements", { method: "PATCH", headers, body: JSON.stringify({ id, isActive }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || data.details || "Could not update announcement.");
+      setAnnouncements(rows => rows.map(row => row.id === id ? { ...row, is_active: isActive } : row));
+      setAnnouncementNotice(isActive ? "Announcement enabled." : "Announcement disabled.");
+    } catch (cause) { setAnnouncementError(cause instanceof Error ? cause.message : "Could not update announcement."); }
   }
 
   async function createCoupon() {
@@ -671,6 +717,32 @@ export default function AdminPage() {
               </div>
             </article>) : <p className="adminEmptyText">No partner listings found.</p>}</div>
             <p className="adminHint">Only active listings appear in the public FIND UP and Tours & Travels search. Changes are recorded in the admin activity log. External form applications must be reviewed and added here manually.</p>
+          </section>
+        </div> : activeModule === "announcements" ? <div className="adminContent">
+          <div className="adminModuleIntro"><div><span className="adminEyebrow">KOYAL AI · USER NOTICES</span><h2>Announcements</h2><p>Create notices for all users or a subscription plan, set urgency and schedule them.</p></div><span className="adminBuildBadge">AUDITED CONTROLS</span></div>
+          <section className="adminPanelCard">
+            <h3>Create an announcement</h3>
+            <div className="adminPaymentFilters adminCouponForm">
+              <label>Title<input value={announcementTitle} maxLength={100} onChange={event => setAnnouncementTitle(event.target.value)} placeholder="Announcement title" /></label>
+              <label>Priority<select value={announcementPriority} onChange={event => setAnnouncementPriority(event.target.value)}><option value="normal">Normal</option><option value="urgent">Urgent</option></select></label>
+              <label>Audience<select value={announcementAudience} onChange={event => setAnnouncementAudience(event.target.value)}><option value="all">All users</option><option value="plan">Specific subscription plan</option></select></label>
+              {announcementAudience === "plan" && <label>Subscription plan<select value={announcementPlan} onChange={event => setAnnouncementPlan(event.target.value)}>{["Just","Let It","Care","Elite","Supreme"].map(plan => <option key={plan}>{plan}</option>)}</select></label>}
+              <label>Schedule (optional)<input type="datetime-local" value={announcementSchedule} onChange={event => setAnnouncementSchedule(event.target.value)} /></label>
+              <label>Message<textarea value={announcementMessage} maxLength={2000} rows={4} onChange={event => setAnnouncementMessage(event.target.value)} placeholder="Write the announcement…" /></label>
+            </div>
+            <button className="adminPrimary" disabled={announcementBusy} onClick={createAnnouncement}>{announcementBusy ? "Saving…" : "Save announcement"}</button>
+            {announcementNotice && <p className="adminSuccessNotice">{announcementNotice}</p>}
+            {announcementError && <div className="adminInlineError">{announcementError}</div>}
+          </section>
+          <section className="adminPanelCard adminSectionGap">
+            <div className="adminUserToolbar"><strong>Announcement history</strong><span>{announcements.length} records</span></div>
+            <div className="adminActivityList">{announcements.length ? announcements.map(item => <article key={item.id}>
+              <div><strong>{item.title}</strong><small>{item.priority === "urgent" ? "URGENT" : "NORMAL"} · {item.audience_type === "plan" ? item.audience_value + " plan" : "All users"}</small></div>
+              <time>{item.scheduled_at ? "Scheduled: " + new Date(item.scheduled_at).toLocaleString("en-IN") : "Created: " + new Date(item.created_at).toLocaleString("en-IN")}</time>
+              <p>{item.message}</p>
+              <div className="adminPartnerActions"><span className={item.is_active ? "adminUserActive" : "adminUserSuspended"}>{item.is_active ? "Enabled" : "Disabled"}</span><button className="adminSecondary" onClick={() => toggleAnnouncement(item.id, !item.is_active)}>{item.is_active ? "Disable" : "Enable"}</button></div>
+            </article>) : <p className="adminEmptyText">No announcements created yet.</p>}</div>
+            <p className="adminHint">This module currently saves and manages announcement records and schedules. Displaying notices to users inside the KOYAL app requires the separate public-facing announcement feed integration.</p>
           </section>
         </div> : activeModule === "activity" ? <div className="adminContent"><div className="adminModuleIntro"><div><span className="adminEyebrow">IMMUTABLE AUDIT TRAIL</span><h2>Admin Activity Log</h2><p>Read-only record of administrator security and management actions.</p></div><span className="adminBuildBadge">READ ONLY · NO EDIT OR DELETE</span></div><section className="adminPanelCard"><label className="adminActivitySearch">Filter by action<input value={activityFilter} onChange={event => setActivityFilter(event.target.value)} placeholder="e.g. admin_access_granted" /></label><div className="adminActivityList">{activityLogs.length ? activityLogs.map(item => <article key={item.id}><div><strong>{String(item.action).replace(/_/g, " ")}</strong><small>{item.admin_email}</small></div><time>{new Date(item.created_at).toLocaleString("en-IN")}</time><p>{item.details && Object.keys(item.details).length ? JSON.stringify(item.details) : "No additional details"}</p></article>) : <p className="adminEmptyText">No matching activity records.</p>}</div></section></div> : <div className="adminContent"><div className="adminModuleIntro"><div><span className="adminEyebrow">ADMIN MODULE</span><h2>{active.label}</h2><p>{MODULE_DESCRIPTIONS[activeModule].summary}</p></div><span className="adminBuildBadge">IMPLEMENTATION IN PROGRESS</span></div><section className="adminPanelCard adminModuleCard"><h3>Planned controls</h3><ul>{MODULE_DESCRIPTIONS[activeModule].actions.map(action => <li key={action}>{action}</li>)}</ul><p className="adminHint">{MODULE_DESCRIPTIONS[activeModule].note}</p></section></div>}
       </section>
