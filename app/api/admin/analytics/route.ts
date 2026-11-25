@@ -5,6 +5,7 @@ export const runtime = "nodejs";
 
 type Order = { id: string; user_id: string; amount_paise: number; payment_status: string; created_at: string; order_type: string; plan_name: string | null; feather_quantity: number | null };
 type AuthUser = { id: string; created_at?: string | null };
+const PLAN_PRICES: Record<string, number> = { "Let It": 7000, Care: 12000, Elite: 22000, Supreme: 40000 };
 
 function dateBounds(start: string, end: string) {
   const lower = start ? new Date(`${start}T00:00:00+05:30`).getTime() : 0;
@@ -34,11 +35,12 @@ export async function GET(request: Request) {
     const valid = (value: string) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value);
     if (!valid(start) || !valid(end) || (start && end && start > end)) return Response.json({ error: "Choose a valid date range." }, { status: 400 });
     const { lower, upper } = dateBounds(start, end);
-    const [auth, orders, wallets, partnerRows] = await Promise.all([
+    const [auth, orders, wallets, partnerRows, couponRows] = await Promise.all([
       getAuthUsers(),
       supabaseRequest("koyal_payment_orders?select=id,user_id,amount_paise,payment_status,created_at,order_type,plan_name,feather_quantity&order=created_at.asc&limit=10000") as Promise<Order[]>,
       supabaseRequest("koyal_feather_wallets?select=user_id,balance&limit=10000") as Promise<Array<{ user_id: string; balance: number }>>,
       supabaseRequest("koyal_partner_directory?select=id,status&limit=10000") as Promise<Array<{ id: string; status: string }>>,
+      supabaseRequest(`koyal_coupon_redemptions?select=user_id,plan_name,expires_at&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&limit=10000`) as Promise<Array<{ user_id: string; plan_name: string; expires_at: string }>>,
     ]);
     const inRange = (date: string) => {
       const time = Date.parse(date);
@@ -68,6 +70,23 @@ export async function GET(request: Request) {
         userGrowth.set(day, (userGrowth.get(day) || 0) + 1);
       }
     }
+    const subscriptionExpiry = new Map<string, { expiresAt: number; plan: string }>();
+    for (const order of orders || []) {
+      if (order.order_type !== "subscription" || String(order.payment_status).toUpperCase() !== "PAID" || !order.plan_name || PLAN_PRICES[order.plan_name] !== Number(order.amount_paise)) continue;
+      const createdAt = Date.parse(order.created_at);
+      if (!Number.isFinite(createdAt)) continue;
+      const previous = subscriptionExpiry.get(order.user_id);
+      const startAt = Math.max(createdAt, previous?.expiresAt || 0);
+      subscriptionExpiry.set(order.user_id, { expiresAt: startAt + 30 * 24 * 60 * 60 * 1000, plan: order.plan_name });
+    }
+    for (const coupon of couponRows || []) {
+      const expiry = Date.parse(coupon.expires_at);
+      const previous = subscriptionExpiry.get(coupon.user_id);
+      if (Number.isFinite(expiry) && expiry > (previous?.expiresAt || 0)) subscriptionExpiry.set(coupon.user_id, { expiresAt: expiry, plan: coupon.plan_name });
+    }
+    const activeSubscriptionRows = [...subscriptionExpiry.values()].filter(item => item.expiresAt > Date.now());
+    const subscriptionDistribution: Record<string, number> = {};
+    for (const item of activeSubscriptionRows) subscriptionDistribution[item.plan] = (subscriptionDistribution[item.plan] || 0) + 1;
     const partnerCount = (partnerRows || []).filter(row => row.status === "active").length;
     return Response.json({
       range: { start, end },
@@ -76,6 +95,7 @@ export async function GET(request: Request) {
         newUsersInRetrievedSample: [...userGrowth.values()].reduce((sum, count) => sum + count, 0),
         revenuePaise,
         paidOrders: paid.length,
+        activeSubscriptions: activeSubscriptionRows.length,
         pendingPayments: selected.filter(order => String(order.payment_status).toUpperCase() === "PENDING").length,
         totalFeathers: (wallets || []).reduce((sum, wallet) => sum + (Number(wallet.balance) || 0), 0),
         feathersPurchased,
@@ -86,6 +106,7 @@ export async function GET(request: Request) {
         userGrowth: [...userGrowth.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, users]) => ({ date, users })),
         planRevenue: Object.entries(planRevenue).map(([plan, amountPaise]) => ({ plan, amountPaise })),
         paymentSummary: Object.entries(paymentSummary).map(([status, count]) => ({ status, count })),
+        subscriptionDistribution: Object.entries(subscriptionDistribution).map(([plan, users]) => ({ plan, users })),
       },
       coverage: { authUsersRetrieved: auth.users.length, authUserSampleLimit: 1000, ordersRetrieved: (orders || []).length, orderSampleLimit: 10000, walletsRetrieved: (wallets || []).length, walletSampleLimit: 10000, usageAnalytics: "not_available_without_event_tracking" },
     }, { headers: { "Cache-Control": "no-store" } });
