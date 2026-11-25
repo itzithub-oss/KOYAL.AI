@@ -171,6 +171,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   async function signOut() {
     const current = session;
+    if (current?.access_token) {
+      try {
+        await fetch("/api/admin/logout", { method: "POST", headers: { Authorization: `Bearer ${current.access_token}` } });
+      } catch {
+        // The admin session also expires automatically after its server-side TTL.
+      }
+    }
     clearAccountProfileData();
     saveSession(null);
     localStorage.setItem("koyal-ai-guest-mode", "true");
