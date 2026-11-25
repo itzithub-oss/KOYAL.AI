@@ -10,8 +10,8 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const challengeId = typeof body.challengeId === "string" ? body.challengeId : "";
     const answers = body.answers;
-    if (!/^[0-9a-f-]{36}$/i.test(challengeId) || !Array.isArray(answers) || answers.length !== 2) {
-      return Response.json({ error: "Complete both security answers to continue." }, { status: 400 });
+    if (!/^[0-9a-f-]{36}$/i.test(challengeId) || !Array.isArray(answers) || answers.length !== 1) {
+      return Response.json({ error: "Complete the security answer to continue." }, { status: 400 });
     }
 
     const challengeRows = await supabaseRequest(
@@ -31,11 +31,11 @@ export async function POST(request: Request) {
     const supplied = new Map<number, string>();
     for (const item of answers) {
       if (typeof item?.questionIndex !== "number" || typeof item?.answer !== "string") {
-        return Response.json({ error: "Both security answers are required." }, { status: 400 });
+        return Response.json({ error: "The security answer is required." }, { status: 400 });
       }
       supplied.set(item.questionIndex, item.answer);
     }
-    const validShape = challenge.question_indexes.length === 2 && challenge.question_indexes.every((index) => supplied.has(index)) && supplied.size === 2;
+    const validShape = challenge.question_indexes.length === 1 && challenge.question_indexes.every((index) => supplied.has(index)) && supplied.size === 1;
     const validAnswers = validShape && challenge.question_indexes.every((index) => {
       const saved = security.answer_hashes?.[index];
       return Array.isArray(saved) && verifyAdminAnswer(supplied.get(index) || "", saved);
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({ failed_attempts: failedAttempts, locked_until: lockedUntil, updated_at: new Date().toISOString() }),
       });
       await writeAdminLog(user, "admin_security_answer_rejected", { failedAttempts, locked: Boolean(lockedUntil) });
-      return Response.json({ error: lockedUntil ? "Too many incorrect answers. Admin verification is locked for 15 minutes." : "One or both answers are incorrect. Please try again." }, { status: lockedUntil ? 429 : 401 });
+      return Response.json({ error: lockedUntil ? "Too many incorrect answers. Admin verification is locked for 15 minutes." : "That answer is incorrect. Please try again." }, { status: lockedUntil ? 429 : 401 });
     }
 
     await supabaseRequest(`koyal_admin_security?user_id=eq.${encodeURIComponent(user.id)}`, {
