@@ -76,7 +76,7 @@ export default function AdminPage() {
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [activityFilter, setActivityFilter] = useState("");
 
-  const headers = useMemo(() => accessToken ? { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" }, [accessToken]);
+  const headers = useMemo<Record<string, string>>(() => accessToken ? { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" }, [accessToken]);
 
   useEffect(() => {
     let active = true;
