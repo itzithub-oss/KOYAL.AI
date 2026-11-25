@@ -1,4 +1,3 @@
-import { randomInt } from "node:crypto";
 import { ADMIN_QUESTIONS, getAdminSecurity, getKoyalAdminUser, reauthenticateKoyalAdmin, writeAdminLog } from "@/lib/koyal-admin";
 import { supabaseRequest } from "@/lib/cashfree-server";
 
@@ -15,12 +14,15 @@ export async function POST(request: Request) {
     }
 
     const security = await getAdminSecurity(user.id);
-    if (!security) return Response.json({ setupRequired: true }, { headers: { "Cache-Control": "no-store" } });
+    if (!security || !Array.isArray(security.passkey_hashes) || security.passkey_hashes.length !== 3 ||
+        !Array.isArray(security.answer_hashes) || security.answer_hashes.length !== 3) {
+      return Response.json({ setupRequired: true }, { headers: { "Cache-Control": "no-store" } });
+    }
     if (security.locked_until && Date.parse(security.locked_until) > Date.now()) {
       return Response.json({ error: "Admin verification is temporarily locked. Please try again later." }, { status: 429 });
     }
 
-    const questionIndexes = [randomInt(ADMIN_QUESTIONS.length)];
+    const questionIndexes = [0, 1, 2, 3, 4];
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const rows = await supabaseRequest("koyal_admin_challenges", {
       method: "POST",
@@ -32,11 +34,11 @@ export async function POST(request: Request) {
     return Response.json({
       setupRequired: false,
       challengeId: challenge.id,
-      questions: questionIndexes.map((index) => ({ index, question: ADMIN_QUESTIONS[index] })),
+      questions: questionIndexes.map(index => ({ index, question: ADMIN_QUESTIONS[index] })),
       expiresAt,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("KOYAL admin challenge failed:", error instanceof Error ? error.message : "unknown error");
-    return Response.json({ error: "Admin verification is temporarily unavailable. Confirm the admin security migration has been applied." }, { status: 500 });
+    return Response.json({ error: "Admin verification is temporarily unavailable. Confirm the admin security migrations have been applied." }, { status: 500 });
   }
 }
