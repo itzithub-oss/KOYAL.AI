@@ -60,10 +60,11 @@ export async function GET(request: Request) {
       if (order.order_type === "subscription" && order.plan_name) planRevenue[order.plan_name] = (planRevenue[order.plan_name] || 0) + (Number(order.amount_paise) || 0);
       if (order.order_type === "feathers") feathersPurchased += Number(order.feather_quantity) || 0;
     }
+    const localDay = (value: string) => new Date(value).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
     const userGrowth = new Map<string, number>();
     for (const user of auth.users) {
       if (user.created_at && inRange(user.created_at)) {
-        const day = user.created_at.slice(0, 10);
+        const day = localDay(user.created_at);
         userGrowth.set(day, (userGrowth.get(day) || 0) + 1);
       }
     }
@@ -86,7 +87,7 @@ export async function GET(request: Request) {
         planRevenue: Object.entries(planRevenue).map(([plan, amountPaise]) => ({ plan, amountPaise })),
         paymentSummary: Object.entries(paymentSummary).map(([status, count]) => ({ status, count })),
       },
-      coverage: { authUsersRetrieved: auth.users.length, authUserSampleLimit: 1000, ordersRetrieved: (orders || []).length, orderSampleLimit: 10000, usageAnalytics: "not_available_without_event_tracking" },
+      coverage: { authUsersRetrieved: auth.users.length, authUserSampleLimit: 1000, ordersRetrieved: (orders || []).length, orderSampleLimit: 10000, walletsRetrieved: (wallets || []).length, walletSampleLimit: 10000, usageAnalytics: "not_available_without_event_tracking" },
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("KOYAL admin analytics failed:", error instanceof Error ? error.message : "unknown error");
