@@ -5,6 +5,7 @@ import { extractUrlContextSources, normalizeKoyalUrl } from "../../../lib/koyal-
 import { hasPdfHeader, MAX_PDF_BYTES, MAX_PDF_PAGES, normalizePdfText } from "../../../lib/koyal-pdf.mjs";
 import { detectImageMime, MAX_IMAGE_BYTES } from "../../../lib/koyal-image.mjs";
 import { getClinicReferralContext } from "../../../lib/koyal-clinic-referral.mjs";
+import { getAuthenticatedUser } from "@/lib/cashfree-server";
 
 export const runtime = "nodejs";
 
@@ -904,7 +905,14 @@ export async function POST(request: NextRequest) {
       throw new InputError("Please keep your message under 20,000 characters.");
     }
 
-    const plan = getPlan(body);
+    let adminEntitled = false;
+    try {
+      const account = await getAuthenticatedUser(request);
+      adminEntitled = String(account?.email || "").trim().toLowerCase() === "koyalaiindia@gmail.com";
+    } catch {
+      adminEntitled = false;
+    }
+    const plan = adminEntitled ? "Supreme" : getPlan(body);
     const supreme = isSupremePlan(plan);
     const conversation = buildConversation(message, body);
 
