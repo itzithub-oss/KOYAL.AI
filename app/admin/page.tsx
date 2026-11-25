@@ -81,6 +81,11 @@ export default function AdminPage() {
   const [paymentSearch, setPaymentSearch] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("");
   const [paymentsError, setPaymentsError] = useState("");
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [subscriptionSearch, setSubscriptionSearch] = useState("");
+  const [subscriptionsError, setSubscriptionsError] = useState("");
+  const [subscriptionsTotal, setSubscriptionsTotal] = useState<number | null>(null);
+  const [activeSubscriptionUsers, setActiveSubscriptionUsers] = useState<number | null>(null);
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [usersError, setUsersError] = useState("");
@@ -160,6 +165,22 @@ export default function AdminPage() {
       })
       .catch(cause => setPaymentsError(cause instanceof Error ? cause.message : "Could not load payments."));
   }, [unlocked, activeModule, paymentSearch, paymentStatus, accessToken]);
+
+  useEffect(() => {
+    if (!unlocked || activeModule !== "subscriptions") return;
+    const query = new URLSearchParams();
+    if (subscriptionSearch.trim()) query.set("search", subscriptionSearch.trim());
+    fetch(`/api/admin/subscriptions?${query.toString()}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Could not load subscriptions.");
+        setSubscriptions(Array.isArray(data.subscriptions) ? data.subscriptions : []);
+        setSubscriptionsTotal(Number.isFinite(Number(data.totalRecords)) ? Number(data.totalRecords) : null);
+        setActiveSubscriptionUsers(Number.isFinite(Number(data.activeUsers)) ? Number(data.activeUsers) : null);
+        setSubscriptionsError("");
+      })
+      .catch(cause => setSubscriptionsError(cause instanceof Error ? cause.message : "Could not load subscriptions."));
+  }, [unlocked, activeModule, subscriptionSearch, accessToken]);
 
   useEffect(() => {
     if (!unlocked || activeModule !== "users") return;
@@ -356,6 +377,18 @@ export default function AdminPage() {
               <details><summary>Account ID</summary><code>{user.id}</code></details>
             </article>) : <p className="adminEmptyText">No matching accounts found.</p>}</div>
             <p className="adminHint">Showing up to 250 matching accounts from the first 1,000 Supabase Auth records. This view does not change accounts or wallet balances.</p>
+          </section>
+        </div> : activeModule === "subscriptions" ? <div className="adminContent">
+          <div className="adminModuleIntro"><div><span className="adminEyebrow">PAID ORDERS + COUPON REDEMPTIONS</span><h2>Subscription History</h2><p>Inspect recorded subscription access separately from payment transactions. No payment or subscription records are changed here.</p></div><span className="adminBuildBadge">READ ONLY</span></div>
+          <section className="adminPanelCard">
+            <div className="adminUserToolbar"><label>Search by user ID, plan, source or reference<input value={subscriptionSearch} onChange={event => setSubscriptionSearch(event.target.value)} placeholder="Search subscription records…" /></label><span>{activeSubscriptionUsers === null ? "Active users" : activeSubscriptionUsers.toLocaleString("en-IN") + " active"} · {subscriptionsTotal === null ? "—" : subscriptionsTotal.toLocaleString("en-IN") + " records"}</span></div>
+            {subscriptionsError && <div className="adminInlineError">{subscriptionsError}</div>}
+            <div className="adminPaymentList">{subscriptions.length ? subscriptions.map(item => <article key={item.id}>
+              <div><strong>{item.plan}</strong><small>{item.source} · {item.reference}</small></div>
+              <div><strong className={item.status === "Current" ? "adminUserActive" : "adminUserSuspended"}>{item.status}</strong><small>Expires {item.expiresAt ? new Date(item.expiresAt).toLocaleDateString("en-IN") : "—"}</small></div>
+              <div><small>User ID</small><code>{item.userId}</code><small>Starts {item.startedAt ? new Date(item.startedAt).toLocaleDateString("en-IN") : "—"}</small></div>
+            </article>) : <p className="adminEmptyText">No matching subscription records found.</p>}</div>
+            <p className="adminHint">Paid access periods are calculated from verified PAID subscription orders using KOYAL's existing 30-day rule. Coupon access uses its recorded expiry. Showing up to 1,000 records. Plan changes, extensions and manual activation are not enabled yet.</p>
           </section>
         </div> : activeModule === "payments" ? <div className="adminContent">
           <div className="adminModuleIntro"><div><span className="adminEyebrow">CASHFREE ORDER RECORDS</span><h2>Payment Transactions</h2><p>Search and inspect recorded orders. This panel is read-only and does not issue refunds or alter payment records.</p></div><span className="adminBuildBadge">READ ONLY</span></div>
