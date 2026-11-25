@@ -1,3 +1,166 @@
 :root { color-scheme: dark; }
 html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
 body { background: #08070d; }
+
+
+/* KOYAL AI Admin verification screen */
+.adminGate {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: 32px 18px;
+  color: #f8f3fa;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(151, 31, 79, .24), transparent 48%),
+    radial-gradient(ellipse at 100% 100%, rgba(73, 39, 110, .16), transparent 42%),
+    #09070e;
+}
+.adminGateCard {
+  box-sizing: border-box;
+  width: min(100%, 510px);
+  max-height: calc(100svh - 40px);
+  overflow-y: auto;
+  padding: clamp(24px, 5vw, 38px);
+  border: 1px solid rgba(255, 113, 157, .28);
+  border-radius: 24px;
+  background: linear-gradient(155deg, rgba(35, 19, 36, .98), rgba(14, 11, 21, .99));
+  box-shadow: 0 24px 80px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.adminGateCard > img {
+  display: block;
+  width: 58px;
+  height: 58px;
+  max-width: 58px;
+  max-height: 58px;
+  object-fit: contain;
+  margin: 0 auto 18px;
+  filter: drop-shadow(0 5px 12px rgba(255, 66, 125, .2));
+}
+.adminEyebrow {
+  color: #ff91b1;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .19em;
+  text-align: center;
+}
+.adminGateCard h1 {
+  margin: 12px 0 9px;
+  color: #fff7fa;
+  font-size: clamp(25px, 5vw, 32px);
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  text-align: center;
+}
+.adminGateCard > p {
+  margin: 0 0 22px;
+  color: #c7b8ca;
+  font-size: 13px;
+  line-height: 1.65;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.adminGateCard > p strong { color: #ffe4ed; }
+.adminGateCard label {
+  display: grid;
+  gap: 9px;
+  margin: 17px 0;
+  color: #f0e5ef;
+  font-size: 13px;
+  font-weight: 700;
+}
+.adminGateCard input {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  padding: 13px 15px;
+  border: 1px solid rgba(255, 133, 170, .32);
+  border-radius: 12px;
+  outline: none;
+  color: #fff;
+  background: rgba(255,255,255,.055);
+  font: inherit;
+  font-size: 15px;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+}
+.adminGateCard input:focus {
+  border-color: #ff83a9;
+  background: rgba(255,255,255,.075);
+  box-shadow: 0 0 0 3px rgba(255, 91, 141, .13);
+}
+.adminGateCard input::placeholder { color: #948497; }
+.adminQuestionGroup {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid rgba(255, 124, 164, .2);
+  border-radius: 14px;
+  background: rgba(255,255,255,.025);
+}
+.adminQuestionGroup strong {
+  color: #ffeaf1;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.adminHint {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 124, 164, .18);
+  border-radius: 12px;
+  background: rgba(255, 91, 141, .055);
+  color: #cdbdce !important;
+  text-align: left !important;
+}
+.adminPrimary, .adminSecondary {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 12px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+.adminPrimary {
+  border: 1px solid rgba(255, 166, 190, .62);
+  color: #fff;
+  background: linear-gradient(110deg, #941a47, #c52c65);
+  box-shadow: 0 9px 24px rgba(171, 30, 78, .22);
+}
+.adminPrimary:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+.adminPrimary:disabled, .adminSecondary:disabled { opacity: .6; cursor: wait; }
+.adminSecondary {
+  border: 1px solid rgba(255,255,255,.13);
+  color: #eadce9;
+  background: rgba(255,255,255,.045);
+}
+.adminError {
+  margin: 15px 0 0 !important;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 105, 125, .28);
+  border-radius: 10px;
+  color: #ff9eae !important;
+  background: rgba(255, 71, 100, .07);
+  text-align: left !important;
+}
+.adminBack {
+  display: block;
+  margin: 22px auto 0;
+  padding: 8px 12px;
+  border: 0;
+  color: #bdaebe;
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+}
+.adminBack:hover { color: #fff; }
+@media (max-width: 520px) {
+  .adminGate { padding: 12px; }
+  .adminGateCard { max-height: calc(100svh - 24px); padding: 23px 18px; border-radius: 19px; }
+  .adminGateCard > img { width: 50px; height: 50px; max-width: 50px; max-height: 50px; }
+  .adminGateCard input { min-height: 48px; }
+}
