@@ -86,6 +86,13 @@ export default function AdminPage() {
   const [subscriptionsError, setSubscriptionsError] = useState("");
   const [subscriptionsTotal, setSubscriptionsTotal] = useState<number | null>(null);
   const [activeSubscriptionUsers, setActiveSubscriptionUsers] = useState<number | null>(null);
+  const [subscriptionUserId, setSubscriptionUserId] = useState("");
+  const [subscriptionPlan, setSubscriptionPlan] = useState("Supreme");
+  const [subscriptionExpiry, setSubscriptionExpiry] = useState("");
+  const [subscriptionReason, setSubscriptionReason] = useState("");
+  const [subscriptionEditId, setSubscriptionEditId] = useState("");
+  const [subscriptionBusy, setSubscriptionBusy] = useState(false);
+  const [subscriptionNotice, setSubscriptionNotice] = useState("");
   const [couponRows, setCouponRows] = useState<any[]>([]);
   const [couponRedemptions, setCouponRedemptions] = useState<any[]>([]);
   const [couponError, setCouponError] = useState("");
@@ -307,6 +314,67 @@ export default function AdminPage() {
       })
       .catch(cause => setUsersError(cause instanceof Error ? cause.message : "Could not load users."));
   }, [unlocked, activeModule, userSearch, accessToken]);
+
+  function resetSubscriptionForm() {
+    setSubscriptionUserId(""); setSubscriptionPlan("Supreme"); setSubscriptionExpiry(""); setSubscriptionReason(""); setSubscriptionEditId(""); setSubscriptionNotice("");
+  }
+
+  function editManualSubscription(item: any) {
+    setSubscriptionEditId(String(item.id).replace(/^admin-/, ""));
+    setSubscriptionUserId(item.userId);
+    setSubscriptionPlan(item.plan);
+    setSubscriptionExpiry(item.expiresAt ? new Date(item.expiresAt).toISOString().slice(0, 10) : "");
+    setSubscriptionReason(item.reason || "");
+    setSubscriptionNotice("Editing an admin-issued subscription. Paid and coupon records cannot be changed.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function reloadSubscriptions() {
+    const query = new URLSearchParams();
+    if (subscriptionSearch.trim()) query.set("search", subscriptionSearch.trim());
+    const response = await fetch(`/api/admin/subscriptions?${query.toString()}`, { headers, cache: "no-store" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Could not refresh subscriptions.");
+    setSubscriptions(Array.isArray(data.subscriptions) ? data.subscriptions : []);
+    setSubscriptionsTotal(Number.isFinite(Number(data.totalRecords)) ? Number(data.totalRecords) : null);
+    setActiveSubscriptionUsers(Number.isFinite(Number(data.activeUsers)) ? Number(data.activeUsers) : null);
+  }
+
+  async function saveManualSubscription() {
+    setSubscriptionsError(""); setSubscriptionNotice("");
+    if (!subscriptionEditId && !subscriptionUserId.trim()) { setSubscriptionsError("Enter the user's UUID."); return; }
+    if (!subscriptionExpiry || !subscriptionReason.trim()) { setSubscriptionsError("Expiry date and reason are required."); return; }
+    setSubscriptionBusy(true);
+    const editing = Boolean(subscriptionEditId);
+    try {
+      const expiresAt = new Date(subscriptionExpiry + "T23:59:59.999Z").toISOString();
+      const response = await fetch("/api/admin/subscriptions", {
+        method: editing ? "PATCH" : "POST", headers,
+        body: JSON.stringify(editing
+          ? { id: subscriptionEditId, plan: subscriptionPlan, expiresAt, reason: subscriptionReason }
+          : { userId: subscriptionUserId.trim(), plan: subscriptionPlan, expiresAt, reason: subscriptionReason }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not save manual subscription.");
+      resetSubscriptionForm();
+      await reloadSubscriptions();
+      setSubscriptionNotice(editing ? "Manual subscription updated." : "Manual subscription access granted.");
+    } catch (cause) { setSubscriptionsError(cause instanceof Error ? cause.message : "Could not save manual subscription."); }
+    finally { setSubscriptionBusy(false); }
+  }
+
+  async function deactivateManualSubscription(id: string) {
+    if (!window.confirm("Deactivate this admin-issued subscription? Paid and coupon records will not be changed.")) return;
+    setSubscriptionsError(""); setSubscriptionNotice(""); setSubscriptionBusy(true);
+    try {
+      const response = await fetch("/api/admin/subscriptions", { method: "PATCH", headers, body: JSON.stringify({ id: id.replace(/^admin-/, ""), isActive: false }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not deactivate subscription.");
+      await reloadSubscriptions();
+      setSubscriptionNotice("Manual subscription deactivated. Original payment and coupon history remains unchanged.");
+    } catch (cause) { setSubscriptionsError(cause instanceof Error ? cause.message : "Could not deactivate subscription."); }
+    finally { setSubscriptionBusy(false); }
+  }
 
   async function refreshPartners() {
     const query = new URLSearchParams();
@@ -658,16 +726,29 @@ export default function AdminPage() {
           <section className="adminPanelCard adminSectionGap"><div className="adminUserToolbar"><label>Filter wallet by exact user ID<input value={featherSearch} onChange={event => setFeatherSearch(event.target.value)} placeholder="Paste user UUID…" /></label><span>{featherWallets.length} wallets loaded</span></div><div className="adminPaymentList">{featherWallets.length ? featherWallets.map(item => <article key={item.user_id}><div><strong>{Number(item.balance).toLocaleString("en-IN")} Feathers</strong><small>Wallet balance</small></div><div><small>USER ID</small><code>{item.user_id}</code></div></article>) : <p className="adminEmptyText">No wallet records match this filter.</p>}</div></section>
           <section className="adminPanelCard adminSectionGap"><div className="adminCardHeading"><h3>Adjustment history</h3><span>LAST 500</span></div><div className="adminActivityList">{featherAdjustments.length ? featherAdjustments.map(item => <article key={item.id}><div><strong>{item.quantity > 0 ? "+" : ""}{item.quantity} Feathers · {item.user_id}</strong><small>{item.admin_email}</small></div><time>{new Date(item.created_at).toLocaleString("en-IN")}</time><p>{item.balance_before} → {item.balance_after} · {item.reason}</p></article>) : <p className="adminEmptyText">No admin Feather adjustments recorded.</p>}</div></section>
         </div> : activeModule === "subscriptions" ? <div className="adminContent">
-          <div className="adminModuleIntro"><div><span className="adminEyebrow">PAID ORDERS + COUPON REDEMPTIONS</span><h2>Subscription History</h2><p>Inspect recorded subscription access separately from payment transactions. No payment or subscription records are changed here.</p></div><span className="adminBuildBadge">READ ONLY</span></div>
+          <div className="adminModuleIntro"><div><span className="adminEyebrow">PAID ORDERS + COUPONS + ADMIN GRANTS</span><h2>Subscription Management</h2><p>Manage manual access separately. Paid orders and coupon redemption history remain unchanged.</p></div><span className="adminBuildBadge">AUDITED CONTROLS</span></div>
           <section className="adminPanelCard">
             <div className="adminUserToolbar"><label>Search by user ID, plan, source or reference<input value={subscriptionSearch} onChange={event => setSubscriptionSearch(event.target.value)} placeholder="Search subscription records…" /></label><span>{activeSubscriptionUsers === null ? "Active users" : activeSubscriptionUsers.toLocaleString("en-IN") + " active"} · {subscriptionsTotal === null ? "—" : subscriptionsTotal.toLocaleString("en-IN") + " records"}</span></div>
+            <section className="adminPanelCard adminSectionGap">
+              <h3>{subscriptionEditId ? "Edit manual subscription" : "Grant manual subscription access"}</h3>
+              <div className="adminPaymentFilters adminCouponForm">
+                <label>User UUID<input value={subscriptionUserId} onChange={event => setSubscriptionUserId(event.target.value)} placeholder="Paste Supabase user UUID" disabled={Boolean(subscriptionEditId)} /></label>
+                <label>Plan<select value={subscriptionPlan} onChange={event => setSubscriptionPlan(event.target.value)}><option>Let It</option><option>Care</option><option>Elite</option><option>Supreme</option></select></label>
+                <label>Expiry date<input type="date" value={subscriptionExpiry} onChange={event => setSubscriptionExpiry(event.target.value)} /></label>
+                <label>Reason (required)<input value={subscriptionReason} onChange={event => setSubscriptionReason(event.target.value)} placeholder="Reason for manual access" /></label>
+              </div>
+              <button className="adminPrimary" disabled={subscriptionBusy} onClick={saveManualSubscription}>{subscriptionBusy ? "Saving…" : subscriptionEditId ? "Save subscription changes" : "Grant subscription access"}</button>
+              {subscriptionEditId && <button className="adminSecondary" onClick={resetSubscriptionForm}>Cancel edit</button>}
+              {subscriptionNotice && <p className="adminHint">{subscriptionNotice}</p>}
+            </section>
             {subscriptionsError && <div className="adminInlineError">{subscriptionsError}</div>}
             <div className="adminPaymentList">{subscriptions.length ? subscriptions.map(item => <article key={item.id}>
               <div><strong>{item.plan}</strong><small>{item.source} · {item.reference}</small></div>
               <div><strong className={item.status === "Current" ? "adminUserActive" : "adminUserSuspended"}>{item.status}</strong><small>Expires {item.expiresAt ? new Date(item.expiresAt).toLocaleDateString("en-IN") : "—"}</small></div>
               <div><small>User ID</small><code>{item.userId}</code><small>Starts {item.startedAt ? new Date(item.startedAt).toLocaleDateString("en-IN") : "—"}</small></div>
+              {item.source === "Admin" && <div className="adminPartnerActions"><button className="adminSecondary" disabled={subscriptionBusy} onClick={() => editManualSubscription(item)}>Edit manual access</button>{item.status !== "Inactive" && <button className="adminSecondary" disabled={subscriptionBusy} onClick={() => deactivateManualSubscription(item.id)}>Deactivate</button>}</div>}
             </article>) : <p className="adminEmptyText">No matching subscription records found.</p>}</div>
-            <p className="adminHint">Paid access periods are calculated from verified PAID subscription orders using KOYAL's existing 30-day rule. Coupon access uses its recorded expiry. Showing up to 1,000 records. Plan changes, extensions and manual activation are not enabled yet.</p>
+            <p className="adminHint">Only Admin-source grants can be edited or deactivated here. Paid and coupon records are immutable. Every manual change is recorded in the admin activity log.</p>
           </section>
         </div> : activeModule === "payments" ? <div className="adminContent">
           <div className="adminModuleIntro"><div><span className="adminEyebrow">CASHFREE ORDER RECORDS</span><h2>Payment Transactions</h2><p>Search and inspect recorded orders. This panel is read-only and does not issue refunds or alter payment records.</p></div><span className="adminBuildBadge">READ ONLY</span></div>
