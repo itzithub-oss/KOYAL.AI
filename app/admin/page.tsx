@@ -69,7 +69,8 @@ export default function AdminPage() {
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [rangeApplied, setRangeApplied] = useState(false);
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
   const [overview, setOverview] = useState<any>(null);
   const [overviewError, setOverviewError] = useState("");
 
@@ -102,8 +103,8 @@ export default function AdminPage() {
   useEffect(() => {
     if (!unlocked || activeModule !== "overview") return;
     const query = new URLSearchParams();
-    if (startDate) query.set("start", startDate);
-    if (endDate) query.set("end", endDate);
+    if (appliedStartDate) query.set("start", appliedStartDate);
+    if (appliedEndDate) query.set("end", appliedEndDate);
     fetch(`/api/admin/overview?${query.toString()}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" })
       .then(async response => {
         const data = await response.json().catch(() => ({}));
@@ -112,7 +113,7 @@ export default function AdminPage() {
         setOverviewError("");
       })
       .catch(cause => setOverviewError(cause instanceof Error ? cause.message : "Could not load overview."));
-  }, [unlocked, activeModule, startDate, endDate, accessToken, rangeApplied]);
+  }, [unlocked, activeModule, appliedStartDate, appliedEndDate, accessToken]);
 
   async function beginVerification() {
     setError("");
@@ -172,7 +173,7 @@ export default function AdminPage() {
       setError("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Admin verification failed.");
-      if (error.includes("expired")) setStep("password");
+      setStep("password");
     } finally { setBusy(false); }
   }
 
@@ -248,7 +249,7 @@ export default function AdminPage() {
 
         {activeModule === "overview" ? <div className="adminContent">
           <div className="adminWelcome"><div><h2>Welcome, Koyal Ai India</h2><p>Your KOYAL AI control centre.</p></div><span>✦ Secure administrator session</span></div>
-          <section className="adminDateBar"><div><strong>Custom date range</strong><small>Choose a period to filter dashboard reports.</small></div><label>From<input type="date" value={startDate} max={endDate || localDate()} onChange={event => { setStartDate(event.target.value); setRangeApplied(false); }} /></label><label>To<input type="date" value={endDate} min={startDate || undefined} max={localDate()} onChange={event => { setEndDate(event.target.value); setRangeApplied(false); }} /></label><button onClick={() => setRangeApplied(value => !value)} disabled={!startDate || !endDate}>Apply</button><button className="adminReset" onClick={() => { setStartDate(""); setEndDate(""); setRangeApplied(false); }}>Reset</button></section>
+          <section className="adminDateBar"><div><strong>Custom date range</strong><small>Choose a period to filter dashboard reports.</small></div><label>From<input type="date" value={startDate} max={endDate || localDate()} onChange={event => { setStartDate(event.target.value); setRangeApplied(false); }} /></label><label>To<input type="date" value={endDate} min={startDate || undefined} max={localDate()} onChange={event => { setEndDate(event.target.value); setRangeApplied(false); }} /></label><button onClick={() => { setAppliedStartDate(startDate); setAppliedEndDate(endDate); }}>Apply</button><button className="adminReset" onClick={() => { setStartDate(""); setEndDate(""); setAppliedStartDate(""); setAppliedEndDate(""); }}>Reset</button></section>
           {overviewError && <div className="adminInlineError">{overviewError}</div>}
           <div className="adminMetricGrid">{metrics.map(metric => <article className="adminMetric" key={metric.key}><span className="adminMetricIcon">{metric.icon}</span><small>{metric.label}</small><strong>{formatMetric(metric.key, overview?.metrics?.[metric.key] ?? null)}</strong><em>{metric.key === "revenuePaise" ? "Selected period" : "Live database figure"}</em></article>)}</div>
           <div className="adminPanelGrid">
