@@ -10,6 +10,17 @@ function cleanText(value: unknown, max = 500) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
+function cleanWebsite(value: unknown) {
+  const website = cleanText(value, 300);
+  if (!website) return "";
+  try {
+    const parsed = new URL(website);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const admin = await requireKoyalAdminSession(request);
@@ -33,8 +44,11 @@ export async function POST(request: Request) {
     const category = cleanText(body.category, 100);
     const description = cleanText(body.description, 1000);
     const location = cleanText(body.location, 180);
+    const website = cleanWebsite(body.website);
+    if (website === null) return Response.json({ error: "Website must be a valid http or https URL." }, { status: 400 });
     if (!name || !category || !location) return Response.json({ error: "Business name, category and location are required." }, { status: 400 });
     const row: Record<string, unknown> = { name, category, description, location, status: "active", source: "admin" };
+    if (website) row.website = website;
     for (const field of FIELDS) {
       if (["name", "category", "description", "location"].includes(field)) continue;
       const value = body[field];
@@ -79,7 +93,8 @@ export async function PATCH(request: Request) {
         if (!Array.isArray(body[field])) return Response.json({ error: "Services and qualifications must be lists." }, { status: 400 });
         updates[field] = body[field].filter((item: unknown): item is string => typeof item === "string").map((item: string) => item.trim()).filter(Boolean).slice(0, 30);
       } else {
-        const value = cleanText(body[field], field === "description" ? 1000 : 300);
+        const value = field === "website" ? cleanWebsite(body[field]) : cleanText(body[field], field === "description" ? 1000 : 300);
+        if (field === "website" && value === null) return Response.json({ error: "Website must be a valid http or https URL." }, { status: 400 });
         if (["name", "category", "location"].includes(field) && !value) return Response.json({ error: "Name, category and location cannot be blank." }, { status: 400 });
         updates[field] = value || null;
       }
