@@ -227,7 +227,7 @@ export default function AdminPage() {
     fetch("/api/admin/coupons", { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" })
       .then(async response => {
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Could not load coupons.");
+        if (!response.ok) throw new Error([data.error, data.details].filter(Boolean).join(" — ") || "Could not load coupons.");
         setCouponRows(Array.isArray(data.coupons) ? data.coupons : []);
         setCouponRedemptions(Array.isArray(data.redemptions) ? data.redemptions : []);
         setCouponError("");
@@ -242,7 +242,7 @@ export default function AdminPage() {
     fetch(`/api/admin/feathers?${query.toString()}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" })
       .then(async response => {
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "Could not load Feather records.");
+        if (!response.ok) throw new Error([data.error, data.details].filter(Boolean).join(" — ") || "Could not load Feather records.");
         setFeatherWallets(Array.isArray(data.wallets) ? data.wallets : []);
         setFeatherAdjustments(Array.isArray(data.adjustments) ? data.adjustments : []);
         setFeatherError("");
