@@ -250,7 +250,7 @@ export default function AdminPage() {
     try {
       const response = await fetch("/api/admin/coupons", {
         method: "POST", headers,
-        body: JSON.stringify({ code: couponCode, plan: couponPlan, maxRedemptions: couponLimit, expiresAt: couponExpiry || null }),
+        body: JSON.stringify({ code: couponCode, plan: couponPlan, maxRedemptions: couponLimit, expiresAt: couponExpiry ? new Date(couponExpiry).toISOString() : null }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not create coupon.");
