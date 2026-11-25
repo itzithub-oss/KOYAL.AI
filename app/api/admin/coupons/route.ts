@@ -16,8 +16,9 @@ export async function GET(request: Request) {
     ]);
     return Response.json({ coupons: coupons || [], redemptions: redemptions || [], readOnlyHistory: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("KOYAL admin coupons failed:", error instanceof Error ? error.message : "unknown error");
-    return Response.json({ error: "Could not load coupon records. Run the admin coupons migration first." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    const detail = error instanceof Error ? error.message : "Unknown database error";
+    console.error("KOYAL admin coupons failed:", detail);
+    return Response.json({ error: "Could not load coupon records.", details: detail.slice(0, 400) }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
 
