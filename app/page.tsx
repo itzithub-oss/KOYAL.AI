@@ -605,6 +605,12 @@ function KoyalApp() {
     }
     setSelectedFile(file);
   }
+  function getAuthHeaders(): Record<string, string> {
+    try {
+      const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
+      return typeof auth?.access_token === "string" && auth.access_token ? { Authorization: `Bearer ${auth.access_token}` } : {};
+    } catch { return {}; }
+  }
   function walletStorageKey() {
     try {
       const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
@@ -975,7 +981,7 @@ function KoyalApp() {
       ].join(" ");
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({
           message: instruction + "\n\nUser request:\n" + prompt,
           mode: "Code",
@@ -1032,9 +1038,10 @@ function KoyalApp() {
               if (value !== undefined && value !== null) formData.append(key, key === "history" ? JSON.stringify(value) : String(value));
             }
             formData.append("file", job.attachment);
+            requestHeaders = getAuthHeaders();
             requestBody = formData;
           } else {
-            requestHeaders = { "Content-Type": "application/json" };
+            requestHeaders = { "Content-Type": "application/json", ...getAuthHeaders() };
             requestBody = JSON.stringify(requestPayload);
           }
           const response = await fetch("/api/chat", {
@@ -1166,7 +1173,7 @@ function KoyalApp() {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({
           message: "Summarise the conversation provided in the chat history. Write a concise summary in 3–5 short bullet points. Capture the main topics, important information, decisions or preferences, and any agreed next steps. Use only information actually present in the conversation. Do not invent details, do not add a greeting, and do not answer the original questions again.",
           history: conversation.slice(-80).map((entry) => ({
@@ -1442,7 +1449,7 @@ function KoyalApp() {
             setTripPlanLoading(true); setTripPlanError("");
             const prompt = `Act as a professional travel planner. Generate the complete trip plan directly for display in the Tours & Travels page, not in chat. Destination: ${tripDestination.trim()}. Dates: ${tripStartDate || "not decided"} to ${tripEndDate || "not decided"}. Travellers: ${tripTravellers}. Total budget: ${tripBudget.trim() || "suggest a reasonable budget"}. Travel style: ${tripStyle}. Provide a day-by-day itinerary, estimated cost breakdown, transport options, accommodation areas, attractions, food suggestions, safety tips and booking checklist. Label estimates clearly and never invent live prices or availability. Use clear headings and concise bullets.`;
             try {
-              const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, mode: "Normal", thinkingLevel: currentThinking.name, language: "English by default", subscriptionPlan: effectivePlan, name: profile.name, characterMode: "normal", teacherMode: false, preciseMode: false, philosophicalMode: false, webSearch: false }) });
+              const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify({ message: prompt, mode: "Normal", thinkingLevel: currentThinking.name, language: "English by default", subscriptionPlan: effectivePlan, name: profile.name, characterMode: "normal", teacherMode: false, preciseMode: false, philosophicalMode: false, webSearch: false }) });
               const data: ChatApiResponse = await response.json();
               if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(data.error || "Koyal could not create the trip plan. Please try again.");
               setTripPlan(data.reply); setTripDetailsEditing(false);
