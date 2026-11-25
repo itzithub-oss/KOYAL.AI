@@ -1131,7 +1131,7 @@ function KoyalApp() {
     const job: ChatQueueJob = {
       message, originalText: text, attachment, urlContextUrl: urlReaderEnabled ? urlInput.trim() : undefined,
       systemDetails, mode: teacherMode ? "Teacher" : philosophicalMode ? "Philosophical" : preciseMode ? "Precise" : "Normal",
-      thinkingLevel: currentThinking.name, subscriptionPlan: selectedPlan, name: profile.name, characterMode,
+      thinkingLevel: currentThinking.name, subscriptionPlan: effectivePlan, name: profile.name, characterMode,
       teacherMode, teacherClass, teacherSubject, studyMode, studyFocus, preciseMode, philosophicalMode,
       webSearch: webSearchEnabled, featherCost,
     };
@@ -1539,13 +1539,13 @@ function KoyalApp() {
           <div className={styles.profileBody}>
             <div className={styles.profileVisual}>
               <div className={styles.bigAvatarContainer}>
-                <WingedAvatar photo={draftProfile.photo || profile.photo} supreme={selectedPlan === "Supreme"} variant="large" />
+                <WingedAvatar photo={draftProfile.photo || profile.photo} supreme={effectivePlan === "Supreme"} variant="large" />
                 {editingProfile && <>
                   <input ref={profilePhotoInput} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={uploadProfilePhoto} />
                   <button type="button" aria-label="Change profile photo" className={styles.cameraButton} onClick={() => profilePhotoInput.current?.click()}>📷</button>
                 </>}
               </div>
-              <div className={styles.profilePlanBadge}>{selectedPlan === "Supreme" ? "♛ Supreme Plan" : `${selectedPlan} Plan`}</div>
+              <div className={styles.profilePlanBadge}>{isAdminAccount ? "Administrator Access" : selectedPlan === "Supreme" ? "♛ Supreme Plan" : `${selectedPlan} Plan`}</div>
               <div className={styles.identityCard}><div className={styles.identityTitle}>🪶 Your KOYAL Identity</div><p>Your profile helps Koyal personalize your experience. Supreme members have animated wings around their photo.</p></div>
             </div>
             <div className={styles.profileFields}>
@@ -1668,7 +1668,7 @@ function KoyalApp() {
 
       {featherShopOpen && <div className={styles.modalOverlay} onClick={() => setFeatherShopOpen(false)}><div className={styles.featherModal} role="dialog" aria-modal="true" aria-label="Feather store" onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}><h2>🪶 Feather Store</h2><button type="button" aria-label="Close feather store" onClick={() => setFeatherShopOpen(false)}><Icon name="x"/></button></div>
-        <p className={styles.featherBalanceLine}>Current balance: <strong>{selectedPlan === "Supreme" ? "∞ Unlimited feathers" : `${feathers.toLocaleString("en-IN")} feathers`}</strong></p>
+        <p className={styles.featherBalanceLine}>Current balance: <strong>{effectivePlan === "Supreme" ? "∞ Unlimited feathers" : `${feathers.toLocaleString("en-IN")} feathers`}</strong></p>
         <p className={styles.demoNotice}>Secure Cashfree checkout. Feathers are credited only after the payment is verified by KOYAL AI.</p>
         <label className={styles.customPack}>Phone number for payment <input type="tel" value={checkoutPhone} onChange={(e) => setCheckoutPhone(e.target.value)} placeholder="10-digit mobile number" autoComplete="tel" /></label>
         <div className={styles.packGrid}>{FEATHER_PACKS.map((pack) => <div className={styles.pack} key={pack.quantity}>
