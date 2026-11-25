@@ -20,10 +20,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Admin verification is temporarily locked. Please try again later." }, { status: 429 });
     }
 
-    const first = randomInt(ADMIN_QUESTIONS.length);
-    let second = randomInt(ADMIN_QUESTIONS.length - 1);
-    if (second >= first) second += 1;
-    const questionIndexes = [first, second];
+    const questionIndexes = [randomInt(ADMIN_QUESTIONS.length)];
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const rows = await supabaseRequest("koyal_admin_challenges", {
       method: "POST",
