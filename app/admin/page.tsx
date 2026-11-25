@@ -126,6 +126,10 @@ export default function AdminPage() {
   const [announcementError, setAnnouncementError] = useState("");
   const [announcementNotice, setAnnouncementNotice] = useState("");
   const [announcementBusy, setAnnouncementBusy] = useState(false);
+  const [systemSettings, setSystemSettings] = useState<any>(null);
+  const [systemError, setSystemError] = useState("");
+  const [systemNotice, setSystemNotice] = useState("");
+  const [systemBusy, setSystemBusy] = useState(false);
 
   const headers = useMemo<Record<string, string>>(() => {
     const result: Record<string, string> = { "Content-Type": "application/json" };
@@ -276,6 +280,13 @@ export default function AdminPage() {
   }, [unlocked, activeModule, partnerSearch, accessToken]);
 
   useEffect(() => {
+    if (!unlocked || activeModule !== "system") return;
+    fetch("/api/admin/system", { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" })
+      .then(async response => { const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || data.details || "Could not load system settings."); setSystemSettings(data.settings); setSystemError(""); })
+      .catch(cause => setSystemError(cause instanceof Error ? cause.message : "Could not load system settings."));
+  }, [unlocked, activeModule, accessToken]);
+
+  useEffect(() => {
     if (!unlocked || activeModule !== "announcements") return;
     fetch("/api/admin/announcements", { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" })
       .then(async response => { const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || data.details || "Could not load announcements."); setAnnouncements(Array.isArray(data.announcements) ? data.announcements : []); setAnnouncementError(""); })
@@ -333,6 +344,18 @@ export default function AdminPage() {
       setPartnerNotice("Partner listing updated.");
     } catch (cause) { setPartnerError(cause instanceof Error ? cause.message : "Could not update partner."); }
     finally { setPartnerBusy(false); }
+  }
+
+  async function saveSystemSettings(changes: Record<string, unknown>) {
+    setSystemError(""); setSystemNotice(""); setSystemBusy(true);
+    try {
+      const response = await fetch("/api/admin/system", { method: "PATCH", headers, body: JSON.stringify(changes) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || data.details || "Could not save system settings.");
+      setSystemSettings(data.settings);
+      setSystemNotice("System settings saved and recorded in the admin activity log.");
+    } catch (cause) { setSystemError(cause instanceof Error ? cause.message : "Could not save system settings."); }
+    finally { setSystemBusy(false); }
   }
 
   async function createAnnouncement() {
@@ -718,6 +741,39 @@ export default function AdminPage() {
             </article>) : <p className="adminEmptyText">No partner listings found.</p>}</div>
             <p className="adminHint">Only active listings appear in the public FIND UP and Tours & Travels search. Changes are recorded in the admin activity log. External form applications must be reviewed and added here manually.</p>
           </section>
+        </div> : activeModule === "system" ? <div className="adminContent">
+          <div className="adminModuleIntro"><div><span className="adminEyebrow">GLOBAL CONFIGURATION</span><h2>System Control</h2><p>Manage maintenance settings and feature availability preferences.</p></div><span className="adminBuildBadge">ADMIN ONLY · AUDITED</span></div>
+          {systemError && <div className="adminInlineError">{systemError}</div>}
+          {systemNotice && <p className="adminSuccessNotice">{systemNotice}</p>}
+          {!systemSettings && !systemError ? <div className="adminPanelCard">Loading system settings…</div> : systemSettings && <>
+            <section className="adminPanelCard">
+              <h3>Maintenance mode</h3>
+              <p className="adminHint">Save the maintenance flag and the message shown in the configuration. This setting is not yet enforced by the public app or middleware.</p>
+              <label className="adminSystemToggle"><input type="checkbox" checked={Boolean(systemSettings.maintenance_mode)} disabled={systemBusy} onChange={event => {
+                const enabled = event.target.checked;
+                if (!window.confirm(enabled ? "Enable the maintenance-mode setting? Public app enforcement is not yet connected." : "Disable the maintenance-mode setting?")) return;
+                saveSystemSettings({ maintenanceMode: enabled });
+              }} /> <span><strong>{systemSettings.maintenance_mode ? "Maintenance mode setting: ON" : "Maintenance mode setting: OFF"}</strong><small>Stored configuration only; does not currently block user access.</small></span></label>
+              <label>Maintenance message<textarea rows={3} maxLength={500} value={systemSettings.maintenance_message || ""} onChange={event => setSystemSettings((value: any) => ({ ...value, maintenance_message: event.target.value }))} /></label>
+              <button className="adminPrimary" disabled={systemBusy} onClick={() => saveSystemSettings({ maintenanceMessage: systemSettings.maintenance_message })}>{systemBusy ? "Saving…" : "Save maintenance message"}</button>
+            </section>
+            <section className="adminPanelCard adminSectionGap">
+              <h3>Feature availability settings</h3>
+              <p className="adminHint">These preferences are saved centrally. Individual feature enforcement in the public app is a separate integration step.</p>
+              <div className="adminSystemFeatureList">{[
+                ["find_up","FIND UP"],["tours_travels","Tours & Travels"],["voice","Voice"],["precise_mode","Precise Mode"],["image_creation","Image Creation"]
+              ].map(([key,label]) => <label className="adminSystemToggle" key={key}><input type="checkbox" checked={systemSettings.feature_flags?.[key] !== false} disabled={systemBusy} onChange={event => {
+                const enabled = event.target.checked;
+                if (!window.confirm((enabled ? "Enable " : "Disable ") + label + " setting?")) return;
+                saveSystemSettings({ featureFlags: { [key]: enabled } });
+              }} /><span><strong>{label}</strong><small>{systemSettings.feature_flags?.[key] === false ? "Disabled in saved settings" : "Enabled in saved settings"}</small></span></label>)}
+            </section>
+            <section className="adminPanelCard adminSectionGap">
+              <h3>Configuration status</h3>
+              <p>Last updated: {systemSettings.updated_at ? new Date(systemSettings.updated_at).toLocaleString("en-IN") : "Not yet saved"}</p>
+              <p>Updated by: {systemSettings.updated_by || "—"}</p>
+            </section>
+          </>}
         </div> : activeModule === "announcements" ? <div className="adminContent">
           <div className="adminModuleIntro"><div><span className="adminEyebrow">KOYAL AI · USER NOTICES</span><h2>Announcements</h2><p>Create notices for all users or a subscription plan, set urgency and schedule them.</p></div><span className="adminBuildBadge">AUDITED CONTROLS</span></div>
           <section className="adminPanelCard">
@@ -751,7 +807,7 @@ export default function AdminPage() {
         @media(max-width:1050px){.adminShell{grid-template-columns:230px minmax(0,1fr)}.adminSidebar{padding-inline:10px}.adminMetricGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.adminEmail{display:none}}
         @media(max-width:760px){.adminShell{display:block}.adminSidebar{position:fixed;z-index:50;inset:0 auto 0 0;width:min(82vw,300px);height:100dvh;transform:translateX(-105%);transition:transform .22s ease}.adminSidebar.adminSidebarOpen{transform:translateX(0)}.adminScrim{display:block;position:fixed;z-index:40;inset:0;border:0;background:#000a}.adminMobileToggle{display:block}.adminTopbar{height:72px;padding:0 15px}.adminTopbar h1{font-size:18px}.adminContent{padding:17px 13px 28px}.adminWelcome,.adminModuleIntro{align-items:flex-start;flex-direction:column}.adminDateBar>div{width:100%}.adminDateBar label{flex:1;min-width:120px}.adminDateBar input{width:100%}.adminPanelGrid{grid-template-columns:1fr}.adminQuickActions>div:last-child{grid-template-columns:repeat(2,minmax(0,1fr))}.adminTopRight{gap:0}.adminMetricGrid{gap:9px}.adminMetric{padding:13px;min-height:115px}.adminMetric strong{font-size:20px}}
         @media(max-width:420px){.adminMetricGrid{grid-template-columns:1fr 1fr}.adminMetric{grid-template-columns:24px 1fr;gap:6px}.adminMetricIcon{width:24px;height:24px}.adminMetric small{font-size:10px}.adminMetric strong{font-size:18px}.adminQuickActions>div:last-child{grid-template-columns:1fr}.adminGateCard{padding:23px}}
-        .adminPartnerActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.adminPartnerActions button{width:auto;min-width:100px;margin:0;padding:8px 12px;font-size:12px}
+        .adminSystemToggle{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #292a34;margin:8px 0}.adminSystemToggle input{width:18px;height:18px;accent-color:#ff465d}.adminSystemToggle span{display:grid;gap:4px}.adminSystemToggle small{color:#9b9eaa;font-size:12px}.adminSystemFeatureList{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.adminSystemFeatureList .adminSystemToggle{padding:12px;border:1px solid #30313b;border-radius:12px}.adminPartnerActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.adminPartnerActions button{width:auto;min-width:100px;margin:0;padding:8px 12px;font-size:12px}
       `}</style>
     </main>
   );
