@@ -20,6 +20,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<"login" | "signup" | "reset">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -221,7 +222,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             <input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={fieldStyle} />
           </label>
           {mode !== "reset" && <label style={{ display: "grid", gap: 6, fontSize: 13, color: "#e8dfe5" }}>Password
-            <input type="password" required minLength={6} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" style={fieldStyle} />
+            <span style={{ position: "relative", display: "block" }}>
+              <input type={showPassword ? "text" : "password"} required minLength={6} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" style={{ ...fieldStyle, paddingRight: 76 }} />
+              <button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", color: "#ff7e98", cursor: "pointer", font: "inherit", fontSize: 12, fontWeight: 700 }}>{showPassword ? "Hide" : "View"}</button>
+            </span>
           </label>}
           {mode === "signup" && <label style={{ display: "grid", gap: 6, fontSize: 13, color: "#e8dfe5" }}>Phone number <span style={{ color: "#a99da8", fontWeight: 400 }}>(optional — no OTP or SMS)</span>
             <input type="tel" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210 (optional)" style={fieldStyle} />
