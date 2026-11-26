@@ -8,3 +8,6 @@ create table if not exists public.koyal_admin_system_settings (
   updated_at timestamptz not null default now()
 );
 alter table public.koyal_admin_system_settings enable row level security;
+
+-- Server-side admin routes use the Supabase service_role key.
+grant all privileges on table public.koyal_admin_system_settings to service_role;
