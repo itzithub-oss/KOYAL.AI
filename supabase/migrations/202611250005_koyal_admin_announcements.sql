@@ -14,3 +14,6 @@ create table if not exists public.koyal_admin_announcements (
 create index if not exists koyal_admin_announcements_schedule_idx
   on public.koyal_admin_announcements (is_active, scheduled_at desc, created_at desc);
 alter table public.koyal_admin_announcements enable row level security;
+
+-- Server-side admin routes use the Supabase service_role key.
+grant all privileges on table public.koyal_admin_announcements to service_role;
