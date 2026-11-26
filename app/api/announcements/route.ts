@@ -31,13 +31,16 @@ export async function GET(request: Request) {
           `koyal_admin_manual_subscriptions?select=plan_name,expires_at&user_id=eq.${encodeURIComponent(user.id)}&is_active=eq.true&expires_at=gt.${encodeURIComponent(now.toISOString())}&order=created_at.desc&limit=1`,
         ) as Promise<Array<{ plan_name: string; expires_at: string }>>,
       ]);
-      const candidates = [
-        paid.expiresAt ? { plan: paid.plan, expiresAt: paid.expiresAt } : null,
-        couponRows?.[0] ? { plan: couponRows[0].plan_name, expiresAt: couponRows[0].expires_at } : null,
-        manualRows?.[0] ? { plan: manualRows[0].plan_name, expiresAt: manualRows[0].expires_at } : null,
-      ].filter((item): item is { plan: string; expiresAt: string } => Boolean(item && validPlans.includes(item.plan)));
-      candidates.sort((a, b) => Date.parse(b.expiresAt) - Date.parse(a.expiresAt));
-      if (candidates[0]) userPlan = candidates[0].plan;
+      const coupon = couponRows?.[0];
+      const manual = manualRows?.[0];
+      const paidExpiry = paid.expiresAt ? Date.parse(paid.expiresAt) : 0;
+      const couponExpiry = coupon?.expires_at ? Date.parse(coupon.expires_at) : 0;
+      const activePlan = manual
+        ? manual.plan_name
+        : coupon && couponExpiry > paidExpiry
+          ? coupon.plan_name
+          : paid.plan;
+      if (validPlans.includes(activePlan)) userPlan = activePlan;
     }
 
     const rows = await supabaseRequest(
