@@ -36,7 +36,22 @@ export async function getAuthenticatedUser(request: Request) {
   });
   if (!response.ok) return null;
   const user = await response.json();
-  return typeof user.id === "string" ? user as { id: string; email?: string; user_metadata?: Record<string, unknown> } : null;
+  if (typeof user.id !== "string") return null;
+
+  // Supabase bans stop sign-in and refresh, but an already-issued access token
+  // can remain valid until expiry. Check the Auth admin record so KOYAL API
+  // routes reject a banned account immediately as well.
+  const serviceKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const adminResponse = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(user.id)}`, {
+    headers: { apikey: serviceKey, ...(serviceKey.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${serviceKey}` }) },
+    cache: "no-store",
+  });
+  if (!adminResponse.ok) return null;
+  const adminUser = await adminResponse.json().catch(() => ({}));
+  const bannedUntil = typeof adminUser.banned_until === "string" ? Date.parse(adminUser.banned_until) : NaN;
+  if (Number.isFinite(bannedUntil) && bannedUntil > Date.now()) return null;
+
+  return user as { id: string; email?: string; user_metadata?: Record<string, unknown> };
 }
 
 export async function supabaseRequest(path: string, init: RequestInit = {}) {
