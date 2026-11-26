@@ -20,6 +20,7 @@ declare global {
   }
 }
 
+type PublicAnnouncement = { id: string; title: string; message: string; priority: "normal" | "urgent"; created_at: string };
 type Message = {
   role: "user" | "assistant";
   content: string;
@@ -310,6 +311,8 @@ function KoyalApp() {
   const [subscriptionNotice, setSubscriptionNotice] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountEmail, setAccountEmail] = useState("");
+  const [publicAnnouncements, setPublicAnnouncements] = useState<PublicAnnouncement[]>([]);
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>([]);
   const [mobileNav, setMobileNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -358,6 +361,41 @@ function KoyalApp() {
       window.removeEventListener("koyal-account-signed-out", syncAccountEmail);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    try {
+      const saved = JSON.parse(localStorage.getItem("koyal-ai-dismissed-announcements") || "[]");
+      if (Array.isArray(saved)) setDismissedAnnouncements(saved.filter((id): id is string => typeof id === "string"));
+    } catch { /* Ignore invalid dismissal state. */ }
+
+    const loadAnnouncements = async () => {
+      try {
+        const response = await fetch("/api/announcements", { headers: getAuthHeaders(), cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (active && Array.isArray(data.announcements)) setPublicAnnouncements(data.announcements);
+      } catch { /* Keep the app usable if the announcement feed is temporarily unavailable. */ }
+    };
+    void loadAnnouncements();
+    const timer = window.setInterval(loadAnnouncements, 60_000);
+    window.addEventListener("koyal-account-signed-in", loadAnnouncements);
+    window.addEventListener("koyal-account-signed-out", loadAnnouncements);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("koyal-account-signed-in", loadAnnouncements);
+      window.removeEventListener("koyal-account-signed-out", loadAnnouncements);
+    };
+  }, []);
+
+  const dismissPublicAnnouncement = (id: string) => {
+    setDismissedAnnouncements((current) => {
+      const next = current.includes(id) ? current : [...current, id];
+      try { localStorage.setItem("koyal-ai-dismissed-announcements", JSON.stringify(next)); } catch { /* Dismissal remains in memory. */ }
+      return next;
+    });
+  };
 
   useEffect(() => {
     const refreshThought = () => setDailyThought(getDailyThought(Date.now()));
@@ -1310,6 +1348,20 @@ function KoyalApp() {
               </div>
             </div>
           </header>
+
+          {publicAnnouncements.filter((item) => !dismissedAnnouncements.includes(item.id)).slice(0, 5).map((item) => (
+            <article key={item.id} role="status" style={{ margin: "12px 18px 0", padding: "13px 15px", borderRadius: 15, border: item.priority === "urgent" ? "1px solid rgba(255,75,100,.55)" : "1px solid rgba(255,120,155,.25)", background: item.priority === "urgent" ? "rgba(130,25,48,.20)" : "rgba(255,105,145,.07)", display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <span aria-hidden="true" style={{ fontSize: 19, lineHeight: 1.3 }}>{item.priority === "urgent" ? "⚠️" : "📢"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 7, marginBottom: 4 }}>
+                  <strong style={{ fontSize: 14 }}>{item.title}</strong>
+                  {item.priority === "urgent" && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#ff7189" }}>URGENT</span>}
+                </div>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{item.message}</p>
+              </div>
+              <button type="button" onClick={() => dismissPublicAnnouncement(item.id)} aria-label={`Dismiss announcement: ${item.title}`} style={{ flex: "0 0 auto", border: 0, background: "transparent", color: "inherit", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 2 }}>×</button>
+            </article>
+          ))}
 
           {historyOpen && <div className={styles.historyOverlay} role="dialog" aria-modal="true" aria-label="Chat history">
             <div className={styles.historyPanel}>
