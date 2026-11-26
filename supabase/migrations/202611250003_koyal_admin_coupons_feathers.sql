@@ -135,3 +135,7 @@ grant execute on function public.admin_adjust_koyal_feathers(uuid, integer, text
 
 revoke all on function public.redeem_koyal_admin_subscription_coupon(uuid, text, timestamptz, timestamptz) from public, anon, authenticated;
 grant execute on function public.redeem_koyal_admin_subscription_coupon(uuid, text, timestamptz, timestamptz) to service_role;
+
+-- Server-side admin routes use the Supabase service_role key.
+grant all privileges on table public.koyal_admin_coupons to service_role;
+grant all privileges on table public.koyal_admin_feather_adjustments to service_role;
