@@ -26,6 +26,9 @@ create index if not exists koyal_partner_directory_status_idx
 
 alter table public.koyal_partner_directory enable row level security;
 
+-- Server routes use the service-role key; no client-side table access is granted.
+grant all privileges on table public.koyal_partner_directory to service_role;
+
 -- Seed the existing verified directory listing without duplicating it on reruns.
 insert into public.koyal_partner_directory
   (name, category, description, location, starting_price, operator_name, phone, website,
