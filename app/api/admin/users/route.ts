@@ -56,3 +56,99 @@ export async function GET(request: Request) {
     return Response.json({ error: "Could not load user accounts. Check Supabase Auth and wallet permissions." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
+
+
+async function readAdminAuthResponse(response: Response) {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = typeof data.msg === "string" ? data.msg : typeof data.message === "string" ? data.message : "Supabase Auth account operation failed.";
+    throw new Error(message);
+  }
+  return data;
+}
+
+function authAdminHeaders(serviceKey: string) {
+  return { apikey: serviceKey, ...(serviceKey.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${serviceKey}` }), "Content-Type": "application/json" };
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const admin = await requireKoyalAdminSession(request);
+    if (!admin) return Response.json({ error: "Admin verification is required." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+
+    const body = await request.json().catch(() => ({}));
+    const userId = typeof body.userId === "string" ? body.userId.trim() : "";
+    const action = body.action;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+      return Response.json({ error: "A valid user ID is required." }, { status: 400 });
+    }
+    if (action !== "ban" && action !== "unban") return Response.json({ error: "Choose ban or unban." }, { status: 400 });
+
+    const baseUrl = requiredEnv("NEXT_PUBLIC_SUPABASE_URL").replace(/\/$/, "");
+    const serviceKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+    const headers = authAdminHeaders(serviceKey);
+    const lookup = await fetch(`${baseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, { headers, cache: "no-store" });
+    const target = await readAdminAuthResponse(lookup) as AuthUser;
+    if (String(target.email || "").trim().toLowerCase() === "koyalaiindia@gmail.com" || target.id === admin.id) {
+      return Response.json({ error: "The primary KOYAL administrator account cannot be banned." }, { status: 403 });
+    }
+
+    let banUntil: string | null = null;
+    if (action === "ban") {
+      const duration = body.duration;
+      const allowed = new Set(["1h", "24h", "7d", "30d", "90d", "876000h"]);
+      if (typeof duration !== "string" || !allowed.has(duration)) {
+        return Response.json({ error: "Select a supported ban duration." }, { status: 400 });
+      }
+      await readAdminAuthResponse(await fetch(`${baseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+        method: "PUT", headers, body: JSON.stringify({ ban_duration: duration }), cache: "no-store",
+      }));
+      banUntil = duration === "876000h" ? "permanent" : new Date(Date.now() + (duration === "1h" ? 3_600_000 : duration === "24h" ? 86_400_000 : Number.parseInt(duration, 10) * 86_400_000)).toISOString();
+    } else {
+      await readAdminAuthResponse(await fetch(`${baseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+        method: "PUT", headers, body: JSON.stringify({ ban_duration: "none" }), cache: "no-store",
+      }));
+    }
+
+    await writeAdminLog(admin, action === "ban" ? "user_banned" : "user_unbanned", {
+      userId, email: target.email || null, duration: action === "ban" ? body.duration : null, banUntil,
+    });
+    return Response.json({ success: true, userId, bannedUntil: action === "ban" ? banUntil : null }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("KOYAL admin user update failed:", error instanceof Error ? error.message : "unknown error");
+    return Response.json({ error: error instanceof Error ? error.message : "Could not update the user account." }, { status: 500, headers: { "Cache-Control": "no-store" } });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const admin = await requireKoyalAdminSession(request);
+    if (!admin) return Response.json({ error: "Admin verification is required." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+
+    const body = await request.json().catch(() => ({}));
+    const userId = typeof body.userId === "string" ? body.userId.trim() : "";
+    const confirmation = typeof body.confirmation === "string" ? body.confirmation.trim() : "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+      return Response.json({ error: "A valid user ID is required." }, { status: 400 });
+    }
+    if (confirmation !== "DELETE") return Response.json({ error: "Type DELETE to confirm permanent account removal." }, { status: 400 });
+
+    const baseUrl = requiredEnv("NEXT_PUBLIC_SUPABASE_URL").replace(/\/$/, "");
+    const serviceKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+    const headers = authAdminHeaders(serviceKey);
+    const lookup = await fetch(`${baseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, { headers, cache: "no-store" });
+    const target = await readAdminAuthResponse(lookup) as AuthUser;
+    if (target.id === admin.id || String(target.email || "").trim().toLowerCase() === "koyalaiindia@gmail.com") {
+      return Response.json({ error: "The primary KOYAL administrator account cannot be deleted from User Management." }, { status: 403 });
+    }
+
+    await writeAdminLog(admin, "user_account_deletion_requested", { userId, email: target.email || null });
+    await readAdminAuthResponse(await fetch(`${baseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+      method: "DELETE", headers, cache: "no-store",
+    }));
+    return Response.json({ success: true, userId, message: "The Supabase Auth account was permanently deleted. Existing financial and audit history is retained." }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("KOYAL admin user deletion failed:", error instanceof Error ? error.message : "unknown error");
+    return Response.json({ error: error instanceof Error ? error.message : "Could not permanently delete the user account." }, { status: 500, headers: { "Cache-Control": "no-store" } });
+  }
+}
