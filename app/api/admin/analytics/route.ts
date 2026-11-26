@@ -35,13 +35,22 @@ export async function GET(request: Request) {
     const valid = (value: string) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value);
     if (!valid(start) || !valid(end) || (start && end && start > end)) return Response.json({ error: "Choose a valid date range." }, { status: 400 });
     const { lower, upper } = dateBounds(start, end);
-    const [auth, orders, wallets, partnerRows, couponRows] = await Promise.all([
+    const [auth, orders, walletsResult, partnersResult, couponsResult] = await Promise.all([
       getAuthUsers(),
       supabaseRequest("koyal_payment_orders?select=id,user_id,amount_paise,payment_status,created_at,order_type,plan_name,feather_quantity&order=created_at.asc&limit=10000") as Promise<Order[]>,
-      supabaseRequest("koyal_feather_wallets?select=user_id,balance&limit=10000") as Promise<Array<{ user_id: string; balance: number }>>,
-      supabaseRequest("koyal_partner_directory?select=id,status&limit=10000") as Promise<Array<{ id: string; status: string }>>,
-      supabaseRequest(`koyal_coupon_redemptions?select=user_id,plan_name,expires_at&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&limit=10000`) as Promise<Array<{ user_id: string; plan_name: string; expires_at: string }>>,
+      supabaseRequest("koyal_feather_wallets?select=user_id,balance&limit=10000")
+        .then(value => ({ rows: value as Array<{ user_id: string; balance: number }>, error: null as string | null }))
+        .catch(error => ({ rows: [] as Array<{ user_id: string; balance: number }>, error: error instanceof Error ? error.message : "Wallet query failed" })),
+      supabaseRequest("koyal_partner_directory?select=id,status&limit=10000")
+        .then(value => ({ rows: value as Array<{ id: string; status: string }>, error: null as string | null }))
+        .catch(error => ({ rows: [] as Array<{ id: string; status: string }>, error: error instanceof Error ? error.message : "Partner query failed" })),
+      supabaseRequest(`koyal_coupon_redemptions?select=user_id,plan_name,expires_at&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&limit=10000`)
+        .then(value => ({ rows: value as Array<{ user_id: string; plan_name: string; expires_at: string }>, error: null as string | null }))
+        .catch(error => ({ rows: [] as Array<{ user_id: string; plan_name: string; expires_at: string }>, error: error instanceof Error ? error.message : "Coupon query failed" })),
     ]);
+    const wallets = walletsResult.rows;
+    const partnerRows = partnersResult.rows;
+    const couponRows = couponsResult.rows;
     const inRange = (date: string) => {
       const time = Date.parse(date);
       return Number.isFinite(time) && time >= lower && time < upper;
@@ -108,7 +117,23 @@ export async function GET(request: Request) {
         paymentSummary: Object.entries(paymentSummary).map(([status, count]) => ({ status, count })),
         subscriptionDistribution: Object.entries(subscriptionDistribution).map(([plan, users]) => ({ plan, users })),
       },
-      coverage: { authUsersRetrieved: auth.users.length, authUserSampleLimit: 1000, ordersRetrieved: (orders || []).length, orderSampleLimit: 10000, walletsRetrieved: (wallets || []).length, walletSampleLimit: 10000, usageAnalytics: "not_available_without_event_tracking" },
+      coverage: {
+        authUsersRetrieved: auth.users.length,
+        authUserSampleLimit: 1000,
+        ordersRetrieved: (orders || []).length,
+        orderSampleLimit: 10000,
+        walletsRetrieved: wallets.length,
+        walletSampleLimit: 10000,
+        partnerDirectoryAvailable: !partnersResult.error,
+        couponRedemptionsAvailable: !couponsResult.error,
+        walletDataAvailable: !walletsResult.error,
+        warnings: [
+          partnersResult.error ? "Partner directory unavailable; run migration 202611250004_koyal_partner_directory.sql and verify service-role access." : null,
+          couponsResult.error ? "Coupon redemption data unavailable." : null,
+          walletsResult.error ? "Feather wallet data unavailable." : null,
+        ].filter(Boolean),
+        usageAnalytics: "not_available_without_event_tracking"
+      },
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("KOYAL admin analytics failed:", error instanceof Error ? error.message : "unknown error");
