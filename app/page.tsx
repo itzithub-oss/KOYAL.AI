@@ -806,8 +806,8 @@ function KoyalApp() {
   function uploadProfilePhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setProfileError("Choose a PNG, JPG, or WebP photo."); return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type.toLowerCase())) {
+      setProfileError("Choose a JPG, PNG, or WebP photo."); return;
     }
     if (file.size > 900_000) {
       setProfileError("Choose a photo smaller than 900 KB for browser storage."); return;
