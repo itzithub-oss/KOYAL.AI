@@ -467,7 +467,7 @@ function KoyalApp() {
                 gender: typeof synced.gender === "string" ? synced.gender : "",
                 phone: typeof synced.phone === "string" ? synced.phone : "",
                 dob: typeof synced.dob === "string" ? synced.dob : "",
-                photo: "", // Photos stay in device storage; never embed Base64 images in Supabase JWT metadata.
+                photo: typeof synced.photo === "string" ? synced.photo : "",
               };
               setProfile(valid);
               localStorage.setItem("koyal-ai-profile-v2", JSON.stringify(valid));
@@ -740,38 +740,67 @@ function KoyalApp() {
     if (draftProfile.dob && draftProfile.dob > new Date().toISOString().slice(0, 10)) {
       setProfileError("Date of birth cannot be in the future."); return;
     }
-    const saved = { ...draftProfile, name };
-    try {
-      localStorage.setItem("koyal-ai-profile-v2", JSON.stringify(saved));
-      localStorage.setItem("koyal-ai-profile-name", name);
-    } catch {
-      setProfileError("Could not save the photo. Try a smaller photo."); return;
-    }
-    setProfile(saved);
-    setDraftProfile(saved);
-    setEditingProfile(false);
-    setProfileError("");
+
+    setProfileError("Saving your profile...");
     try {
       const auth = JSON.parse(localStorage.getItem("koyal-ai-auth-session") || "null");
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
       const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (auth?.access_token && supabaseUrl && supabaseKey) {
-        const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: supabaseKey,
-            Authorization: `Bearer ${auth.access_token}`,
-          },
-          body: JSON.stringify({ data: { koyal_profile: { ...saved, photo: "" } } }),
-        });
-        if (!response.ok) throw new Error("Account profile sync failed.");
-        const updatedUser = await response.json();
-        const updatedSession = { ...auth, user: updatedUser };
-        localStorage.setItem("koyal-ai-auth-session", JSON.stringify(updatedSession));
+      if (!auth?.access_token || !auth?.user?.id || !supabaseUrl || !supabaseKey) {
+        throw new Error("Please sign in again before saving your profile.");
       }
-    } catch {
-      setProfileError("Profile saved on this device, but email sync failed. Check your connection and Supabase settings.");
+
+      let photoUrl = draftProfile.photo || "";
+      if (photoUrl.startsWith("data:image/")) {
+        const imageResponse = await fetch(photoUrl);
+        const imageBlob = await imageResponse.blob();
+        const mime = imageBlob.type.toLowerCase();
+        const extension = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
+        const objectPath = `${auth.user.id}/profile.${extension}`;
+        const uploadResponse = await fetch(
+          `${supabaseUrl}/storage/v1/object/koyal-profile-photos/${objectPath.split("/").map(encodeURIComponent).join("/")}`,
+          {
+            method: "POST",
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${auth.access_token}`,
+              "Content-Type": mime,
+              "x-upsert": "true",
+            },
+            body: imageBlob,
+          },
+        );
+        if (!uploadResponse.ok) {
+          const detail = await uploadResponse.text().catch(() => "");
+          throw new Error(detail || "Could not upload your profile photo to Supabase Storage.");
+        }
+        photoUrl = `${supabaseUrl}/storage/v1/object/public/koyal-profile-photos/${objectPath}?v=${Date.now()}`;
+      }
+
+      const saved = { ...draftProfile, name, photo: photoUrl };
+      const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseKey,
+          Authorization: `Bearer ${auth.access_token}`,
+        },
+        body: JSON.stringify({ data: { koyal_profile: saved } }),
+      });
+      if (!response.ok) {
+        const detail = await response.text().catch(() => "");
+        throw new Error(detail || "Account profile sync failed.");
+      }
+      const updatedUser = await response.json();
+      localStorage.setItem("koyal-ai-auth-session", JSON.stringify({ ...auth, user: updatedUser }));
+      localStorage.setItem("koyal-ai-profile-v2", JSON.stringify(saved));
+      localStorage.setItem("koyal-ai-profile-name", name);
+      setProfile(saved);
+      setDraftProfile(saved);
+      setEditingProfile(false);
+      setProfileError("");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not save your profile. Please try again.");
     }
   }
   function uploadProfilePhoto(event: ChangeEvent<HTMLInputElement>) {
@@ -1616,7 +1645,7 @@ function KoyalApp() {
               <label><span>▦ DOB</span><input type="date" max={new Date().toISOString().slice(0,10)} disabled={!editingProfile} value={draftProfile.dob} onChange={(e) => setDraftProfile((old) => ({ ...old, dob: e.target.value }))} /></label>
               {profileError && <p className={styles.profileError} role="alert">{profileError}</p>}
               {editingProfile && <button type="button" className={styles.saveProfileButton} onClick={saveProfile}>Save Profile</button>}
-              <p className={styles.profilePrivacy}>Profile information and photos are saved only in this browser in this version.</p>
+              <p className={styles.profilePrivacy}>Your profile and photo are saved to your KOYAL account and sync across devices.</p>
             </div>
           </div>
       </div>}
