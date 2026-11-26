@@ -42,14 +42,23 @@ export async function getAuthenticatedUser(request: Request) {
   // can remain valid until expiry. Check the Auth admin record so KOYAL API
   // routes reject a banned account immediately as well.
   const serviceKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
-  const adminResponse = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(user.id)}`, {
-    headers: { apikey: serviceKey, ...(serviceKey.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${serviceKey}` }) },
-    cache: "no-store",
-  });
-  if (!adminResponse.ok) return null;
-  const adminUser = await adminResponse.json().catch(() => ({}));
-  const bannedUntil = typeof adminUser.banned_until === "string" ? Date.parse(adminUser.banned_until) : NaN;
-  if (Number.isFinite(bannedUntil) && bannedUntil > Date.now()) return null;
+  try {
+    const adminResponse = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(user.id)}`, {
+      headers: { apikey: serviceKey, ...(serviceKey.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${serviceKey}` }) },
+      cache: "no-store",
+    });
+    if (adminResponse.ok) {
+      const adminUser = await adminResponse.json().catch(() => ({}));
+      const bannedUntil = typeof adminUser.banned_until === "string" ? Date.parse(adminUser.banned_until) : NaN;
+      if (Number.isFinite(bannedUntil) && bannedUntil > Date.now()) return null;
+    } else {
+      // /auth/v1/user has already verified the bearer token. A temporary Auth
+      // Admin API/key-permission failure must not reject every signed-in user.
+      console.warn("Supabase Auth Admin ban check unavailable:", adminResponse.status);
+    }
+  } catch (error) {
+    console.warn("Supabase Auth Admin ban check failed:", error instanceof Error ? error.message : "unknown error");
+  }
 
   return user as { id: string; email?: string; user_metadata?: Record<string, unknown> };
 }
