@@ -23,6 +23,20 @@ export async function POST(request: Request) {
     const cashfreeOrder = await fetchCashfreeOrder(orderId);
     if (cashfreeOrder.order_status === "PAID" && cashfreeOrder.order_currency === "INR") {
       await processPaidOrder(orderId, Math.round(cashfreeOrder.order_amount * 100));
+      const orderRows = await supabaseRequest(
+        `koyal_payment_orders?select=user_id&cashfree_order_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+      ) as Array<{ user_id: string }>;
+      if (orderRows?.[0]?.user_id) {
+        await supabaseRequest("rpc/confirm_koyal_discount_coupon", {
+          method: "POST",
+          body: JSON.stringify({ p_order_id: orderId, p_user_id: orderRows[0].user_id }),
+        });
+      }
+    } else if (["FAILED", "CANCELLED", "EXPIRED", "TERMINATED"].includes(String(cashfreeOrder.order_status || "").toUpperCase())) {
+      await supabaseRequest("rpc/release_koyal_discount_coupon", {
+        method: "POST",
+        body: JSON.stringify({ p_order_id: orderId }),
+      });
     }
     return Response.json({ received: true });
   } catch (error) {
