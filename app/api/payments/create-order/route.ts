@@ -1,13 +1,32 @@
 import { randomUUID } from "node:crypto";
 import { getAuthenticatedUser, requiredEnv, supabaseRequest, cashfreeBaseUrl, CASHFREE_API_VERSION } from "@/lib/cashfree-server";
+import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
 
 export const runtime = "nodejs";
+
+function requestIp(request: Request) {
+  return (request.headers.get("x-real-ip") || request.headers.get("x-vercel-forwarded-for") || "unknown")
+    .split(",")[0].trim().slice(0, 100) || "unknown";
+}
 
 export async function POST(request: Request) {
   let reservedDiscountOrderId = "";
   try {
     const user = await getAuthenticatedUser(request);
     if (!user) return Response.json({ error: "Please log in before buying feathers." }, { status: 401 });
+
+    const ip = requestIp(request);
+    const [ipAllowed, accountMinuteAllowed, accountHourAllowed] = await Promise.all([
+      consumeKoyalRateLimit(`payment-order:ip:${ip}`, 10, 60),
+      consumeKoyalRateLimit(`payment-order:user:${user.id}:minute`, 5, 60),
+      consumeKoyalRateLimit(`payment-order:user:${user.id}:hour`, 20, 3600),
+    ]);
+    if (!ipAllowed || !accountMinuteAllowed || !accountHourAllowed) {
+      return Response.json(
+        { error: "Too many payment orders were requested. Please wait before trying again.", code: "RATE_LIMITED" },
+        { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } }
+      );
+    }
 
     const body = await request.json().catch(() => ({}));
     const requestedPlan = typeof body.planName === "string" ? body.planName : "";
@@ -76,9 +95,7 @@ export async function POST(request: Request) {
           customer_phone: phone,
           ...(user.email ? { customer_email: user.email } : {}),
         },
-        order_meta: {
-          return_url: `${appUrl}/payments/return?order_id={order_id}`,
-        },
+        order_meta: { return_url: `${appUrl}/payments/return?order_id={order_id}` },
         order_note: isSubscription ? `KOYAL AI ${requestedPlan} plan - 30 days` : `KOYAL AI feather purchase - ${quantity} feathers`,
       }),
       cache: "no-store",
@@ -92,7 +109,6 @@ export async function POST(request: Request) {
       const providerCode = typeof payment.code === "string" ? payment.code : "";
       const providerMessage = typeof payment.message === "string" ? payment.message : "";
       const providerType = typeof payment.type === "string" ? payment.type : "";
-      // Log only Cashfree's non-secret error metadata; never log credentials or customer details.
       console.error("KOYAL Cashfree order rejected:", JSON.stringify({
         httpStatus: cashfreeResponse.status,
         code: providerCode,
