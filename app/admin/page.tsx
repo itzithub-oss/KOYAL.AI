@@ -874,7 +874,7 @@ export default function AdminPage() {
             </section>
             <section className="adminPanelCard adminSectionGap">
               <h3>Feature availability settings</h3>
-              <p className="adminHint">These preferences are saved centrally. Individual feature enforcement in the public app is a separate integration step.</p>
+              <p className="adminHint">Control which features are available to public users. Changes are enforced in the public interface and server-side API checks.</p>
               <div className="adminSystemFeatureList">{[
                 ["find_up","FIND UP"],["tours_travels","Tours & Travels"],["voice","Voice"],["precise_mode","Precise Mode"],["image_creation","Image Creation"]
               ].map(([key,label]) => <label className="adminSystemToggle" key={key}><input type="checkbox" checked={systemSettings.feature_flags?.[key] !== false} disabled={systemBusy} onChange={event => {
