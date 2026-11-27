@@ -98,9 +98,13 @@ export default function AdminPage() {
   const [subscriptionNotice, setSubscriptionNotice] = useState("");
   const [couponRows, setCouponRows] = useState<any[]>([]);
   const [couponRedemptions, setCouponRedemptions] = useState<any[]>([]);
+  const [discountRedemptions, setDiscountRedemptions] = useState<any[]>([]);
   const [couponError, setCouponError] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponPlan, setCouponPlan] = useState("Supreme");
+  const [couponType, setCouponType] = useState("subscription_access");
+  const [couponTarget, setCouponTarget] = useState("both");
+  const [couponDiscountPercent, setCouponDiscountPercent] = useState("10");
   const [couponLimit, setCouponLimit] = useState("");
   const [couponExpiry, setCouponExpiry] = useState("");
   const [couponBusy, setCouponBusy] = useState(false);
@@ -243,6 +247,7 @@ export default function AdminPage() {
         if (!response.ok) throw new Error([data.error, data.details].filter(Boolean).join(" — ") || "Could not load coupons.");
         setCouponRows(Array.isArray(data.coupons) ? data.coupons : []);
         setCouponRedemptions(Array.isArray(data.redemptions) ? data.redemptions : []);
+        setDiscountRedemptions(Array.isArray(data.discountRedemptions) ? data.discountRedemptions : []);
         setCouponError("");
       })
       .catch(cause => setCouponError(cause instanceof Error ? cause.message : "Could not load coupons."));
@@ -505,7 +510,7 @@ export default function AdminPage() {
     try {
       const response = await fetch("/api/admin/coupons", {
         method: "POST", headers,
-        body: JSON.stringify({ code: couponCode, plan: couponPlan, maxRedemptions: couponLimit, expiresAt: couponExpiry ? new Date(couponExpiry).toISOString() : null }),
+        body: JSON.stringify({ code: couponCode, couponType, plan: couponPlan, targetType: couponTarget, discountPercent: couponDiscountPercent, maxRedemptions: couponLimit, expiresAt: couponExpiry ? new Date(couponExpiry).toISOString() : null }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not create coupon.");
@@ -514,6 +519,7 @@ export default function AdminPage() {
       const latest = await refreshed.json().catch(() => ({}));
       setCouponRows(Array.isArray(latest.coupons) ? latest.coupons : []);
       setCouponRedemptions(Array.isArray(latest.redemptions) ? latest.redemptions : []);
+      setDiscountRedemptions(Array.isArray(latest.discountRedemptions) ? latest.discountRedemptions : []);
     } catch (cause) { setCouponError(cause instanceof Error ? cause.message : "Could not create coupon."); }
     finally { setCouponBusy(false); }
   }
@@ -745,24 +751,29 @@ export default function AdminPage() {
             <p className="adminHint">Showing up to 250 matching accounts from the first 1,000 Supabase Auth records. Ban and unban actions are written to the admin activity log. Permanent removal deletes the Supabase Auth account; payment and audit history is retained.</p>
           </section>
         </div> : activeModule === "coupons" ? <div className="adminContent">
-          <div className="adminModuleIntro"><div><span className="adminEyebrow">SUBSCRIPTION COUPONS</span><h2>Coupon Management</h2><p>Create plan coupons, set redemption limits and expiry, and inspect redemption history.</p></div><span className="adminBuildBadge">AUDITED CONTROLS</span></div>
+          <div className="adminModuleIntro"><div><span className="adminEyebrow">SUBSCRIPTION + FEATHER COUPONS</span><h2>Coupon Management</h2><p>Create subscription access codes or percentage discounts for purchases, with redemption limits and expiry.</p></div><span className="adminBuildBadge">AUDITED CONTROLS</span></div>
           <section className="adminPanelCard">
-            <h3>Create a subscription coupon</h3>
+            <h3>Create a coupon</h3>
             <div className="adminPaymentFilters adminCouponForm">
               <label>Coupon code<input value={couponCode} onChange={event => setCouponCode(event.target.value.toLowerCase())} placeholder="e.g. KOYALWELCOME" /></label>
-              <label>Subscription plan<select value={couponPlan} onChange={event => setCouponPlan(event.target.value)}><option>Let It</option><option>Care</option><option>Elite</option><option>Supreme</option></select></label>
+              <label>Coupon type<select value={couponType} onChange={event => setCouponType(event.target.value)}><option value="subscription_access">Free subscription access</option><option value="discount">Percentage discount</option></select></label>
+              {couponType === "subscription_access" ? <label>Subscription plan<select value={couponPlan} onChange={event => setCouponPlan(event.target.value)}><option>Let It</option><option>Care</option><option>Elite</option><option>Supreme</option></select></label> : <>
+                <label>Discount percentage<input type="number" min="1" max="99" step="1" value={couponDiscountPercent} onChange={event => setCouponDiscountPercent(event.target.value)} placeholder="10" /></label>
+                <label>Applies to<select value={couponTarget} onChange={event => setCouponTarget(event.target.value)}><option value="subscription">All subscriptions</option><option value="feathers">All Feather purchases</option><option value="both">Subscriptions + Feathers</option></select></label>
+              </>}
               <label>Maximum redemptions<input type="number" min="1" value={couponLimit} onChange={event => setCouponLimit(event.target.value)} placeholder="Unlimited" /></label>
               <label>Expiry date and time<input type="datetime-local" value={couponExpiry} onChange={event => setCouponExpiry(event.target.value)} /></label>
             </div>
             <button className="adminPrimary adminActionButton" disabled={couponBusy} onClick={createCoupon}>{couponBusy ? "Creating…" : "Create Coupon"}</button>
             {couponError && <div className="adminInlineError">{couponError}</div>}
-            <p className="adminHint">Only subscription-plan coupons are supported in this version. Existing built-in coupon codes continue to work.</p>
+            <p className="adminHint">Discount codes apply to one checkout per account. Redemption limits count active checkout reservations and completed purchases. Discounts are 1–99%; checkout totals cannot fall below ₹1.</p>
           </section>
           <section className="adminPanelCard adminSectionGap"><div className="adminCardHeading"><h3>Created coupons</h3><span>{couponRows.length} RECORDS</span></div><div className="adminPaymentList">{couponRows.length ? couponRows.map(item => <article key={item.code}>
-            <div><strong>{item.code}</strong><small>{item.plan_name} plan · {item.redemption_count} redeemed{item.max_redemptions ? ` / ${item.max_redemptions}` : " · no limit"}</small></div>
+            <div><strong>{item.code}</strong><small>{item.coupon_type === "discount" ? `${item.discount_percent}% off · ${item.target_type === "both" ? "subscriptions + Feathers" : item.target_type === "feathers" ? "Feather purchases" : "all subscriptions"}` : `${item.plan_name} plan access`} · {item.redemption_count} redeemed{item.max_redemptions ? ` / ${item.max_redemptions}` : " · no limit"}</small></div>
             <div><strong className={item.is_active ? "adminUserActive" : "adminUserSuspended"}>{item.is_active ? "Enabled" : "Disabled"}</strong><small>{item.expires_at ? `Expires ${new Date(item.expires_at).toLocaleString("en-IN")}` : "No expiry"}</small></div>
             <div><small>Created by {item.created_by}</small><button className="adminTextButton" onClick={() => toggleCoupon(item.code, !item.is_active)}>{item.is_active ? "Disable" : "Enable"}</button></div>
           </article>) : <p className="adminEmptyText">No admin-created coupons yet.</p>}</div></section>
+          <section className="adminPanelCard adminSectionGap"><div className="adminCardHeading"><h3>Percentage discount usage</h3><span>LAST 500</span></div><div className="adminActivityList">{discountRedemptions.length ? discountRedemptions.map(item => <article key={item.id}><div><strong>{item.coupon_code} · {item.discount_percent}% off · {item.purchase_type}</strong><small>{item.user_id}</small></div><time>{item.redeemed_at ? new Date(item.redeemed_at).toLocaleString("en-IN") : `Reserved ${new Date(item.created_at).toLocaleString("en-IN")}`}</time><p>₹{(Number(item.original_amount_paise || 0) / 100).toFixed(2)} → ₹{(Number(item.discounted_amount_paise || 0) / 100).toFixed(2)} · {item.status}</p></article>) : <p className="adminEmptyText">No percentage discount uses yet.</p>}</div></section>
           <section className="adminPanelCard adminSectionGap"><div className="adminCardHeading"><h3>Redemption history</h3><span>LAST 500</span></div><div className="adminActivityList">{couponRedemptions.length ? couponRedemptions.map(item => <article key={item.id}><div><strong>{item.coupon_code} · {item.plan_name}</strong><small>{item.user_id}</small></div><time>{new Date(item.redeemed_at).toLocaleString("en-IN")}</time><p>Expires {new Date(item.expires_at).toLocaleString("en-IN")}</p></article>) : <p className="adminEmptyText">No coupon redemptions found.</p>}</div></section>
         </div> : activeModule === "feathers" ? <div className="adminContent">
           <div className="adminModuleIntro"><div><span className="adminEyebrow">WALLET + ADJUSTMENT LEDGER</span><h2>Feather Management</h2><p>Review wallet balances and make audited additions or deductions with a required reason.</p></div><span className="adminBuildBadge">AUDITED CONTROLS</span></div>
