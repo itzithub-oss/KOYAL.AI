@@ -4,6 +4,7 @@ import { getAuthenticatedUser, requiredEnv, supabaseRequest, cashfreeBaseUrl, CA
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  let reservedDiscountOrderId = "";
   try {
     const user = await getAuthenticatedUser(request);
     if (!user) return Response.json({ error: "Please log in before buying feathers." }, { status: 401 });
@@ -24,8 +25,34 @@ export async function POST(request: Request) {
       return Response.json({ error: "Enter a valid 10-digit Indian mobile number for Cashfree checkout." }, { status: 400 });
     }
 
-    const amountPaise = isSubscription ? planPrices[requestedPlan] * 100 : quantity * 50;
+    const originalAmountPaise = isSubscription ? planPrices[requestedPlan] * 100 : quantity * 50;
+    let amountPaise = originalAmountPaise;
+    let discountPercent = 0;
     const orderId = `koyal_${Date.now()}_${randomUUID().slice(0, 8)}`;
+    const couponCode = typeof body.couponCode === "string" ? body.couponCode.trim().toLowerCase() : "";
+    if (couponCode) {
+      try {
+        const discount = await supabaseRequest("rpc/reserve_koyal_discount_coupon", {
+          method: "POST",
+          body: JSON.stringify({
+            p_user_id: user.id,
+            p_code: couponCode,
+            p_order_id: orderId,
+            p_purchase_type: isSubscription ? "subscription" : "feathers",
+            p_original_amount_paise: originalAmountPaise,
+          }),
+        }) as { discountPercent?: number; amountPaise?: number };
+        discountPercent = Number(discount.discountPercent) || 0;
+        amountPaise = Number(discount.amountPaise) || 0;
+        if (discountPercent < 1 || discountPercent > 99 || amountPaise < 100 || amountPaise >= originalAmountPaise) {
+          throw new Error("This discount coupon returned an invalid discount amount.");
+        }
+        reservedDiscountOrderId = orderId;
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "";
+        return Response.json({ error: detail.includes("Database request failed") ? detail.slice(0, 300) : detail || "That discount coupon could not be applied." }, { status: 400 });
+      }
+    }
     const appUrl = new URL(request.url).origin;
     const cashfreeResponse = await fetch(`${cashfreeBaseUrl()}/orders`, {
       method: "POST",
@@ -54,6 +81,10 @@ export async function POST(request: Request) {
     });
     const payment = await cashfreeResponse.json().catch(() => ({}));
     if (!cashfreeResponse.ok || !payment.payment_session_id) {
+      if (reservedDiscountOrderId) {
+        await supabaseRequest("rpc/release_koyal_discount_coupon", { method: "POST", body: JSON.stringify({ p_order_id: reservedDiscountOrderId }) }).catch(() => null);
+        reservedDiscountOrderId = "";
+      }
       const providerCode = typeof payment.code === "string" ? payment.code : "";
       const providerMessage = typeof payment.message === "string" ? payment.message : "";
       const providerType = typeof payment.type === "string" ? payment.type : "";
@@ -72,22 +103,34 @@ export async function POST(request: Request) {
       }, { status: 502 });
     }
 
-    await supabaseRequest("koyal_payment_orders", {
-      method: "POST",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({
-        user_id: user.id,
-        cashfree_order_id: orderId,
-        order_type: isSubscription ? "subscription" : "feathers",
-        plan_name: isSubscription ? requestedPlan : null,
-        feather_quantity: isSubscription ? null : quantity,
-        amount_paise: amountPaise,
-        payment_session_id: payment.payment_session_id,
-        payment_status: "PENDING",
-      }),
-    });
-    return Response.json({ orderId, paymentSessionId: payment.payment_session_id, amountPaise, planName: isSubscription ? requestedPlan : null, mode: process.env.CASHFREE_ENV === "production" ? "production" : "sandbox" });
+    try {
+      await supabaseRequest("koyal_payment_orders", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          user_id: user.id,
+          cashfree_order_id: orderId,
+          order_type: isSubscription ? "subscription" : "feathers",
+          plan_name: isSubscription ? requestedPlan : null,
+          feather_quantity: isSubscription ? null : quantity,
+          amount_paise: amountPaise,
+          payment_session_id: payment.payment_session_id,
+          payment_status: "PENDING",
+        }),
+      });
+    } catch (error) {
+      if (reservedDiscountOrderId) {
+        await supabaseRequest("rpc/release_koyal_discount_coupon", { method: "POST", body: JSON.stringify({ p_order_id: reservedDiscountOrderId }) }).catch(() => null);
+        reservedDiscountOrderId = "";
+      }
+      throw error;
+    }
+    reservedDiscountOrderId = "";
+    return Response.json({ orderId, paymentSessionId: payment.payment_session_id, amountPaise, originalAmountPaise, discountPercent, planName: isSubscription ? requestedPlan : null, mode: process.env.CASHFREE_ENV === "production" ? "production" : "sandbox" });
   } catch (error) {
+    if (reservedDiscountOrderId) {
+      await supabaseRequest("rpc/release_koyal_discount_coupon", { method: "POST", body: JSON.stringify({ p_order_id: reservedDiscountOrderId }) }).catch(() => null);
+    }
     const message = error instanceof Error ? error.message : "unknown error";
     console.error("KOYAL create payment order:", message);
     if (message.startsWith("Missing server environment variable:")) {
