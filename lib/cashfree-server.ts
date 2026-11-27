@@ -52,12 +52,14 @@ export async function getAuthenticatedUser(request: Request) {
       const bannedUntil = typeof adminUser.banned_until === "string" ? Date.parse(adminUser.banned_until) : NaN;
       if (Number.isFinite(bannedUntil) && bannedUntil > Date.now()) return null;
     } else {
-      // /auth/v1/user has already verified the bearer token. A temporary Auth
-      // Admin API/key-permission failure must not reject every signed-in user.
-      console.warn("Supabase Auth Admin ban check unavailable:", adminResponse.status);
+      // Fail closed: without the admin record, KOYAL cannot safely determine
+      // whether this still-valid access token belongs to a banned account.
+      console.error("Supabase Auth Admin ban check unavailable:", adminResponse.status);
+      return null;
     }
   } catch (error) {
-    console.warn("Supabase Auth Admin ban check failed:", error instanceof Error ? error.message : "unknown error");
+    console.error("Supabase Auth Admin ban check failed; rejecting request:", error instanceof Error ? error.message : "unknown error");
+    return null;
   }
 
   return user as { id: string; email?: string; user_metadata?: Record<string, unknown> };
