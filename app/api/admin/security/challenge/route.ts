@@ -1,5 +1,6 @@
 import { ADMIN_QUESTIONS, getAdminSecurity, getKoyalAdminUser, reauthenticateKoyalAdmin, writeAdminLog } from "@/lib/koyal-admin";
 import { supabaseRequest } from "@/lib/cashfree-server";
+import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
 
 export const runtime = "nodejs";
 
@@ -7,6 +8,11 @@ export async function POST(request: Request) {
   try {
     const user = await getKoyalAdminUser(request);
     if (!user) return Response.json({ error: "This account is not authorized for KOYAL AI administration." }, { status: 403 });
+    const ip = (request.headers.get("x-real-ip") || request.headers.get("x-vercel-forwarded-for") || "unknown").split(",")[0].trim().slice(0, 100) || "unknown";
+    if (!await consumeKoyalRateLimit(`admin-password:ip:${ip}`, 10, 900) ||
+        !await consumeKoyalRateLimit(`admin-password:user:${user.id}`, 10, 900)) {
+      return Response.json({ error: "Too many administrator sign-in attempts. Please wait 15 minutes." }, { status: 429, headers: { "Retry-After": "900", "Cache-Control": "no-store" } });
+    }
     const body = await request.json().catch(() => ({}));
     if (!await reauthenticateKoyalAdmin(body.password)) {
       await writeAdminLog(user, "admin_password_rejected");
