@@ -881,7 +881,7 @@ export default function AdminPage() {
                 const enabled = event.target.checked;
                 if (!window.confirm((enabled ? "Enable " : "Disable ") + label + " setting?")) return;
                 saveSystemSettings({ featureFlags: { [key]: enabled } });
-              }} /><span><strong>{label}</strong><small>{systemSettings.feature_flags?.[key] === false ? "Disabled in saved settings" : "Enabled in saved settings"}</small></span></label>)}</div>
+              }} /><span><strong>{label}</strong><small>{systemSettings.feature_flags?.[key] === false ? "Disabled for public users" : "Available to public users"}</small></span></label>)}</div>
             </section>
             <section className="adminPanelCard adminSectionGap">
               <h3>Configuration status</h3>
