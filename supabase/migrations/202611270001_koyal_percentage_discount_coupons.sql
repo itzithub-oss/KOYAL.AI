@@ -146,11 +146,17 @@ as $$
 declare
   v_code text;
 begin
-  delete from public.koyal_discount_coupon_reservations
-  where order_id = p_order_id and status = 'reserved'
-  returning coupon_code into v_code;
+  select coupon_code into v_code
+  from public.koyal_discount_coupon_reservations
+  where order_id = p_order_id and status = 'reserved';
 
   if v_code is null then return false; end if;
+  perform 1 from public.koyal_admin_coupons where code = v_code for update;
+
+  delete from public.koyal_discount_coupon_reservations
+  where order_id = p_order_id and status = 'reserved';
+  if not found then return false; end if;
+
   update public.koyal_admin_coupons
     set redemption_count = greatest(0, redemption_count - 1)
     where code = v_code;
