@@ -76,7 +76,18 @@ export async function POST(request: Request) {
         return Response.json({ error: detail.includes("Database request failed") ? detail.slice(0, 300) : detail || "That discount coupon could not be applied." }, { status: 400 });
       }
     }
-    const appUrl = new URL(request.url).origin;
+    // Never derive payment redirects from the incoming Host header.
+    const configuredAppUrl = process.env.KOYAL_APP_URL || "https://koyal-ai-india.vercel.app";
+    let appUrl: URL;
+    try {
+      appUrl = new URL(configuredAppUrl);
+    } catch {
+      throw new Error("KOYAL_APP_URL must be a valid absolute URL.");
+    }
+    if (appUrl.protocol !== "https:" || appUrl.username || appUrl.password ||
+        appUrl.search || appUrl.hash || (appUrl.pathname !== "/" && appUrl.pathname !== "")) {
+      throw new Error("KOYAL_APP_URL must be an HTTPS site origin without credentials, path, query, or fragment.");
+    }
     const cashfreeResponse = await fetch(`${cashfreeBaseUrl()}/orders`, {
       method: "POST",
       headers: {
