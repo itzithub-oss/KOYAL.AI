@@ -1,4 +1,4 @@
-import { ADMIN_QUESTIONS, getAdminSecurity, getKoyalAdminUser, reauthenticateKoyalAdmin, writeAdminLog } from "@/lib/koyal-admin";
+import { ADMIN_QUESTIONS, getAdminSecurity, getKoyalAdminUser, randomAdminQuestionIndex, reauthenticateKoyalAdmin, writeAdminLog } from "@/lib/koyal-admin";
 import { supabaseRequest } from "@/lib/cashfree-server";
 import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
 
@@ -20,15 +20,16 @@ export async function POST(request: Request) {
     }
 
     const security = await getAdminSecurity(user.id);
-    if (!security || !Array.isArray(security.passkey_hashes) || security.passkey_hashes.length !== 3 ||
-        !Array.isArray(security.answer_hashes) || security.answer_hashes.length !== 3) {
+    if (!security || !Array.isArray(security.answer_hashes) || security.answer_hashes.length !== 5 ||
+        security.answer_hashes.some(item => !item || typeof item.salt !== "string" || typeof item.hash !== "string")) {
       return Response.json({ setupRequired: true }, { headers: { "Cache-Control": "no-store" } });
     }
     if (security.locked_until && Date.parse(security.locked_until) > Date.now()) {
       return Response.json({ error: "Admin verification is temporarily locked. Please try again later." }, { status: 429 });
     }
 
-    const questionIndexes = [0, 1, 2, 3, 4];
+    const questionIndex = randomAdminQuestionIndex();
+    const questionIndexes = [questionIndex];
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const rows = await supabaseRequest("koyal_admin_challenges", {
       method: "POST",
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     return Response.json({
       setupRequired: false,
       challengeId: challenge.id,
-      questions: questionIndexes.map(index => ({ index, question: ADMIN_QUESTIONS[index] })),
+      question: { index: questionIndex, question: ADMIN_QUESTIONS[questionIndex] },
       expiresAt,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
