@@ -23,10 +23,6 @@ export async function POST(request: Request) {
         answers.some((value: unknown) => typeof value !== "string" || value.trim().length < 2 || value.length > 120)) {
       return Response.json({ error: "Provide one valid answer for each of the five security questions." }, { status: 400 });
     }
-    const normalizedAnswers = answers.map((value: string) => value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US"));
-    if (new Set(normalizedAnswers).size !== 5) {
-      return Response.json({ error: "Each security question must have a distinct answer." }, { status: 400 });
-    }
     const answerHashes = answers.map((answer: string) => hashAdminAnswer(answer));
     const payload = { answer_hashes: answerHashes, failed_attempts: 0, locked_until: null, updated_at: new Date().toISOString() };
 
