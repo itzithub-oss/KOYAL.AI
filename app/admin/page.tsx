@@ -57,14 +57,11 @@ export default function AdminPage() {
   const [accountEmail, setAccountEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [unlocked, setUnlocked] = useState(false);
-  const [step, setStep] = useState<"password" | "setupAnswers" | "setupPasskeys" | "questions" | "passkey">("password");
+  const [step, setStep] = useState<"password" | "setupAnswers" | "questions">("password");
   const [password, setPassword] = useState("");
   const [showAdminPassword, setShowAdminPassword] = useState(false);
-  const [showSetupPasskeys, setShowSetupPasskeys] = useState(false);
-  const [showLoginPasskey, setShowLoginPasskey] = useState(false);
-  const [setupAnswers, setSetupAnswers] = useState<string[][]>(Array.from({ length: 3 }, () => Array(5).fill("")));
-  const [setupPasskeys, setSetupPasskeys] = useState<string[]>(["", "", ""]);
-  const [loginPasskey, setLoginPasskey] = useState("");
+  const [setupAnswers, setSetupAnswers] = useState<string[]>(Array(5).fill(""));
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number | null>(null);
   const [challengeId, setChallengeId] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [challengeAnswers, setChallengeAnswers] = useState<Record<number, string>>({});
@@ -568,7 +565,8 @@ export default function AdminPage() {
         setStep("setupAnswers");
       } else {
         setChallengeId(data.challengeId);
-        setQuestions(data.questions || []);
+        setQuestions(data.question ? [data.question] : []);
+        setSelectedQuestionIndex(typeof data.question?.index === "number" ? data.question.index : null);
         setChallengeAnswers({});
         setStep("questions");
       }
@@ -577,50 +575,36 @@ export default function AdminPage() {
     } finally { setBusy(false); }
   }
 
-  function continueToSetupPasskeys() {
-    setError("");
-    if (setupAnswers.some(combo => combo.some(answer => !answer.trim()))) { setError("Complete all five answers in all three combinations."); return; }
-    const signatures = setupAnswers.map(combo => combo.map(value => value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US")).join("|"));
-    if (new Set(signatures).size !== 3) { setError("Each complete answer combination must be different."); return; }
-    setStep("setupPasskeys");
-  }
-
   async function finishSecuritySetup() {
     setError("");
-    if (setupPasskeys.some(value => value.trim().length < 12 || value.length > 128) || new Set(setupPasskeys).size !== 3) { setError("Enter three different passkeys, each at least 12 characters."); return; }
+    if (setupAnswers.some(value => value.trim().length < 2 || value.length > 120)) {
+      setError("Enter one answer for each of the five security questions."); return;
+    }
+    if (new Set(setupAnswers.map(value => value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US"))).size !== 5) {
+      setError("Each security question must have a distinct answer."); return;
+    }
     setBusy(true);
     try {
-      const response = await fetch("/api/admin/security/setup", { method: "POST", headers, body: JSON.stringify({ password, answers: setupAnswers, passkeys: setupPasskeys }) });
+      const response = await fetch("/api/admin/security/setup", { method: "POST", headers, body: JSON.stringify({ password, answers: setupAnswers }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not complete admin security setup.");
-      setUnlocked(true); setPassword(""); setSetupAnswers(Array.from({ length: 3 }, () => Array(5).fill(""))); setSetupPasskeys(["", "", ""]); setError("");
+      setUnlocked(true); setPassword(""); setSetupAnswers(Array(5).fill("")); setError("");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not complete admin security setup."); }
     finally { setBusy(false); }
   }
 
   async function verifyAnswers() {
     setError("");
-    if (questions.length !== 5 || questions.some(question => !(challengeAnswers[question.index] || "").trim())) { setError("Answer all five security questions."); return; }
+    if (questions.length !== 1 || selectedQuestionIndex === null || !(challengeAnswers[selectedQuestionIndex] || "").trim()) {
+      setError("Answer the selected security question."); return;
+    }
     setBusy(true);
     try {
-      const response = await fetch("/api/admin/security/verify", { method: "POST", headers, body: JSON.stringify({ challengeId, answers: questions.map(question => ({ questionIndex: question.index, answer: challengeAnswers[question.index] })) }) });
+      const response = await fetch("/api/admin/security/verify", { method: "POST", headers, body: JSON.stringify({ challengeId, questionIndex: selectedQuestionIndex, answer: challengeAnswers[selectedQuestionIndex] }) });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Security answer combination did not match.");
-      setLoginPasskey(""); setStep("passkey");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Security verification failed."); setStep("password"); setPassword(""); }
-    finally { setBusy(false); }
-  }
-
-  async function verifyPasskey() {
-    setError("");
-    if (!loginPasskey) { setError("Enter the passkey for the verified combination."); return; }
-    setBusy(true);
-    try {
-      const response = await fetch("/api/admin/security/passkey", { method: "POST", headers, body: JSON.stringify({ challengeId, passkey: loginPasskey }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Passkey verification failed.");
-      setUnlocked(true); setPassword(""); setLoginPasskey(""); setError("");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Passkey verification failed."); setStep("password"); setPassword(""); }
+      if (!response.ok) throw new Error(data.error || "Security answer did not match.");
+      setUnlocked(true); setPassword(""); setChallengeAnswers({}); setError("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Security verification failed."); }
     finally { setBusy(false); }
   }
 
@@ -651,36 +635,22 @@ export default function AdminPage() {
       <section className="adminGateCard">
         <img src="/koyal-bird.png" alt="KOYAL bird" />
         <div className="adminEyebrow">KOYAL AI · ADMIN SECURITY</div>
-        <h1>{step === "setupAnswers" ? "Set up security answers" : step === "setupPasskeys" ? "Set up backup passkeys" : step === "questions" ? "Verify security answers" : step === "passkey" ? "Verify passkey" : "Verify Admin Access"}</h1>
+        <h1>{step === "setupAnswers" ? "Set up security answers" : step === "questions" ? "Verify security answer" : "Verify Admin Access"}</h1>
         <p>Administrator account: <strong>{ADMIN_EMAIL}</strong></p>
         {step === "password" && <>
           <label>Re-enter your KOYAL AI password<span className="adminPasswordField"><input type={showAdminPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} /><button type="button" onClick={() => setShowAdminPassword(value => !value)} aria-label={showAdminPassword ? "Hide password" : "View password"} aria-pressed={showAdminPassword}>{showAdminPassword ? "Hide" : "View"}</button></span></label>
           <button className="adminPrimary" disabled={busy} onClick={beginVerification}>{busy ? "Checking…" : "Next"}</button>
         </>}
         {step === "setupAnswers" && <>
-          <p className="adminHint">Save three private backup answer sets. During login, KOYAL automatically identifies which set matches. Use answers you have not shared publicly.</p>
-          {[0, 1, 2].map(comboIndex => <div className="adminQuestionGroup" key={comboIndex}>
-            {SECURITY_QUESTIONS.map((question, questionIndex) => <label key={question}>{question}<input autoComplete="off" value={setupAnswers[comboIndex][questionIndex]} onChange={event => setSetupAnswers(old => old.map((combo, index) => index === comboIndex ? combo.map((value, qIndex) => qIndex === questionIndex ? event.target.value : value) : combo))} /></label>)}
-          </div>)}
-          <button className="adminPrimary" disabled={busy} onClick={continueToSetupPasskeys}>Next</button>
-        </>}
-        {step === "setupPasskeys" && <>
-          <p className="adminHint">Create three unique passkeys in the same order as the answer sets above. Each must be at least 12 characters. KOYAL keeps this matching private.</p>
-          {[0, 1, 2].map(index => <label key={index}>Backup passkey<span className="adminPasswordField"><input type={showSetupPasskeys ? "text" : "password"} autoComplete="new-password" value={setupPasskeys[index]} onChange={event => setSetupPasskeys(old => old.map((value, valueIndex) => valueIndex === index ? event.target.value : value))} />{index === 0 && <button type="button" onClick={() => setShowSetupPasskeys(value => !value)} aria-label={showSetupPasskeys ? "Hide passkeys" : "View passkeys"} aria-pressed={showSetupPasskeys}>{showSetupPasskeys ? "Hide all" : "View all"}</button>}</span></label>)}
-          <button className="adminPrimary" disabled={busy} onClick={finishSecuritySetup}>{busy ? "Verifying…" : "Login"}</button>
-          <button className="adminSecondary" disabled={busy} onClick={() => setStep("setupAnswers")}>Back to answers</button>
+          <p className="adminHint">Save one private answer for each of the five security questions. At every administrator login, KOYAL selects one question at random. Use answers you have not shared publicly.</p>
+          {SECURITY_QUESTIONS.map((question, questionIndex) => <label key={question}>{question}<input autoComplete="off" value={setupAnswers[questionIndex]} onChange={event => setSetupAnswers(old => old.map((value, index) => index === questionIndex ? event.target.value : value))} /></label>)}
+          <button className="adminPrimary" disabled={busy} onClick={finishSecuritySetup}>{busy ? "Saving…" : "Save answers & login"}</button>
         </>}
         {step === "questions" && <>
-          <p className="adminHint">Enter your five security answers. KOYAL will automatically check them against your saved backup answer sets.</p>
+          <p className="adminHint">Answer this randomly selected security question to continue.</p>
           {questions.map(question => <label key={question.index}>{question.question}<input autoComplete="off" value={challengeAnswers[question.index] || ""} onChange={event => setChallengeAnswers(old => ({ ...old, [question.index]: event.target.value }))} /></label>)}
-          <button className="adminPrimary" disabled={busy} onClick={verifyAnswers}>{busy ? "Checking combination…" : "Next"}</button>
+          <button className="adminPrimary" disabled={busy} onClick={verifyAnswers}>{busy ? "Verifying…" : "Verify & login"}</button>
           <button className="adminSecondary" disabled={busy} onClick={() => { setStep("password"); setPassword(""); setError(""); }}>Start again</button>
-        </>}
-        {step === "passkey" && <>
-          <p className="adminHint">Your answers matched. Enter the passkey associated with those answers.</p>
-          <label>Passkey<span className="adminPasswordField"><input type={showLoginPasskey ? "text" : "password"} autoComplete="current-password" value={loginPasskey} onChange={event => setLoginPasskey(event.target.value)} /><button type="button" onClick={() => setShowLoginPasskey(value => !value)} aria-label={showLoginPasskey ? "Hide passkey" : "View passkey"} aria-pressed={showLoginPasskey}>{showLoginPasskey ? "Hide" : "View"}</button></span></label>
-          <button className="adminPrimary" disabled={busy} onClick={verifyPasskey}>{busy ? "Verifying…" : "Login"}</button>
-          <button className="adminSecondary" disabled={busy} onClick={() => { setStep("password"); setPassword(""); setLoginPasskey(""); setError(""); }}>Start again</button>
         </>}
         {error && <p className="adminError" role="alert">{error}</p>}
         <button className="adminBack" onClick={() => window.location.assign("/")}>← Back to KOYAL AI</button>
