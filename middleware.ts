@@ -120,9 +120,21 @@ export async function middleware(request: NextRequest) {
       }
       if (pathname === "/api/chat" && request.method === "POST") {
         try {
-          const body = await request.clone().json() as { voiceMode?: boolean; preciseMode?: boolean; featureKey?: string };
-          if (body.voiceMode === true) requestedFeature = "voice";
-          else if (body.preciseMode === true) requestedFeature = "precise_mode";
+          const contentType = request.headers.get("content-type") || "";
+          let body: { voiceMode?: unknown; preciseMode?: unknown; featureKey?: unknown };
+          if (contentType.includes("multipart/form-data")) {
+            const form = await request.clone().formData();
+            body = {
+              voiceMode: form.get("voiceMode"),
+              preciseMode: form.get("preciseMode"),
+              featureKey: form.get("featureKey"),
+            };
+          } else {
+            body = await request.clone().json();
+          }
+          const enabled = (value: unknown) => value === true || value === "true";
+          if (enabled(body.voiceMode)) requestedFeature = "voice";
+          else if (enabled(body.preciseMode)) requestedFeature = "precise_mode";
           else if (body.featureKey === "tours_travels") requestedFeature = "tours_travels";
         } catch { /* The route validates malformed request bodies itself. */ }
       }
