@@ -580,9 +580,6 @@ export default function AdminPage() {
     if (setupAnswers.some(value => value.trim().length < 2 || value.length > 120)) {
       setError("Enter one answer for each of the five security questions."); return;
     }
-    if (new Set(setupAnswers.map(value => value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US"))).size !== 5) {
-      setError("Each security question must have a distinct answer."); return;
-    }
     setBusy(true);
     try {
       const response = await fetch("/api/admin/security/setup", { method: "POST", headers, body: JSON.stringify({ password, answers: setupAnswers }) });
