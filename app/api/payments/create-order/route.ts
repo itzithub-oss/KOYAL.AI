@@ -49,6 +49,10 @@ export async function POST(request: Request) {
           throw new Error("This discount coupon returned an invalid discount amount.");
         }
       } catch (error) {
+        if (reservedDiscountOrderId) {
+          await supabaseRequest("rpc/release_koyal_discount_coupon", { method: "POST", body: JSON.stringify({ p_order_id: reservedDiscountOrderId }) }).catch(() => null);
+          reservedDiscountOrderId = "";
+        }
         const detail = error instanceof Error ? error.message : "";
         return Response.json({ error: detail.includes("Database request failed") ? detail.slice(0, 300) : detail || "That discount coupon could not be applied." }, { status: 400 });
       }
