@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { getAuthenticatedUser } from "@/lib/cashfree-server";
 import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
 
 export const runtime = "nodejs";
@@ -28,17 +29,24 @@ export async function POST(request: Request) {
       return Response.json({ error: "Please keep speech text under 8,000 characters." }, { status: 413 });
     }
 
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return Response.json({ error: "Speech generation is not configured on the server." }, { status: 503 });
+    }
+
+    const user = await getAuthenticatedUser(request).catch(() => null);
     const ip = requestIp(request);
-    if (!await consumeKoyalRateLimit(`speech:ip:${ip}`, 10, 60)) {
+    if (!await consumeKoyalRateLimit(`speech:ip:${ip}`, user ? 30 : 10, 60)) {
       return Response.json(
         { error: "Speech generation is temporarily rate-limited. Please wait a minute and try again.", code: "RATE_LIMITED" },
         { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } }
       );
     }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return Response.json({ error: "Speech generation is not configured on the server." }, { status: 503 });
+    if (user?.id && !await consumeKoyalRateLimit(`speech:user:${user.id}`, 30, 60)) {
+      return Response.json(
+        { error: "Your speech-generation limit has been reached. Please try again shortly.", code: "RATE_LIMITED" },
+        { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } }
+      );
     }
 
     const ai = new GoogleGenAI({ apiKey });
