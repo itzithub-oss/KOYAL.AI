@@ -1,6 +1,12 @@
 -- Percentage discount coupons for subscription and Feather checkout.
 -- Run once in Supabase SQL Editor after the existing KOYAL coupon migrations.
 
+-- Keep original pricing beside the charged amount so paid subscription validation remains exact.
+alter table public.koyal_payment_orders
+  add column if not exists original_amount_paise integer,
+  add column if not exists discount_percent integer,
+  add column if not exists coupon_code text;
+
 alter table public.koyal_admin_coupons
   add column if not exists coupon_type text not null default 'subscription_access',
   add column if not exists target_type text not null default 'subscription',
