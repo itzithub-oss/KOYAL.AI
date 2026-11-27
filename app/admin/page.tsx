@@ -863,12 +863,12 @@ export default function AdminPage() {
           {!systemSettings && !systemError ? <div className="adminPanelCard">Loading system settings…</div> : systemSettings && <>
             <section className="adminPanelCard">
               <h3>Maintenance mode</h3>
-              <p className="adminHint">Save the maintenance flag and the message shown in the configuration. This setting is not yet enforced by the public app or middleware.</p>
+              <p className="adminHint">When enabled, public pages and APIs return a maintenance response. Administrator pages and payment-provider callbacks remain available.</p>
               <label className="adminSystemToggle"><input type="checkbox" checked={Boolean(systemSettings.maintenance_mode)} disabled={systemBusy} onChange={event => {
                 const enabled = event.target.checked;
-                if (!window.confirm(enabled ? "Enable the maintenance-mode setting? Public app enforcement is not yet connected." : "Disable the maintenance-mode setting?")) return;
+                if (!window.confirm(enabled ? "Enable maintenance mode? Public users will temporarily lose access to the app." : "Disable maintenance mode and restore public access?")) return;
                 saveSystemSettings({ maintenanceMode: enabled });
-              }} /> <span><strong>{systemSettings.maintenance_mode ? "Maintenance mode setting: ON" : "Maintenance mode setting: OFF"}</strong><small>Stored configuration only; does not currently block user access.</small></span></label>
+              }} /> <span><strong>{systemSettings.maintenance_mode ? "Maintenance mode setting: ON" : "Maintenance mode setting: OFF"}</strong><small>Public access is blocked while maintenance mode is enabled.</small></span></label>
               <label>Maintenance message<textarea rows={3} maxLength={500} value={systemSettings.maintenance_message || ""} onChange={event => setSystemSettings((value: any) => ({ ...value, maintenance_message: event.target.value }))} /></label>
               <button className="adminPrimary" disabled={systemBusy} onClick={() => saveSystemSettings({ maintenanceMessage: systemSettings.maintenance_message })}>{systemBusy ? "Saving…" : "Save maintenance message"}</button>
             </section>
