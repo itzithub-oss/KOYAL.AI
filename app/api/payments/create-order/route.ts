@@ -42,12 +42,12 @@ export async function POST(request: Request) {
             p_original_amount_paise: originalAmountPaise,
           }),
         }) as { discountPercent?: number; amountPaise?: number };
+        reservedDiscountOrderId = orderId;
         discountPercent = Number(discount.discountPercent) || 0;
         amountPaise = Number(discount.amountPaise) || 0;
         if (discountPercent < 1 || discountPercent > 99 || amountPaise < 100 || amountPaise >= originalAmountPaise) {
           throw new Error("This discount coupon returned an invalid discount amount.");
         }
-        reservedDiscountOrderId = orderId;
       } catch (error) {
         const detail = error instanceof Error ? error.message : "";
         return Response.json({ error: detail.includes("Database request failed") ? detail.slice(0, 300) : detail || "That discount coupon could not be applied." }, { status: 400 });
