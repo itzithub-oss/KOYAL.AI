@@ -40,6 +40,8 @@ type Profile = { name: string; gender: string; phone: string; dob: string; photo
 type FindUpBusiness = { id: string; name: string; category: string; description: string; contactName?: string; location: string; startingPrice?: string; operatorName?: string; phone?: string; email?: string; website?: string; professionalName?: string; qualifications?: string[]; experience?: string; services?: string[]; serviceHours?: string; };
 type ChatSession = { id: string; title: string; messages: Message[]; createdAt: string; updatedAt: string };
 const EMPTY_PROFILE: Profile = { name: "", gender: "", phone: "", dob: "", photo: "" };
+type KoyalFeatureFlags = { find_up: boolean; tours_travels: boolean; voice: boolean; precise_mode: boolean; image_creation: boolean };
+const DEFAULT_FEATURE_FLAGS: KoyalFeatureFlags = { find_up: true, tours_travels: true, voice: true, precise_mode: true, image_creation: true };
 type FeatherPack = { quantity: number; rupees: number };
 const FEATHER_PACKS: FeatherPack[] = [
   { quantity: 100, rupees: 50 },
@@ -224,6 +226,7 @@ function renderMessageContent(content: string): React.ReactNode {
 
 function KoyalApp() {
   const [booting, setBooting] = useState(true);
+  const [featureFlags, setFeatureFlags] = useState<KoyalFeatureFlags>(DEFAULT_FEATURE_FLAGS);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [activeChatId, setActiveChatId] = useState("");
@@ -346,6 +349,35 @@ function KoyalApp() {
     ? messages.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
     : messages;
   const visibleChatSessions = searchChatSessions(chatSessions, historyQuery);
+
+  useEffect(() => {
+    let active = true;
+    const loadFeatureFlags = async () => {
+      try {
+        const response = await fetch("/api/system-config", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const saved = data?.featureFlags;
+        if (!active || !saved || typeof saved !== "object") return;
+        setFeatureFlags({
+          find_up: typeof saved.find_up === "boolean" ? saved.find_up : true,
+          tours_travels: typeof saved.tours_travels === "boolean" ? saved.tours_travels : true,
+          voice: typeof saved.voice === "boolean" ? saved.voice : true,
+          precise_mode: typeof saved.precise_mode === "boolean" ? saved.precise_mode : true,
+          image_creation: typeof saved.image_creation === "boolean" ? saved.image_creation : true,
+        });
+      } catch { /* Retain the last known settings if the config request fails. */ }
+    };
+    void loadFeatureFlags();
+    const timer = window.setInterval(loadFeatureFlags, 30_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
+
+  useEffect(() => {
+    if (!featureFlags.find_up) setFindUpOpen(false);
+    if (!featureFlags.tours_travels) setTravelOpen(false);
+    if (!featureFlags.precise_mode) setPreciseMode(false);
+  }, [featureFlags]);
 
   useEffect(() => {
     const syncAccountEmail = () => {
@@ -1294,10 +1326,10 @@ function KoyalApp() {
             <button type="button" onClick={openProfile} className={`${styles.navItem} ${profileOpen ? styles.navOn : ""}`}><Icon name="user"/>Profile</button>
             <button type="button" onClick={openMemory} className={`${styles.navItem} ${memoryOpen ? styles.navOn : ""}`}><Icon name="memory"/>Memory<span className={styles.navSmall}>{memories.length}</span></button>
             <button type="button" onClick={openTasks} className={`${styles.navItem} ${tasksOpen ? styles.navOn : ""}`}><Icon name="tasks"/>Tasks<span className={styles.navSmall}>{tasks.filter((task) => !task.done).length}</span></button>
-            <button type="button" onClick={() => { setFindUpOpen(true); setTravelOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${findUpOpen ? styles.navOn : ""}`}><Icon name="search"/>FIND UP<span className={styles.navSmall}>Discover</span></button>
-            <button type="button" onClick={() => { setTravelOpen(true); setTravelTab("planner"); setFindUpOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); setAiDetailsOpen(false); closeSidebar(); }} className={`${styles.navItem} ${travelOpen ? styles.navOn : ""}`}><Icon name="arrow"/>Tours &amp; Travels<span className={styles.navSmall}>Explore</span></button>
+            {featureFlags.find_up && <button type="button" onClick={() => { setFindUpOpen(true); setTravelOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); closeSidebar(); }} className={`${styles.navItem} ${findUpOpen ? styles.navOn : ""}`}><Icon name="search"/>FIND UP<span className={styles.navSmall}>Discover</span></button>}
+            {featureFlags.tours_travels && <button type="button" onClick={() => { setTravelOpen(true); setTravelTab("planner"); setFindUpOpen(false); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setDailyHubOpen(false); setCodeModeOpen(false); setHistoryOpen(false); setAiDetailsOpen(false); closeSidebar(); }} className={`${styles.navItem} ${travelOpen ? styles.navOn : ""}`}><Icon name="arrow"/>Tours &amp; Travels<span className={styles.navSmall}>Explore</span></button>}
             <button type="button" onClick={() => { setDailyHubOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); setRateReviewOpen(false); setCodeModeOpen(false); closeSidebar(); }} className={`${styles.navItem} ${dailyHubOpen ? styles.navOn : ""}`}><Icon name="brain"/>Daily AI Hub<span className={styles.navSmall}>5</span></button>
-            <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>
+            {featureFlags.precise_mode && <button type="button" onClick={() => setPreciseMode((v) => !v)} className={`${styles.navItem} ${preciseMode ? styles.navOn : ""}`}><Icon name="brain"/>Precise Mode<span className={styles.navSmall}>{preciseMode ? "On" : ""}</span></button>}
             <button type="button" onClick={() => { if (!["Care", "Elite", "Supreme"].includes(effectivePlan)) { setSubscriptionOpen(true); closeSidebar(); return; } setCodeModeOpen(true); setProfileOpen(false); setMemoryOpen(false); setTasksOpen(false); closeSidebar(); }} className={`${styles.navItem} ${codeModeOpen ? styles.navOn : ""}`}><Icon name="code"/>Code Mode<span className={styles.navSmall}>{codeModeOpen ? "Open" : ""}</span></button>
             <div className={styles.characterPanel}>
               <button type="button" className={styles.characterHeading} onClick={() => setCharacterOpen((v) => !v)} aria-expanded={characterOpen}><Icon name="masks"/><strong>Character Mode</strong><span className={characterOpen ? styles.chevronUp : ""}><Icon name="chevron" size={16}/></span></button>
@@ -1490,7 +1522,7 @@ function KoyalApp() {
         </section>}
         <button type="button" className={styles.reviewBack} onClick={() => setDailyHubOpen(false)}>← Back to Chat</button>
       </section>}
-      {findUpOpen && <section className={styles.findUpSection} role="region" aria-label="FIND UP business search">
+      {featureFlags.find_up && findUpOpen && <section className={styles.findUpSection} role="region" aria-label="FIND UP business search">
         <div className={styles.findUpHeader}><div><div className={styles.findUpEyebrow}>KOYAL DIRECTORY</div><h2>Find the right <span>service.</span></h2><p>Describe what you need. FIND UP searches verified business listings added to KOYAL.</p></div><button type="button" className={styles.profileClose} aria-label="Close FIND UP" onClick={() => setFindUpOpen(false)}><Icon name="x" size={22}/></button></div>
         <form className={styles.findUpSearch} onSubmit={async (event) => { event.preventDefault(); const query = findUpQuery.trim(); if (!query) return; setFindUpLoading(true); setFindUpError(""); setFindUpSearched(true); try { const response = await fetch(`/api/find-up?q=${encodeURIComponent(query)}`, { cache: "no-store" }); const data = await response.json(); if (!response.ok) throw new Error(data.error || "Search could not be completed."); setFindUpResults(Array.isArray(data.results) ? data.results : []); } catch (error) { setFindUpResults([]); setFindUpError(error instanceof Error ? error.message : "Search could not be completed."); } finally { setFindUpLoading(false); } }}>
           <Icon name="search" size={20}/><input value={findUpQuery} onChange={(event) => setFindUpQuery(event.target.value)} placeholder="What service are you looking for?" aria-label="Describe the service you need" maxLength={180}/><button type="submit" disabled={findUpLoading || !findUpQuery.trim()}>{findUpLoading ? "Searching…" : "Search"}</button>
@@ -1521,7 +1553,7 @@ function KoyalApp() {
         </div>
         <button type="button" className={styles.reviewBack} onClick={() => setFindUpOpen(false)}>← Back to Chat</button>
       </section>}
-      {travelOpen && <section className={styles.travelSection} role="region" aria-label="Tours and travels">
+      {featureFlags.tours_travels && travelOpen && <section className={styles.travelSection} role="region" aria-label="Tours and travels">
         <div className={styles.travelHeader}><div><div className={styles.findUpEyebrow}>KOYAL TRAVEL DESK</div><h2>Travel more. <span>Worry less.</span></h2><p>Plan a trip with Koyal or discover travel agencies listed in the KOYAL directory.</p></div><button type="button" className={styles.profileClose} aria-label="Close Tours and Travels" onClick={() => setTravelOpen(false)}><Icon name="x" size={22}/></button></div>
         <div className={styles.travelTabs} role="tablist" aria-label="Travel tools"><button type="button" role="tab" aria-selected={travelTab === "planner"} className={travelTab === "planner" ? styles.travelTabActive : ""} onClick={() => setTravelTab("planner")}>✦ AI Trip Planner</button><button type="button" role="tab" aria-selected={travelTab === "agencies"} className={travelTab === "agencies" ? styles.travelTabActive : ""} onClick={() => setTravelTab("agencies")}>⌖ Travel Agencies</button></div>
         {travelTab === "planner" ? <>
@@ -1531,7 +1563,7 @@ function KoyalApp() {
             setTripPlanLoading(true); setTripPlanError("");
             const prompt = `Act as a professional travel planner. Generate the complete trip plan directly for display in the Tours & Travels page, not in chat. Destination: ${tripDestination.trim()}. Dates: ${tripStartDate || "not decided"} to ${tripEndDate || "not decided"}. Travellers: ${tripTravellers}. Total budget: ${tripBudget.trim() || "suggest a reasonable budget"}. Travel style: ${tripStyle}. Provide a day-by-day itinerary, estimated cost breakdown, transport options, accommodation areas, attractions, food suggestions, safety tips and booking checklist. Label estimates clearly and never invent live prices or availability. Use clear headings and concise bullets.`;
             try {
-              const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify({ message: prompt, mode: "Normal", thinkingLevel: currentThinking.name, language: "English by default", subscriptionPlan: effectivePlan, name: profile.name, characterMode: "normal", teacherMode: false, preciseMode: false, philosophicalMode: false, webSearch: false }) });
+              const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, body: JSON.stringify({ message: prompt, mode: "Normal", thinkingLevel: currentThinking.name, language: "English by default", subscriptionPlan: effectivePlan, name: profile.name, characterMode: "normal", teacherMode: false, preciseMode: false, philosophicalMode: false, webSearch: false, featureKey: "tours_travels" }) });
               const data: ChatApiResponse = await response.json();
               if (!response.ok || data.error || !data.reply || data.reply === ERROR_REPLY) throw new Error(data.error || "Koyal could not create the trip plan. Please try again.");
               setTripPlan(data.reply); setTripDetailsEditing(false);
@@ -1747,7 +1779,7 @@ function KoyalApp() {
                 <input ref={fileInput} type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp" hidden onChange={handleFile}/>
                 <button type="button" className={styles.attachmentButton} title="Attach a PDF or image" aria-label="Attach a PDF or image" onClick={() => fileInput.current?.click()}><Icon name="paperclip" size={24}/></button>
                 <textarea value={input} placeholder={teacherMode ? `Ask your Class ${teacherClass} ${teacherSubject} teacher...` : characterMode !== "normal" ? `Message ${currentCharacter.name}...` : "Message Koyal..."} rows={1} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
-                <div className={styles.voiceButton}><VoiceMode subscriptionPlan={effectivePlan}/></div>
+                {featureFlags.voice && <div className={styles.voiceButton}><VoiceMode subscriptionPlan={effectivePlan}/></div>}
                 <button type="submit" className={styles.sendButton} disabled={!input.trim() && !selectedFile && !(urlReaderEnabled && urlInput.trim())} title={loading ? "Send another question to the queue" : "Send message"} aria-label="Send message"><Icon name="send" size={22}/></button>
               </div>
             </form>
