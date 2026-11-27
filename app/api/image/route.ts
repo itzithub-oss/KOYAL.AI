@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { getAuthenticatedUser } from "@/lib/cashfree-server";
 import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
 
 export const runtime = "nodejs";
@@ -28,10 +29,23 @@ export async function POST(request: Request) {
       return Response.json({ error: "Please keep the image prompt under 4,000 characters." }, { status: 413 });
     }
 
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return Response.json({ error: "Image generation is not configured on the server." }, { status: 503 });
+    }
+
+    const user = await getAuthenticatedUser(request).catch(() => null);
     const ip = requestIp(request);
-    if (!await consumeKoyalRateLimit(`image:ip:${ip}`, 3, 60)) {
+    const ipLimit = user ? 8 : 3;
+    if (!await consumeKoyalRateLimit(`image:ip:${ip}`, ipLimit, 60)) {
       return Response.json(
         { error: "Image generation is temporarily rate-limited. Please wait a minute and try again.", code: "RATE_LIMITED" },
+        { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } }
+      );
+    }
+    if (user?.id && !await consumeKoyalRateLimit(`image:user:${user.id}`, 8, 60)) {
+      return Response.json(
+        { error: "Your image-generation limit has been reached. Please try again shortly.", code: "RATE_LIMITED" },
         { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } }
       );
     }
