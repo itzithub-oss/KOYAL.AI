@@ -583,11 +583,8 @@ async function searchTavily(query: string): Promise<TavilySearch> {
 }
 
 function getGeminiApiKey() {
-  return (
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_API_KEY ||
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY
-  );
+  // API credentials must remain server-only. Never read NEXT_PUBLIC_* secrets.
+  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 }
 
 async function askGemini(
