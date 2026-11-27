@@ -53,6 +53,7 @@ export async function POST(request: Request) {
       `koyal_admin_challenges?id=eq.${encodeURIComponent(challengeId)}&user_id=eq.${encodeURIComponent(user.id)}&used_at=is.null&combination_index=is.null`,
       { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ combination_index: matchedCombination >= 0 ? matchedCombination : null, used_at: matchedCombination >= 0 ? null : new Date().toISOString() }) },
     ) as Array<{ id: string }>;
+    if (!used?.length) return Response.json({ error: "This verification request has already been used. Start again." }, { status: 409 });
     if (matchedCombination < 0) {
       const failureRows = await supabaseRequest("rpc/record_koyal_admin_failure", {
         method: "POST", body: JSON.stringify({ p_user_id: user.id }),
@@ -62,7 +63,6 @@ export async function POST(request: Request) {
       await writeAdminLog(user, "admin_security_combination_rejected", { failedAttempts, locked: Boolean(lockedUntil) });
       return Response.json({ error: lockedUntil ? "Too many incorrect combinations. Admin verification is locked for 15 minutes." : "The five answers do not match a complete combination." }, { status: lockedUntil ? 429 : 401 });
     }
-    if (!used?.length) return Response.json({ error: "This verification request has already been used. Start again." }, { status: 409 });
 
     await writeAdminLog(user, "admin_security_combination_verified", { combination: matchedCombination + 1 });
     return Response.json({ success: true, combinationIndex: matchedCombination }, { headers: { "Cache-Control": "no-store" } });
