@@ -106,7 +106,10 @@ begin
   end if;
 
   v_percent := v_coupon.discount_percent;
-  v_discounted := greatest(100, round(p_original_amount_paise * (100 - v_percent) / 100.0)::integer);
+  v_discounted := round(p_original_amount_paise * (100 - v_percent) / 100.0)::integer;
+  if v_discounted < 100 then
+    raise exception 'Discounted total must be at least ₹1. Increase the purchase amount or use a lower discount.';
+  end if;
 
   insert into public.koyal_discount_coupon_reservations
     (coupon_code, user_id, order_id, purchase_type, discount_percent,
