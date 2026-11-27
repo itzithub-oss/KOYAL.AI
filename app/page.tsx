@@ -306,6 +306,7 @@ function KoyalApp() {
   const [checkoutPhone, setCheckoutPhone] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponNotice, setCouponNotice] = useState("");
+  const [discountCouponCode, setDiscountCouponCode] = useState("");
   const profilePhotoInput = useRef<HTMLInputElement>(null);
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [subscriptionNotice, setSubscriptionNotice] = useState("");
@@ -863,7 +864,7 @@ function KoyalApp() {
         method: "POST",
         credentials: "omit",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.access_token}` },
-        body: JSON.stringify({ featherQuantity: amount, phone: phoneDigits }),
+        body: JSON.stringify({ featherQuantity: amount, phone: phoneDigits, couponCode: discountCouponCode.trim() }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.paymentSessionId) {
@@ -881,7 +882,7 @@ function KoyalApp() {
       }
       if (!window.Cashfree) throw new Error("Cashfree checkout did not initialize. Please try again.");
       const cashfree = window.Cashfree({ mode: result.mode === "production" ? "production" : "sandbox" });
-      setPurchaseNotice("Opening Cashfree’s secure checkout…");
+      setPurchaseNotice(result.discountPercent ? "Discount applied: " + result.discountPercent + "% off. ₹" + (result.originalAmountPaise / 100).toFixed(2) + " → ₹" + (result.amountPaise / 100).toFixed(2) + ". Opening secure checkout…" : "Opening Cashfree’s secure checkout…");
       await cashfree.checkout({ paymentSessionId: result.paymentSessionId, redirectTarget: "_self" });
     } catch (error) {
       setPurchaseNotice(error instanceof Error ? error.message : "Payment could not be started. Please try again.");
@@ -958,7 +959,7 @@ function KoyalApp() {
     if (phoneDigits.length !== 10) { setSubscriptionNotice("A valid 10-digit Indian mobile number is required."); return; }
     try {
       setSubscriptionNotice("Creating your secure subscription payment…");
-      const response = await fetch("/api/payments/create-order", { method: "POST", credentials: "omit", headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.access_token}` }, body: JSON.stringify({ planName: plan, phone: phoneDigits }) });
+      const response = await fetch("/api/payments/create-order", { method: "POST", credentials: "omit", headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.access_token}` }, body: JSON.stringify({ planName: plan, phone: phoneDigits, couponCode: discountCouponCode.trim() }) });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.paymentSessionId) throw new Error(result.error || "Could not start Cashfree checkout.");
       if (!window.Cashfree) await new Promise<void>((resolve, reject) => {
@@ -967,7 +968,7 @@ function KoyalApp() {
       });
       if (!window.Cashfree) throw new Error("Cashfree checkout did not initialize. Please try again.");
       const cashfree = window.Cashfree({ mode: result.mode === "production" ? "production" : "sandbox" });
-      setSubscriptionNotice("Opening Cashfree’s secure checkout…");
+      setSubscriptionNotice(result.discountPercent ? "Discount applied: " + result.discountPercent + "% off. ₹" + (result.originalAmountPaise / 100).toFixed(2) + " → ₹" + (result.amountPaise / 100).toFixed(2) + ". Opening secure checkout…" : "Opening Cashfree’s secure checkout…");
       await cashfree.checkout({ paymentSessionId: result.paymentSessionId, redirectTarget: "_self" });
     } catch (error) { setSubscriptionNotice(error instanceof Error ? error.message : "Payment could not be started. Please try again."); }
   }
@@ -1759,6 +1760,7 @@ function KoyalApp() {
         <p className={styles.featherBalanceLine}>Current balance: <strong>{effectivePlan === "Supreme" ? "∞ Unlimited feathers" : `${feathers.toLocaleString("en-IN")} feathers`}</strong></p>
         <p className={styles.demoNotice}>Secure Cashfree checkout. Feathers are credited only after the payment is verified by KOYAL AI.</p>
         <label className={styles.customPack}>Phone number for payment <input type="tel" value={checkoutPhone} onChange={(e) => setCheckoutPhone(e.target.value)} placeholder="10-digit mobile number" autoComplete="tel" /></label>
+        <label className={styles.customPack}>Percentage discount coupon <input type="text" value={discountCouponCode} onChange={(e) => setDiscountCouponCode(e.target.value.toLowerCase())} placeholder="Enter discount code (optional)" autoComplete="off" /></label>
         <div className={styles.packGrid}>{FEATHER_PACKS.map((pack) => <div className={styles.pack} key={pack.quantity}>
           <div className={styles.packCount}>🪶 {pack.quantity.toLocaleString("en-IN")}</div><div className={styles.packPrice}>₹{pack.rupees}</div><small>₹0.50 per feather</small>
           <button type="button" onClick={() => requestFeatherPurchase(pack.quantity)}>Buy</button>
@@ -1776,7 +1778,7 @@ function KoyalApp() {
         </div>
         {purchaseNotice && <div className={styles.purchaseNotice} role="status">{purchaseNotice}</div>}
       </div></div>}
-      {subscriptionOpen && <div className={styles.modalOverlay} onClick={() => setSubscriptionOpen(false)}><div className={styles.modal} role="dialog" aria-modal="true" aria-label="Subscription plans" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>KOYAL Plans</h2><button onClick={() => setSubscriptionOpen(false)} type="button"><Icon name="x"/></button></div><p className={styles.demoNotice}>Pay once for 30 days of access. No automatic deductions — renew manually each month. Paid access starts only after Cashfree confirms payment.</p>{subscriptionNotice && <div className={styles.purchaseNotice} role="status">{subscriptionNotice}</div>}<div className={styles.planGrid}>{plans.map((plan) => <div key={plan.name} className={`${styles.planCard} ${selectedPlan === plan.name ? styles.planCurrent : ""}`}><h3>{plan.name}</h3><div className={styles.price}>₹{plan.price}<small>{plan.price === 0 ? " forever" : "/30 days"}</small></div><p>{plan.description}</p><button type="button" onClick={() => selectPlan(plan.name)}>{plan.name === "Just" ? (selectedPlan === plan.name ? "Selected" : "Select free plan") : selectedPlan === plan.name ? "Renew for 30 days" : "Choose plan"}</button></div>)}</div></div></div>}
+      {subscriptionOpen && <div className={styles.modalOverlay} onClick={() => setSubscriptionOpen(false)}><div className={styles.modal} role="dialog" aria-modal="true" aria-label="Subscription plans" onClick={(e) => e.stopPropagation()}><div className={styles.modalHead}><h2>KOYAL Plans</h2><button onClick={() => setSubscriptionOpen(false)} type="button"><Icon name="x"/></button></div><p className={styles.demoNotice}>Pay once for 30 days of access. No automatic deductions — renew manually each month. Paid access starts only after Cashfree confirms payment.</p><label className={styles.customPack}>Percentage discount coupon <input type="text" value={discountCouponCode} onChange={(e) => setDiscountCouponCode(e.target.value.toLowerCase())} placeholder="Enter discount code (optional)" autoComplete="off" /></label>{subscriptionNotice && <div className={styles.purchaseNotice} role="status">{subscriptionNotice}</div>}<div className={styles.planGrid}>{plans.map((plan) => <div key={plan.name} className={`${styles.planCard} ${selectedPlan === plan.name ? styles.planCurrent : ""}`}><h3>{plan.name}</h3><div className={styles.price}>₹{plan.price}<small>{plan.price === 0 ? " forever" : "/30 days"}</small></div><p>{plan.description}</p><button type="button" onClick={() => selectPlan(plan.name)}>{plan.name === "Just" ? (selectedPlan === plan.name ? "Selected" : "Select free plan") : selectedPlan === plan.name ? "Renew for 30 days" : "Choose plan"}</button></div>)}</div></div></div>}
     </main>
   );
 }
