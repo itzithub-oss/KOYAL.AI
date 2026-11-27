@@ -21,10 +21,10 @@ export async function POST(request: Request) {
     const plan = COUPONS[code];
     if (!plan) {
       const managed = await supabaseRequest(
-        `koyal_admin_coupons?select=code,plan_name,is_active,expires_at&code=eq.${encodeURIComponent(code)}&limit=1`,
-      ) as Array<{ code: string; plan_name: "Let It" | "Care" | "Elite" | "Supreme"; is_active: boolean; expires_at: string | null }>;
+        `koyal_admin_coupons?select=code,coupon_type,plan_name,is_active,expires_at&code=eq.${encodeURIComponent(code)}&limit=1`,
+      ) as Array<{ code: string; coupon_type?: string; plan_name: "Let It" | "Care" | "Elite" | "Supreme"; is_active: boolean; expires_at: string | null }>;
       const coupon = managed?.[0];
-      if (!coupon || !coupon.is_active) return Response.json({ error: "That coupon code is not valid." }, { status: 400 });
+      if (!coupon || !coupon.is_active || coupon.coupon_type === "discount") return Response.json({ error: "That coupon code is not valid for subscription activation. Use percentage discounts at checkout." }, { status: 400 });
       if (coupon.expires_at && Date.parse(coupon.expires_at) <= Date.now()) return Response.json({ error: "This coupon has expired." }, { status: 400 });
 
       const activeCoupons = await supabaseRequest(
