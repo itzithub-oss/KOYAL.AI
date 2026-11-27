@@ -161,14 +161,14 @@ const SUBSCRIPTION_DAYS = 30;
 
 export async function activatePaidSubscriptionOrder(orderId: string, amountPaise: number, expectedUserId?: string) {
   const rows = await supabaseRequest(
-    `koyal_payment_orders?select=user_id,order_type,plan_name,amount_paise,payment_status,created_at&cashfree_order_id=eq.${encodeURIComponent(orderId)}&limit=1`,
-  ) as Array<{ user_id: string; order_type: string; plan_name: string | null; amount_paise: number; payment_status: string; created_at: string }>; 
+    `koyal_payment_orders?select=user_id,order_type,plan_name,amount_paise,original_amount_paise,payment_status,created_at&cashfree_order_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+  ) as Array<{ user_id: string; order_type: string; plan_name: string | null; amount_paise: number; original_amount_paise?: number | null; payment_status: string; created_at: string }>; 
   const order = rows?.[0];
   if (!order || order.order_type !== "subscription" || !order.plan_name || !(order.plan_name in SUBSCRIPTION_PRICES)) {
     throw new Error("Subscription payment order was not found.");
   }
   if (expectedUserId && order.user_id !== expectedUserId) throw new Error("This payment belongs to another account.");
-  if (order.amount_paise !== amountPaise || order.amount_paise !== SUBSCRIPTION_PRICES[order.plan_name] || order.payment_status === "CANCELLED") {
+  if (order.amount_paise !== amountPaise || (order.original_amount_paise ?? order.amount_paise) !== SUBSCRIPTION_PRICES[order.plan_name] || order.payment_status === "CANCELLED") {
     throw new Error("Subscription payment amount or order status did not match.");
   }
   if (order.payment_status !== "PAID") {
@@ -183,12 +183,12 @@ export async function activatePaidSubscriptionOrder(orderId: string, amountPaise
 
 export async function getActiveSubscription(userId: string) {
   const rows = await supabaseRequest(
-    `koyal_payment_orders?select=plan_name,amount_paise,created_at&user_id=eq.${encodeURIComponent(userId)}&order_type=eq.subscription&payment_status=eq.PAID&order=created_at.asc`,
-  ) as Array<{ plan_name: string | null; amount_paise: number; created_at: string }>; 
+    `koyal_payment_orders?select=plan_name,amount_paise,original_amount_paise,created_at&user_id=eq.${encodeURIComponent(userId)}&order_type=eq.subscription&payment_status=eq.PAID&order=created_at.asc`,
+  ) as Array<{ plan_name: string | null; amount_paise: number; original_amount_paise?: number | null; created_at: string }>; 
   let expiresAt = 0;
   let activePlan = "Just";
   for (const row of rows || []) {
-    if (!row.plan_name || !(row.plan_name in SUBSCRIPTION_PRICES) || row.amount_paise !== SUBSCRIPTION_PRICES[row.plan_name]) continue;
+    if (!row.plan_name || !(row.plan_name in SUBSCRIPTION_PRICES) || (row.original_amount_paise ?? row.amount_paise) !== SUBSCRIPTION_PRICES[row.plan_name]) continue;
     const createdAt = Date.parse(row.created_at);
     if (!Number.isFinite(createdAt)) continue;
     const startAt = Math.max(createdAt, expiresAt);
