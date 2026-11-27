@@ -1,7 +1,13 @@
 import type { NextRequest } from "next/server";
 
 const ADMIN_PATHS = ["/admin", "/api/admin"];
-const MAINTENANCE_EXEMPT_API_PATHS = ["/api/payments/webhook"];
+const MAINTENANCE_EXEMPT_API_PATHS = ["/api/payments/webhook", "/api/system-config"];
+const FEATURE_API_PATHS: Record<string, string> = {
+  "/api/find-up": "find_up",
+  "/api/image": "image_creation",
+  "/api/live-token": "voice",
+  "/api/speech": "voice",
+};
 
 function isPathOrChild(pathname: string, base: string) {
   return pathname === base || pathname.startsWith(base + "/");
@@ -82,8 +88,29 @@ export async function middleware(request: NextRequest) {
       return;
     }
 
-    const rows = await response.json() as Array<{ maintenance_mode?: boolean; maintenance_message?: string }>;
+    const rows = await response.json() as Array<{ maintenance_mode?: boolean; maintenance_message?: string; feature_flags?: Record<string, boolean> }>;
     const settings = rows?.[0];
+    const flags = settings?.feature_flags && typeof settings.feature_flags === "object" ? settings.feature_flags : {};
+
+    if (pathname.startsWith("/api/")) {
+      const featureKey = Object.entries(FEATURE_API_PATHS).find(([path]) => isPathOrChild(pathname, path))?.[1];
+      let requestedFeature = featureKey;
+      if (pathname === "/api/chat" && request.method === "POST") {
+        try {
+          const body = await request.clone().json() as { voiceMode?: boolean; preciseMode?: boolean; featureKey?: string };
+          if (body.voiceMode === true) requestedFeature = "voice";
+          else if (body.preciseMode === true) requestedFeature = "precise_mode";
+          else if (body.featureKey === "tours_travels") requestedFeature = "tours_travels";
+        } catch { /* The route validates malformed request bodies itself. */ }
+      }
+      if (requestedFeature && flags[requestedFeature] === false) {
+        return Response.json(
+          { error: "feature_disabled", message: "This feature is temporarily unavailable." },
+          { status: 403, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+    }
+
     if (settings?.maintenance_mode !== true) return;
 
     const message = typeof settings.maintenance_message === "string" &&
