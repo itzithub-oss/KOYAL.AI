@@ -29,6 +29,8 @@ export function hashAdminAnswer(value: string): AnswerHash {
   return { salt, hash };
 }
 
+export function hashAdminPasskey(value: string): AnswerHash { return hashAdminAnswer(value); }
+
 export function verifyAdminAnswer(value: string, saved: AnswerHash[]) {
   const candidate = normalizeAdminAnswer(value);
   if (!candidate) return false;
