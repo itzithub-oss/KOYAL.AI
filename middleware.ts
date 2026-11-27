@@ -92,9 +92,32 @@ export async function middleware(request: NextRequest) {
     const settings = rows?.[0];
     const flags = settings?.feature_flags && typeof settings.feature_flags === "object" ? settings.feature_flags : {};
 
+    if (settings?.maintenance_mode === true) {
+      const message = typeof settings.maintenance_message === "string" &&
+        settings.maintenance_message.trim().length >= 5
+        ? settings.maintenance_message.trim().slice(0, 500)
+        : "KOYAL AI is temporarily under maintenance. Please try again soon.";
+      if (pathname.startsWith("/api/")) {
+        return Response.json(
+          { error: "maintenance_mode", message },
+          {
+            status: 503,
+            headers: {
+              "Cache-Control": "no-store, no-cache, must-revalidate",
+              "Retry-After": "300",
+            },
+          },
+        );
+      }
+      return maintenancePage(message);
+    }
+
     if (pathname.startsWith("/api/")) {
-      const featureKey = Object.entries(FEATURE_API_PATHS).find(([path]) => isPathOrChild(pathname, path))?.[1];
-      let requestedFeature = featureKey;
+      const pathFeature = Object.entries(FEATURE_API_PATHS).find(([path]) => isPathOrChild(pathname, path))?.[1];
+      let requestedFeature = pathFeature;
+      if (pathname === "/api/find-up") {
+        requestedFeature = request.nextUrl.searchParams.get("feature") === "tours_travels" ? "tours_travels" : "find_up";
+      }
       if (pathname === "/api/chat" && request.method === "POST") {
         try {
           const body = await request.clone().json() as { voiceMode?: boolean; preciseMode?: boolean; featureKey?: string };
@@ -110,28 +133,6 @@ export async function middleware(request: NextRequest) {
         );
       }
     }
-
-    if (settings?.maintenance_mode !== true) return;
-
-    const message = typeof settings.maintenance_message === "string" &&
-      settings.maintenance_message.trim().length >= 5
-      ? settings.maintenance_message.trim().slice(0, 500)
-      : "KOYAL AI is temporarily under maintenance. Please try again soon.";
-
-    if (pathname.startsWith("/api/")) {
-      return Response.json(
-        { error: "maintenance_mode", message },
-        {
-          status: 503,
-          headers: {
-            "Cache-Control": "no-store, no-cache, must-revalidate",
-            "Retry-After": "300",
-          },
-        },
-      );
-    }
-
-    return maintenancePage(message);
   } catch (error) {
     // A database/network outage must not accidentally lock out every public route.
     console.error("KOYAL maintenance settings lookup unavailable:", error instanceof Error ? error.message : "unknown error");
