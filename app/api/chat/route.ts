@@ -5,7 +5,8 @@ import { extractUrlContextSources, normalizeKoyalUrl } from "../../../lib/koyal-
 import { hasPdfHeader, MAX_PDF_BYTES, MAX_PDF_PAGES, normalizePdfText } from "../../../lib/koyal-pdf.mjs";
 import { detectImageMime, MAX_IMAGE_BYTES } from "../../../lib/koyal-image.mjs";
 import { getClinicReferralContext } from "../../../lib/koyal-clinic-referral.mjs";
-import { getAuthenticatedUser } from "@/lib/cashfree-server";
+import { getActiveSubscription, getAuthenticatedUser, supabaseRequest } from "@/lib/cashfree-server";
+import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
 
 export const runtime = "nodejs";
 
@@ -885,6 +886,15 @@ async function readBody(request: NextRequest): Promise<ChatBody> {
 export async function POST(request: NextRequest) {
   let requestKind = "chat";
   try {
+    const account = await getAuthenticatedUser(request).catch(() => null);
+    const forwardedIp = request.headers.get("x-real-ip") || request.headers.get("x-vercel-forwarded-for") || "unknown";
+    const ipKey = forwardedIp.split(",")[0].trim().slice(0, 100) || "unknown";
+    const ipAllowed = await consumeKoyalRateLimit(`chat:ip:${ipKey}`, account ? 40 : 12, 60);
+    if (!ipAllowed) return NextResponse.json({ reply: "You're sending requests too quickly. Please wait a moment and try again.", code: "RATE_LIMITED" }, { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
+    if (account?.id && !await consumeKoyalRateLimit(`chat:user:${account.id}`, 50, 60)) {
+      return NextResponse.json({ reply: "Your account has reached its short-term request limit. Please try again shortly.", code: "RATE_LIMITED" }, { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
+    }
+
     const body = await readBody(request);
 
     const message =
@@ -905,14 +915,28 @@ export async function POST(request: NextRequest) {
       throw new InputError("Please keep your message under 20,000 characters.");
     }
 
-    let adminEntitled = false;
-    try {
-      const account = await getAuthenticatedUser(request);
-      adminEntitled = String(account?.email || "").trim().toLowerCase() === "koyalaiindia@gmail.com";
-    } catch {
-      adminEntitled = false;
+    const adminEntitled = String(account?.email || "").trim().toLowerCase() === "koyalaiindia@gmail.com";
+    let plan = "Just";
+    if (adminEntitled) {
+      plan = "Supreme";
+    } else if (account?.id) {
+      try {
+        const [paid, couponRows, manualRows] = await Promise.all([
+          getActiveSubscription(account.id),
+          supabaseRequest(`koyal_coupon_redemptions?select=plan_name,expires_at&user_id=eq.${encodeURIComponent(account.id)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=expires_at.desc&limit=1`) as Promise<Array<{plan_name:string;expires_at:string}>>,
+          supabaseRequest(`koyal_admin_manual_subscriptions?select=plan_name,expires_at&user_id=eq.${encodeURIComponent(account.id)}&is_active=eq.true&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=created_at.desc&limit=1`) as Promise<Array<{plan_name:string;expires_at:string}>>
+        ]);
+        const coupon = couponRows[0];
+        const manual = manualRows[0];
+        const paidExpiry = paid.expiresAt ? Date.parse(paid.expiresAt) : 0;
+        const couponExpiry = coupon?.expires_at ? Date.parse(coupon.expires_at) : 0;
+        plan = manual?.plan_name || (coupon && couponExpiry > paidExpiry ? coupon.plan_name : paid.plan);
+        if (!["Just","Let It","Care","Elite","Supreme"].includes(plan)) plan = "Just";
+      } catch (error) {
+        console.error("[KOYAL API] Subscription entitlement lookup failed; using Just plan.", error instanceof Error ? error.message : "unknown error");
+        plan = "Just";
+      }
     }
-    const plan = adminEntitled ? "Supreme" : getPlan(body);
     const supreme = isSupremePlan(plan);
     const conversation = buildConversation(message, body);
 
