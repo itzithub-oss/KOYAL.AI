@@ -14,14 +14,17 @@ alter table public.koyal_admin_security
 alter table public.koyal_admin_security
   add constraint koyal_admin_security_three_combinations_check
   check (
-    jsonb_typeof(answer_hashes) = 'array'
-    and jsonb_array_length(answer_hashes) = 3
-    and jsonb_typeof(answer_hashes -> 0) = 'array'
-    and jsonb_array_length(answer_hashes -> 0) = 5
-    and jsonb_typeof(answer_hashes -> 1) = 'array'
-    and jsonb_array_length(answer_hashes -> 1) = 5
-    and jsonb_typeof(answer_hashes -> 2) = 'array'
-    and jsonb_array_length(answer_hashes -> 2) = 5
+    -- Keep the current single five-answer row valid until the admin reconfigures
+    -- three combinations; never discard or block the existing row during migration.
+    (jsonb_typeof(answer_hashes) = 'array' and jsonb_array_length(answer_hashes) = 5)
+    or
+    (
+      jsonb_typeof(answer_hashes) = 'array'
+      and jsonb_array_length(answer_hashes) = 3
+      and jsonb_typeof(answer_hashes -> 0) = 'array' and jsonb_array_length(answer_hashes -> 0) = 5
+      and jsonb_typeof(answer_hashes -> 1) = 'array' and jsonb_array_length(answer_hashes -> 1) = 5
+      and jsonb_typeof(answer_hashes -> 2) = 'array' and jsonb_array_length(answer_hashes -> 2) = 5
+    )
   );
 
 alter table public.koyal_admin_challenges
