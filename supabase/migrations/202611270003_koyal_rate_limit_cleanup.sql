@@ -15,8 +15,8 @@ begin
     raise exception 'Invalid rate limit parameters';
   end if;
 
-  -- A deterministic 1% sample triggers cleanup, avoiding a table scan on every request.
-  if mod(abs(hashtext(p_bucket_key)::bigint), 100) = 0 then
+  -- A 1% request sample triggers cleanup, avoiding a table scan on every request.
+  if random() < 0.01 then
     delete from public.koyal_api_rate_limits
     where updated_at < now() - interval '2 days';
   end if;
