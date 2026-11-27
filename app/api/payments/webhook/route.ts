@@ -1,10 +1,14 @@
 import { fetchCashfreeOrder, processPaidOrder, supabaseRequest, verifyCashfreeWebhook } from "@/lib/cashfree-server";
+import { readLimitedRequest } from "@/lib/koyal-request";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const rawBody = await request.text();
+    let boundedRequest: Request;
+    try { boundedRequest = await readLimitedRequest(request, 256 * 1024); }
+    catch { return Response.json({ error: "Webhook payload is too large." }, { status: 413 }); }
+    const rawBody = await boundedRequest.text();
     const signature = request.headers.get("x-webhook-signature") || "";
     const timestamp = request.headers.get("x-webhook-timestamp") || "";
     if (!signature || !timestamp || !verifyCashfreeWebhook(rawBody, timestamp, signature)) {
