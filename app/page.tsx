@@ -1771,9 +1771,9 @@ function KoyalApp() {
           <button type="button" onClick={() => requestFeatherPurchase(Number(customFeathers))}>Buy</button>
         </div>
         <div className={styles.customPack} style={{ marginTop: 18 }}>
-          <div><strong>🎟️ Have a coupon?</strong><p>Log in to redeem each coupon once per account.</p></div>
+          <div><strong>🎁 Redeem a reward code</strong><p>For free subscription or Feather rewards. Percentage-off codes go in the discount field above.</p></div>
           <label>Coupon code <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Enter coupon code" autoComplete="off" /></label>
-          <button type="button" onClick={redeemCoupon} disabled={!couponCode.trim()}>Apply Coupon</button>
+          <button type="button" onClick={redeemCoupon} disabled={!couponCode.trim()}>Redeem reward code</button>
           {couponNotice && <p className={styles.purchaseNotice} role="status">{couponNotice}</p>}
         </div>
         {purchaseNotice && <div className={styles.purchaseNotice} role="status">{purchaseNotice}</div>}
