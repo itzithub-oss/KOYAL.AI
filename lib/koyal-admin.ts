@@ -1,4 +1,4 @@
-import { createHash, randomBytes, pbkdf2Sync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomInt, pbkdf2Sync, timingSafeEqual } from "node:crypto";
 import { getAuthenticatedUser, requiredEnv, supabaseRequest } from "@/lib/cashfree-server";
 
 export const KOYAL_ADMIN_EMAIL = "koyalaiindia@gmail.com";
@@ -16,7 +16,7 @@ const ADMIN_COOKIE = "koyal_admin_session";
 
 type AdminUser = { id: string; email?: string };
 type AnswerHash = { salt: string; hash: string };
-type SecurityRow = { user_id: string; answer_hashes: AnswerHash[][]; passkey_hashes?: AnswerHash[] | null; failed_attempts: number; locked_until: string | null };
+type SecurityRow = { user_id: string; answer_hashes: AnswerHash[]; failed_attempts: number; locked_until: string | null };
 type ChallengeRow = { id: string; user_id: string; question_indexes: number[]; expires_at: string; used_at: string | null };
 
 export function normalizeAdminAnswer(value: unknown) {
@@ -29,8 +29,6 @@ export function hashAdminAnswer(value: string): AnswerHash {
   return { salt, hash };
 }
 
-export function hashAdminPasskey(value: string): AnswerHash { return hashAdminAnswer(value); }
-
 export function verifyAdminAnswer(value: string, saved: AnswerHash[]) {
   const candidate = normalizeAdminAnswer(value);
   if (!candidate) return false;
@@ -42,6 +40,8 @@ export function verifyAdminAnswer(value: string, saved: AnswerHash[]) {
   }
   return matched;
 }
+
+export function randomAdminQuestionIndex() { return randomInt(ADMIN_QUESTIONS.length); }
 
 export async function getKoyalAdminUser(request: Request): Promise<AdminUser | null> {
   const user = await getAuthenticatedUser(request);
@@ -66,7 +66,7 @@ export async function reauthenticateKoyalAdmin(password: unknown) {
 
 export async function getAdminSecurity(userId: string) {
   const rows = await supabaseRequest(
-    `koyal_admin_security?select=user_id,answer_hashes,passkey_hashes,failed_attempts,locked_until&user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+    `koyal_admin_security?select=user_id,answer_hashes,failed_attempts,locked_until&user_id=eq.${encodeURIComponent(userId)}&limit=1`,
   ) as SecurityRow[];
   return rows?.[0] || null;
 }
