@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 15;
@@ -22,6 +23,10 @@ export async function POST(request: NextRequest) {
   try { originHost = origin ? new URL(origin).host : ""; } catch { /* invalid origin */ }
   if (!originHost || !host || originHost !== host) {
     return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+  }
+  const ip = (request.headers.get("x-real-ip") || request.headers.get("x-vercel-forwarded-for") || "unknown").split(",")[0].trim().slice(0, 100) || "unknown";
+  if (!await consumeKoyalRateLimit(`live-token:ip:${ip}`, 5, 60)) {
+    return NextResponse.json({ error: "Too many voice sessions were requested. Please wait a minute and try again." }, { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
   }
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
