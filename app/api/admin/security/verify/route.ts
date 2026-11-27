@@ -1,5 +1,7 @@
 import { getAdminSecurity, getKoyalAdminUser, writeAdminLog, verifyAdminAnswer } from "@/lib/koyal-admin";
 import { supabaseRequest } from "@/lib/cashfree-server";
+import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
+import { readLimitedRequest, requestClientIp } from "@/lib/koyal-request";
 
 export const runtime = "nodejs";
 
@@ -7,7 +9,13 @@ export async function POST(request: Request) {
   try {
     const user = await getKoyalAdminUser(request);
     if (!user) return Response.json({ error: "This account is not authorized for KOYAL AI administration." }, { status: 403 });
-    const body = await request.json().catch(() => ({}));
+    const ip = requestClientIp(request);
+    const ipAllowed = await consumeKoyalRateLimit("admin-security-verify:ip:" + ip, 8, 60);
+    const accountAllowed = await consumeKoyalRateLimit("admin-security-verify:user:" + user.id, 8, 60);
+    if (!ipAllowed || !accountAllowed) return Response.json({ error: "Too many verification attempts. Please wait and try again." }, { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
+    let body: any;
+    try { body = await (await readLimitedRequest(request, 8 * 1024)).json(); }
+    catch { return Response.json({ error: "The verification request is invalid or too large." }, { status: 400 }); }
     const challengeId = typeof body.challengeId === "string" ? body.challengeId : "";
     const answers = body.answers;
     if (!/^[0-9a-f-]{36}$/i.test(challengeId) || !Array.isArray(answers) || answers.length !== 5) {
