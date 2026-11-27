@@ -54,12 +54,11 @@ export async function POST(request: Request) {
       { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ combination_index: matchedCombination >= 0 ? matchedCombination : null, used_at: matchedCombination >= 0 ? null : new Date().toISOString() }) },
     ) as Array<{ id: string }>;
     if (matchedCombination < 0) {
-      const failedAttempts = Number(security.failed_attempts || 0) + 1;
-      const lockedUntil = failedAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null;
-      await supabaseRequest(`koyal_admin_security?user_id=eq.${encodeURIComponent(user.id)}`, {
-        method: "PATCH", headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ failed_attempts: failedAttempts, locked_until: lockedUntil, updated_at: new Date().toISOString() }),
-      });
+      const failureRows = await supabaseRequest("rpc/record_koyal_admin_failure", {
+        method: "POST", body: JSON.stringify({ p_user_id: user.id }),
+      }) as Array<{ failed_attempts: number; locked_until: string | null }>;
+      const failedAttempts = Number(failureRows?.[0]?.failed_attempts || 1);
+      const lockedUntil = failureRows?.[0]?.locked_until || null;
       await writeAdminLog(user, "admin_security_combination_rejected", { failedAttempts, locked: Boolean(lockedUntil) });
       return Response.json({ error: lockedUntil ? "Too many incorrect combinations. Admin verification is locked for 15 minutes." : "The five answers do not match a complete combination." }, { status: lockedUntil ? 429 : 401 });
     }
