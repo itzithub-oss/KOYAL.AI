@@ -1,5 +1,7 @@
 import { getAdminSecurity, getKoyalAdminUser, createKoyalAdminSession, writeAdminLog, verifyAdminAnswer } from "@/lib/koyal-admin";
 import { supabaseRequest } from "@/lib/cashfree-server";
+import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
+import { readLimitedRequest, requestClientIp } from "@/lib/koyal-request";
 
 export const runtime = "nodejs";
 
@@ -7,7 +9,13 @@ export async function POST(request: Request) {
   try {
     const user = await getKoyalAdminUser(request);
     if (!user) return Response.json({ error: "This account is not authorized for KOYAL AI administration." }, { status: 403 });
-    const body = await request.json().catch(() => ({}));
+    const ip = requestClientIp(request);
+    const ipAllowed = await consumeKoyalRateLimit("admin-security-passkey:ip:" + ip, 5, 60);
+    const accountAllowed = await consumeKoyalRateLimit("admin-security-passkey:user:" + user.id, 5, 60);
+    if (!ipAllowed || !accountAllowed) return Response.json({ error: "Too many passkey attempts. Please wait and try again." }, { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
+    let body: any;
+    try { body = await (await readLimitedRequest(request, 4 * 1024)).json(); }
+    catch { return Response.json({ error: "The passkey request is invalid or too large." }, { status: 400 }); }
     const challengeId = typeof body.challengeId === "string" ? body.challengeId : "";
     const passkey = typeof body.passkey === "string" ? body.passkey : "";
     if (!/^[0-9a-f-]{36}$/i.test(challengeId) || passkey.length < 1 || passkey.length > 128) {
