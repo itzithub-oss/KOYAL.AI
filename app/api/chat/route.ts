@@ -7,6 +7,7 @@ import { detectImageMime, MAX_IMAGE_BYTES } from "../../../lib/koyal-image.mjs";
 import { getClinicReferralContext } from "../../../lib/koyal-clinic-referral.mjs";
 import { getActiveSubscription, getAuthenticatedUser, supabaseRequest } from "@/lib/cashfree-server";
 import { consumeKoyalRateLimit } from "@/lib/koyal-rate-limit";
+import { readLimitedRequest, requestClientIp } from "@/lib/koyal-request";
 
 export const runtime = "nodejs";
 
@@ -771,7 +772,7 @@ function parseFormJSON(value: FormDataEntryValue | null): unknown {
   }
 }
 
-async function readBody(request: NextRequest): Promise<ChatBody> {
+async function readBody(request: Request): Promise<ChatBody> {
   const contentType = request.headers.get("content-type") || "";
 
   if (contentType.includes("multipart/form-data")) {
@@ -880,15 +881,19 @@ export async function POST(request: NextRequest) {
   let requestKind = "chat";
   try {
     const account = await getAuthenticatedUser(request).catch(() => null);
-    const forwardedIp = request.headers.get("x-real-ip") || request.headers.get("x-vercel-forwarded-for") || "unknown";
-    const ipKey = forwardedIp.split(",")[0].trim().slice(0, 100) || "unknown";
+    const ipKey = requestClientIp(request);
     const ipAllowed = await consumeKoyalRateLimit(`chat:ip:${ipKey}`, account ? 40 : 12, 60);
     if (!ipAllowed) return NextResponse.json({ reply: "You're sending requests too quickly. Please wait a moment and try again.", code: "RATE_LIMITED" }, { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
     if (account?.id && !await consumeKoyalRateLimit(`chat:user:${account.id}`, 50, 60)) {
       return NextResponse.json({ reply: "Your account has reached its short-term request limit. Please try again shortly.", code: "RATE_LIMITED" }, { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
     }
 
-    const body = await readBody(request);
+    const contentType = request.headers.get("content-type") || "";
+    const maxRequestBytes = contentType.includes("multipart/form-data") ? 11 * 1024 * 1024 : 1024 * 1024;
+    let boundedRequest: Request;
+    try { boundedRequest = await readLimitedRequest(request, maxRequestBytes); }
+    catch { return NextResponse.json({ reply: "The request is too large. Please reduce the upload or message size.", code: "REQUEST_TOO_LARGE" }, { status: 413, headers: { "Cache-Control": "no-store" } }); }
+    const body = await readBody(boundedRequest);
 
     const message =
       typeof body.message === "string"
