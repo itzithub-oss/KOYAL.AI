@@ -69,10 +69,6 @@ const MAX_HISTORY_CHARACTERS = 24_000;
 
 class InputError extends Error {}
 
-function getPlan(body: ChatBody) {
-  return text(body.subscriptionPlan) || text(body.selectedPlan) || text(body.plan) || "Just";
-}
-
 function isSupremePlan(plan: string) {
   return plan.trim().toLowerCase() === "supreme";
 }
